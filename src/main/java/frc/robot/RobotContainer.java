@@ -10,7 +10,6 @@ package frc.robot;
 import com.pathplanner.lib.auto.AutoBuilder;
 import edu.wpi.first.math.geometry.Pose2d;
 import edu.wpi.first.math.geometry.Rotation2d;
-import edu.wpi.first.math.kinematics.ChassisSpeeds;
 import edu.wpi.first.wpilibj.GenericHID;
 import edu.wpi.first.wpilibj.XboxController;
 import edu.wpi.first.wpilibj2.command.Command;
@@ -25,7 +24,6 @@ import frc.robot.subsystems.drive.GyroIOPigeon2;
 import frc.robot.subsystems.drive.ModuleIO;
 import frc.robot.subsystems.drive.ModuleIOSim;
 import frc.robot.subsystems.drive.ModuleIOTalonFX;
-import org.littletonrobotics.junction.Logger;
 import org.littletonrobotics.junction.networktables.LoggedDashboardChooser;
 
 /**
@@ -148,22 +146,12 @@ public class RobotContainer {
                 () -> -controller.getLeftY(),
                 () -> -controller.getLeftX(),
                 () -> {
-                  // Predict position 0.5 seconds in the future
-                  Pose2d pose = drive.getPose();
-                  ChassisSpeeds fieldSpeeds =
-                      ChassisSpeeds.fromRobotRelativeSpeeds(
-                          drive.getChassisSpeeds(), pose.getRotation());
-                  Pose2d predictedRobot =
-                      new Pose2d(
-                          pose.getX() + fieldSpeeds.vxMetersPerSecond * 0.5,
-                          pose.getY() + fieldSpeeds.vyMetersPerSecond * 0.5,
-                          pose.getRotation());
-                  Logger.recordOutput("predictedRobot", predictedRobot);
-
                   // Calculate angle to target from future position
                   // Target (fixed): X=6, Y=8.2296/2
                   return Rotation2d.fromRadians(
-                      Math.atan2(8.2296 / 2 - predictedRobot.getY(), 6 - predictedRobot.getX()));
+                      Math.atan2(
+                          8.2296 / 2 - drive.getFuturePose(.5).getY(),
+                          6 - drive.getFuturePose(.5).getX()));
                 }));
 
     // Switch to X pattern when X button is pressed

@@ -318,6 +318,21 @@ public class Drive extends SubsystemBase {
     return poseEstimator.getEstimatedPosition();
   }
 
+  @AutoLogOutput(key = "Odometry/PredictedRobot")
+  public Pose2d getFuturePose(double lookaheadSeconds) {
+    // Predict position 0.5 seconds in the future
+    Pose2d pose = getPose();
+    ChassisSpeeds fieldSpeeds =
+        ChassisSpeeds.fromRobotRelativeSpeeds(getChassisSpeeds(), pose.getRotation());
+    Pose2d predictedRobot =
+        new Pose2d(
+            pose.getX() + fieldSpeeds.vxMetersPerSecond * lookaheadSeconds,
+            pose.getY() + fieldSpeeds.vyMetersPerSecond * lookaheadSeconds,
+            pose.getRotation());
+    Logger.recordOutput("Odometry/PredictedRobot", predictedRobot);
+    return predictedRobot;
+  }
+
   /** Returns the current odometry rotation. */
   public Rotation2d getRotation() {
     return getPose().getRotation();
