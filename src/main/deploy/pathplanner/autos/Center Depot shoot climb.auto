@@ -1,0 +1,37 @@
+{
+  "version": "2025.0",
+  "command": {
+    "type": "sequential",
+    "data": {
+      "commands": [
+        {
+          "type": "path",
+          "data": {
+            "pathName": "Center reverse"
+          }
+        },
+        {
+          "type": "path",
+          "data": {
+            "pathName": "Reversed To Depot pre"
+          }
+        },
+        {
+          "type": "path",
+          "data": {
+            "pathName": "Reversed to depot post"
+          }
+        },
+        {
+          "type": "path",
+          "data": {
+            "pathName": "post depot to climb"
+          }
+        }
+      ]
+    }
+  },
+  "resetOdom": true,
+  "folder": null,
+  "choreoAuto": false
+}
