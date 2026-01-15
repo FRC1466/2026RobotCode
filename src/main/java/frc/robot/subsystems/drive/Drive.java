@@ -1,9 +1,5 @@
-// Copyright (c) 2021-2026 Littleton Robotics
-// http://github.com/Mechanical-Advantage
-//
-// Use of this source code is governed by a BSD
-// license that can be found in the LICENSE file
-// at the root directory of this project.
+// Copyright (c) 2025-2026 Webb Robotics
+// http://github.com/FRC1466
 
 package frc.robot.subsystems.drive;
 
@@ -209,7 +205,7 @@ public class Drive extends SubsystemBase {
     }
 
     // Update gyro alert
-    gyroDisconnectedAlert.set(!gyroInputs.connected && Constants.currentMode != Mode.SIM);
+    gyroDisconnectedAlert.set(!gyroInputs.connected && Constants.getMode() != Mode.SIM);
   }
 
   /**
@@ -323,6 +319,10 @@ public class Drive extends SubsystemBase {
   }
 
   @AutoLogOutput(key = "Odometry/PredictedRobot")
+  public Pose2d getFuturePose() {
+    return getFuturePose(0.5);
+  }
+
   public Pose2d getFuturePose(double lookaheadSeconds) {
     // Predict position 0.5 seconds in the future
     Pose2d pose = getPose();

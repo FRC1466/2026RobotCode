@@ -2,7 +2,8 @@ plugins {
     id "java"
     id "edu.wpi.first.GradleRIO" version "2026.1.1"
     id "com.peterabeles.gversion" version "1.10"
-    id "com.diffplug.spotless" version "6.12.0"
+    id "com.diffplug.spotless" version "6.25.0"
+    id "io.freefair.lombok" version "8.4"
 }
 
 java {
@@ -48,7 +49,7 @@ deploy {
                     directory = '/home/lvuser/deploy'
                     // Change to true to delete files on roboRIO that no
                     // longer exist in deploy directory on roboRIO
-                    deleteOldFiles = false
+                    deleteOldFiles = true
                 }
             }
         }
@@ -106,16 +107,21 @@ test {
 // Simulation configuration (e.g. environment variables).
 //
 // The sim GUI is *disabled* by default to support running
-// AdvantageKit log replay, which requires that all HAL
-// sim extensions be disabled.
-wpi.sim.addGui().defaultEnabled = false
+// AdvantageKit log replay from the command line. Set the
+// value to "true" to enable the sim GUI by default (this
+// is the standard WPILib behavior).
+wpi.sim.addGui().defaultEnabled = true
 wpi.sim.addDriverstation()
 
 // Setting up my Jar File. In this case, adding all libraries into the main jar ('fat jar')
 // in order to make them all available at runtime. Also adding the manifest so WPILib
 // knows where to look for our Robot Class.
 jar {
-    from { configurations.runtimeClasspath.collect { it.isDirectory() ? it : zipTree(it) } }
+    from {
+        configurations.runtimeClasspath.collect {
+            it.isDirectory() ? it : zipTree(it)
+        }
+    }
     from sourceSets.main.allSource
     manifest edu.wpi.first.gradlerio.GradleRIOPlugin.javaManifest(ROBOT_MAIN_CLASS)
     duplicatesStrategy = DuplicatesStrategy.INCLUDE
@@ -129,6 +135,19 @@ wpi.java.configureTestTasks(test)
 // Configure string concat to always inline compile
 tasks.withType(JavaCompile) {
     options.compilerArgs.add '-XDstringConcat=inline'
+}
+
+// Check robot type when deploying
+task(checkConstantsDeploy, dependsOn: "classes", type: JavaExec) {
+    main = "frc.robot.Constants\$CheckDeploy"
+    classpath = sourceSets.main.runtimeClasspath
+}
+deployroborio.dependsOn(checkConstantsDeploy)
+
+// Check constants for pull request
+task(checkConstantsPullRequest, dependsOn: "classes", type: JavaExec) {
+    main = "frc.robot.Constants\$CheckPullRequest"
+    classpath = sourceSets.main.runtimeClasspath
 }
 
 // Create version file
@@ -188,6 +207,7 @@ spotless {
         removeUnusedImports()
         trimTrailingWhitespace()
         endWithNewline()
+        licenseHeader("// Copyright (c) 2025-2026 Webb Robotics\n// http://github.com/FRC1466\n\n")
     }
     groovyGradle {
         target fileTree(".") {
