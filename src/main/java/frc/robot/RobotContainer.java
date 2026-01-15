@@ -27,6 +27,9 @@ import frc.robot.subsystems.drive.GyroIOPigeon2;
 import frc.robot.subsystems.drive.ModuleIO;
 import frc.robot.subsystems.drive.ModuleIOSim;
 import frc.robot.subsystems.drive.ModuleIOTalonFX;
+import frc.robot.subsystems.shooter.Shooter;
+import frc.robot.subsystems.shooter.ShooterIO;
+import frc.robot.subsystems.shooter.ShooterIOSim;
 import frc.robot.subsystems.vision.Vision;
 import frc.robot.subsystems.vision.VisionIO;
 import frc.robot.subsystems.vision.VisionIOPhotonVision;
@@ -47,6 +50,7 @@ public class RobotContainer {
   // Subsystems
   private Drive drive;
   private Vision vision;
+  private Shooter shooter;
 
   // Controller
   private final CommandXboxController controller = new CommandXboxController(0);
@@ -112,6 +116,7 @@ public class RobotContainer {
                               new VisionIOPhotonVisionSim(
                                   config.name(), config.robotToCamera(), drive::getPose))
                       .toArray(VisionIO[]::new));
+          shooter = new Shooter(new ShooterIOSim());
           break;
         }
       }
@@ -132,6 +137,9 @@ public class RobotContainer {
           new Vision(
               drive::addVisionMeasurement,
               cameras.values().stream().map(config -> new VisionIO() {}).toArray(VisionIO[]::new));
+    }
+    if (shooter == null) {
+      shooter = new Shooter(new ShooterIO() {});
     }
 
     // Set up auto routines
@@ -179,8 +187,10 @@ public class RobotContainer {
             AlignedDrive.autoAlign(
                 drive, () -> controller.getLeftY(), () -> controller.getLeftX()));
 
-    // Switch to X pattern when X button is pressed
-    controller.x().onTrue(Commands.runOnce(drive::stopWithX, drive));
+    controller
+        .x()
+        .onTrue(Commands.runOnce(() -> shooter.runVelocity(120)))
+        .onFalse(Commands.runOnce(() -> shooter.runVelocity(0)));
 
     // Reset gyro
     controller

@@ -19,6 +19,7 @@ import edu.wpi.first.wpilibj.simulation.RoboRioSim;
 import edu.wpi.first.wpilibj2.command.Command;
 import edu.wpi.first.wpilibj2.command.CommandScheduler;
 import frc.robot.Constants.RobotType;
+import frc.robot.util.FullSubsystem;
 import frc.robot.util.LoggedTracer;
 import frc.robot.util.ShooterModel;
 import java.lang.reflect.Field;
@@ -179,6 +180,8 @@ public class Robot extends LoggedRobot {
     LoggedTracer.reset();
     CommandScheduler.getInstance().run();
     LoggedTracer.record("Commands");
+    FullSubsystem.runAllPeriodicAfterScheduler();
+    LoggedTracer.record("PeriodicAfterScheduler");
 
     // Print auto duration
     if (autonomousCommand != null) {
@@ -208,6 +211,11 @@ public class Robot extends LoggedRobot {
     robotContainer.updateDashboardOutputs();
 
     LoggedTracer.record("RobotPeriodic");
+  }
+
+  /** Whether to display alerts related to hardware faults. */
+  public static boolean showHardwareAlerts() {
+    return Constants.getMode() != Constants.Mode.SIM && Timer.getTimestamp() > 30.0;
   }
 
   /** This function is called once when the robot is disabled. */
