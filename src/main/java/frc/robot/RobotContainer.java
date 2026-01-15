@@ -18,6 +18,7 @@ import edu.wpi.first.wpilibj2.command.Command;
 import edu.wpi.first.wpilibj2.command.Commands;
 import edu.wpi.first.wpilibj2.command.button.CommandXboxController;
 import edu.wpi.first.wpilibj2.command.sysid.SysIdRoutine;
+import frc.robot.commands.AlignedDrive;
 import frc.robot.commands.DriveCommands;
 import frc.robot.generated.TunerConstants;
 import frc.robot.subsystems.drive.Drive;
@@ -171,22 +172,12 @@ public class RobotContainer {
             () -> -controller.getLeftX(),
             () -> -controller.getRightX()));
 
-    // Lock to 0° when A button is held
+    // Auto-align to target when A button is held
     controller
         .a()
         .whileTrue(
-            DriveCommands.joystickDriveAtAngle(
-                drive,
-                () -> -0.75 * controller.getLeftY(),
-                () -> -0.75 * controller.getLeftX(),
-                () -> {
-                  // Calculate angle to target from future position
-                  // Target (fixed): X=6, Y=8.2296/2
-                  return Rotation2d.fromRadians(
-                      Math.atan2(
-                          8.2296 / 2 - drive.getFuturePose(.5).getY(),
-                          6 - drive.getFuturePose(.5).getX()));
-                }));
+            AlignedDrive.autoAlign(
+                drive, () -> controller.getLeftY(), () -> controller.getLeftX()));
 
     // Switch to X pattern when X button is pressed
     controller.x().onTrue(Commands.runOnce(drive::stopWithX, drive));
