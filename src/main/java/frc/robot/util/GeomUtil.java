@@ -156,4 +156,8 @@ public class GeomUtil {
   public static Pose2d withRotation(Pose2d pose, Rotation2d rotation) {
     return new Pose2d(pose.getTranslation(), rotation);
   }
+
+  public static Pose2d withCoords(double x, double y) {
+    return new Pose2d(x, y, new Rotation2d());
+  }
 }

@@ -8,6 +8,7 @@ import edu.wpi.first.math.geometry.Rotation2d;
 import edu.wpi.first.wpilibj2.command.Command;
 import frc.robot.Constants;
 import frc.robot.subsystems.drive.Drive;
+import frc.robot.util.GeomUtil;
 import frc.robot.util.ShooterModel;
 import java.util.function.DoubleSupplier;
 import org.littletonrobotics.junction.Logger;
@@ -18,21 +19,21 @@ import org.littletonrobotics.junction.Logger;
  */
 public class AlignedDrive {
 
-  /** Target position for the primary speaker/goal */
-  private static final double PRIMARY_TARGET_X = 4.5;
+  /** Target position for the primary goal */
+  private static final double primaryTargetX = 4.5;
 
-  private static final double PRIMARY_TARGET_Y = Constants.fieldWidthMeters / 2;
+  private static final double primaryTargetY = Constants.fieldWidthMeters / 2;
 
   /** X threshold to switch from primary to alternate targets */
-  private static final double ALTERNATE_TARGET_THRESHOLD_X = 3.75;
+  private static final double alternateTargetThresholdX = 3.75;
 
   /** Alternate target positions (left and right) */
-  private static final double ALTERNATE_TARGET_X = 2.0;
+  private static final double alternateTargetX = 2.0;
 
-  private static final double ALTERNATE_TARGET_Y_OFFSET = 1; // Offset from center
+  private static final double alternateTargetYOffset = 1; // Offset from center
 
   /** Number of iterations for time-of-flight convergence */
-  private static final int TOF_ITERATIONS = 3;
+  private static final int tofIterations = 3;
 
   private AlignedDrive() {}
 
@@ -87,7 +88,7 @@ public class AlignedDrive {
     double timeOfFlight = 0;
     Pose2d futurePose = currentPose;
 
-    for (int i = 0; i < TOF_ITERATIONS; i++) {
+    for (int i = 0; i < tofIterations; i++) {
       futurePose = drive.getFuturePose(timeOfFlight);
       double distance = Math.hypot(targetX - futurePose.getX(), targetY - futurePose.getY());
       timeOfFlight = ShooterModel.getTimeOfFlight(distance);
@@ -99,8 +100,7 @@ public class AlignedDrive {
             Math.atan2(targetY - futurePose.getY(), targetX - futurePose.getX()));
 
     // Log debug information
-    Logger.recordOutput("AutoAlign/TargetX", targetX);
-    Logger.recordOutput("AutoAlign/TargetY", targetY);
+    Logger.recordOutput("AutoAlign/TargetPose", GeomUtil.withCoords(targetX, targetY));
     Logger.recordOutput("AutoAlign/TimeOfFlight", timeOfFlight);
     Logger.recordOutput("AutoAlign/FuturePose", futurePose);
     Logger.recordOutput("AutoAlign/TargetAngle", targetAngle);
@@ -118,29 +118,29 @@ public class AlignedDrive {
     double robotX = currentPose.getX();
 
     // If robot is past the threshold, use alternate targets
-    if (robotX > ALTERNATE_TARGET_THRESHOLD_X) {
+    if (robotX > alternateTargetThresholdX) {
       double centerY = Constants.fieldWidthMeters / 2;
-      double leftTargetY = centerY + ALTERNATE_TARGET_Y_OFFSET;
-      double rightTargetY = centerY - ALTERNATE_TARGET_Y_OFFSET;
+      double leftTargetY = centerY + alternateTargetYOffset;
+      double rightTargetY = centerY - alternateTargetYOffset;
 
       // Calculate distances to both alternate targets
       double distanceToLeft =
-          Math.hypot(ALTERNATE_TARGET_X - currentPose.getX(), leftTargetY - currentPose.getY());
+          Math.hypot(alternateTargetX - currentPose.getX(), leftTargetY - currentPose.getY());
       double distanceToRight =
-          Math.hypot(ALTERNATE_TARGET_X - currentPose.getX(), rightTargetY - currentPose.getY());
+          Math.hypot(alternateTargetX - currentPose.getX(), rightTargetY - currentPose.getY());
 
       // Choose the closer target
       if (distanceToLeft < distanceToRight) {
         Logger.recordOutput("AutoAlign/SelectedTarget", "AlternateLeft");
-        return new Pose2d(ALTERNATE_TARGET_X, leftTargetY, new Rotation2d());
+        return new Pose2d(alternateTargetX, leftTargetY, new Rotation2d());
       } else {
         Logger.recordOutput("AutoAlign/SelectedTarget", "AlternateRight");
-        return new Pose2d(ALTERNATE_TARGET_X, rightTargetY, new Rotation2d());
+        return new Pose2d(alternateTargetX, rightTargetY, new Rotation2d());
       }
     } else {
       // Use primary target
       Logger.recordOutput("AutoAlign/SelectedTarget", "Primary");
-      return new Pose2d(PRIMARY_TARGET_X, PRIMARY_TARGET_Y, new Rotation2d());
+      return new Pose2d(primaryTargetX, primaryTargetY, new Rotation2d());
     }
   }
 }
