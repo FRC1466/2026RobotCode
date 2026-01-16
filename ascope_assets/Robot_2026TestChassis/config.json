@@ -1,0 +1,39 @@
+{
+  "name": "2026TestChassis",
+  "rotations": [
+    {
+      "axis": "x",
+      "degrees": 90
+    },
+    {
+      "axis": "z",
+      "degrees": 90
+    }
+  ],
+  "position": [
+    0,
+    0,
+    0
+  ],
+  "cameras": [
+    {
+      "name": "Camera_DevBot",
+      "rotations": [
+        {
+          "axis": "y",
+          "degrees": -15
+        },
+        {
+          "axis": "z",
+          "degrees": 0
+        }
+      ],
+      "position": [
+        0.3484510,
+        0,
+        0.145082
+      ],
+      "fov": 70
+    }
+  ]
+}

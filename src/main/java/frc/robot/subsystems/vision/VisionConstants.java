@@ -37,7 +37,8 @@ public class VisionConstants {
           0,
           new CameraConfig(
               "Camera_DevBot",
-              new Transform3d(new Translation3d(0, 0, 0), new Rotation3d(0, 0, 0))));
+              new Transform3d(
+                  new Translation3d(0.3484510, 0, 0.145082), new Rotation3d(0, -15, 0))));
 
   // Simulation camera configuration
   public enum SimCameraMode {
@@ -46,7 +47,7 @@ public class VisionConstants {
     NoCameras
   }
 
-  public static final SimCameraMode simCameraMode = CompCameras;
+  public static final SimCameraMode simCameraMode = DevCameras;
 
   public static final Map<Integer, CameraConfig> simCameras =
       switch (simCameraMode) {
