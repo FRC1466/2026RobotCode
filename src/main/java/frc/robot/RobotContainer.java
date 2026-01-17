@@ -30,11 +30,13 @@ import frc.robot.subsystems.drive.ModuleIOTalonFX;
 import frc.robot.subsystems.shooter.Shooter;
 import frc.robot.subsystems.shooter.ShooterIO;
 import frc.robot.subsystems.shooter.ShooterIOSim;
+import frc.robot.subsystems.shooter.ShooterIOTalonFX;
 import frc.robot.subsystems.vision.Vision;
 import frc.robot.subsystems.vision.VisionIO;
 import frc.robot.subsystems.vision.VisionIOPhotonVision;
 import frc.robot.subsystems.vision.VisionIOPhotonVisionSim;
 import frc.robot.util.AllianceFlipUtil;
+import frc.robot.util.LoggedTunableNumber;
 import frc.robot.util.TriggerUtil;
 import lombok.experimental.ExtensionMethod;
 import org.littletonrobotics.junction.networktables.LoggedDashboardChooser;
@@ -73,13 +75,14 @@ public class RobotContainer {
                   new ModuleIOTalonFX(TunerConstants.FrontRight),
                   new ModuleIOTalonFX(TunerConstants.BackLeft),
                   new ModuleIOTalonFX(TunerConstants.BackRight));
-          vision =
-              new Vision(
-                  drive::addVisionMeasurement,
-                  compCameras.values().stream()
-                      .map(
-                          config -> new VisionIOPhotonVision(config.name(), config.robotToCamera()))
-                      .toArray(VisionIO[]::new));
+          /*vision =
+          new Vision(
+              drive::addVisionMeasurement,
+              compCameras.values().stream()
+                  .map(
+                      config -> new VisionIOPhotonVision(config.name(), config.robotToCamera()))
+                  .toArray(VisionIO[]::new));*/
+          shooter = new Shooter(new ShooterIOTalonFX());
           break;
         }
         case DEVBOT -> {
@@ -97,6 +100,7 @@ public class RobotContainer {
                       .map(
                           config -> new VisionIOPhotonVision(config.name(), config.robotToCamera()))
                       .toArray(VisionIO[]::new));
+          shooter = new Shooter(new ShooterIOTalonFX());
           break;
         }
         case SIMBOT -> {
@@ -187,11 +191,14 @@ public class RobotContainer {
             AlignedDrive.autoAlign(
                 drive, () -> controller.getLeftY(), () -> controller.getLeftX()));
 
-    controller
-        .x()
-        .onTrue(Commands.runOnce(() -> shooter.runVelocity(120)))
-        .onFalse(Commands.runOnce(() -> shooter.runVelocity(0)));
+    shooter.setDefaultCommand(Commands.run(() -> shooter.runVelocity(0), shooter));
 
+    LoggedTunableNumber speedLow = new LoggedTunableNumber("Shooter low vel", 50);
+
+    controller.povUp().whileTrue(Commands.run(() -> shooter.runVelocity(speedLow.get()), shooter));
+    controller.povLeft().whileTrue(Commands.run(() -> shooter.runVelocity(100), shooter));
+    controller.povRight().whileTrue(Commands.run(() -> shooter.runVelocity(80), shooter));
+    controller.povDown().whileTrue(Commands.run(() -> shooter.runVelocity(58), shooter));
     // Reset gyro
     controller
         .start()

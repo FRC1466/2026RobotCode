@@ -3,24 +3,13 @@
 
 package frc.robot.subsystems.shooter;
 
-import frc.robot.Constants;
 import frc.robot.util.LoggedTunableNumber;
 
 public class ShooterConstants {
   public static final double reduction = 1;
 
-  public static final double ks = 0.0;
-  public static final LoggedTunableNumber kp =
-      switch (Constants.robot) {
-        case COMPBOT -> new LoggedTunableNumber("Shooter/kp", 0.0);
-        case DEVBOT -> new LoggedTunableNumber("Shooter/kp", 15.0);
-        default -> new LoggedTunableNumber("Shooter/kp", 0.0);
-      };
-
-  public static final LoggedTunableNumber kd =
-      switch (Constants.robot) {
-        case COMPBOT -> new LoggedTunableNumber("Shooter/kd", 0.0);
-        case DEVBOT -> new LoggedTunableNumber("Shooter/kd", 0.0);
-        default -> new LoggedTunableNumber("Shooter/kd", 0.0);
-      };
+  public static final LoggedTunableNumber ks = new LoggedTunableNumber("Shooter/ks", 0.19);
+  public static final LoggedTunableNumber kv = new LoggedTunableNumber("Shooter/kv", 0.11);
+  public static final LoggedTunableNumber kp = new LoggedTunableNumber("Shooter/kp", 0.3);
+  public static final LoggedTunableNumber kd = new LoggedTunableNumber("Shooter/kd", 0.0);
 }

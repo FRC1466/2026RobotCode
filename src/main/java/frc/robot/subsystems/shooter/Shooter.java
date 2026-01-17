@@ -24,7 +24,7 @@ public class Shooter extends FullSubsystem {
 
   @Setter private double volts = 0.0;
   private static final LoggedTunableNumber rateLimiter =
-      new LoggedTunableNumber("Shooter/SlewRateLimiter", 100);
+      new LoggedTunableNumber("Shooter/SlewRateLimiter", 140);
   SlewRateLimiter slewRateLimiter = new SlewRateLimiter(rateLimiter.get());
 
   public Shooter(ShooterIO io) {
@@ -42,9 +42,11 @@ public class Shooter extends FullSubsystem {
     }
     outputs.kP = ShooterConstants.kp.get();
     outputs.kD = ShooterConstants.kd.get();
+    outputs.kS = ShooterConstants.ks.get();
+    outputs.kV = ShooterConstants.kv.get();
 
     if (outputs.coast) {
-      slewRateLimiter.reset(inputs.velocityRadsPerSec);
+      slewRateLimiter.reset(inputs.velocityRps);
     }
 
     disconnected.set(
@@ -57,23 +59,23 @@ public class Shooter extends FullSubsystem {
   }
 
   /** Run closed loop at the specified velocity. */
-  public void runVelocity(double velocityRadsPerSec) {
+  public void runVelocity(double velocityRps) {
     outputs.coast = false;
-    outputs.velocityRadsPerSec = slewRateLimiter.calculate(velocityRadsPerSec);
-    outputs.feedForward = ShooterConstants.ks * Math.signum(velocityRadsPerSec);
+    outputs.velocityRps = slewRateLimiter.calculate(velocityRps);
+    outputs.feedForward = 0.0;
 
     // Log shooter setpoint
-    Logger.recordOutput("Shooter/Setpoint", outputs.velocityRadsPerSec);
+    Logger.recordOutput("Shooter/Setpoint", outputs.velocityRps);
   }
 
   /** Stops the shooter. */
   public void stop() {
-    outputs.velocityRadsPerSec = 0.0;
+    outputs.velocityRps = 0.0;
     outputs.coast = true;
   }
 
-  /** Returns the current velocity in RPM. */
+  /** Returns the current velocity in RPS. */
   public double getVelocity() {
-    return inputs.velocityRadsPerSec;
+    return inputs.velocityRps;
   }
 }

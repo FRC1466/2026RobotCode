@@ -9,6 +9,7 @@ import edu.wpi.first.wpilibj2.command.Command;
 import frc.robot.Constants;
 import frc.robot.subsystems.drive.Drive;
 import frc.robot.util.GeomUtil;
+import frc.robot.util.LoggedTunableNumber;
 import frc.robot.util.ShooterModel;
 import java.util.function.DoubleSupplier;
 import org.littletonrobotics.junction.Logger;
@@ -20,9 +21,11 @@ import org.littletonrobotics.junction.Logger;
 public class AlignedDrive {
 
   /** Target position for the primary goal */
-  private static final double primaryTargetX = 4.5;
+  private static final LoggedTunableNumber primaryTargetX =
+      new LoggedTunableNumber("AlignedDrive/PrimaryTargetX", 4.5);
 
-  private static final double primaryTargetY = Constants.fieldWidthMeters / 2;
+  private static final LoggedTunableNumber primaryTargetY =
+      new LoggedTunableNumber("AlignedDrive/PrimaryTargetY", Constants.fieldWidthMeters / 2);
 
   /** X threshold to switch from primary to alternate targets */
   private static final double alternateTargetThresholdX = 3.75;
@@ -140,7 +143,7 @@ public class AlignedDrive {
     } else {
       // Use primary target
       Logger.recordOutput("AutoAlign/SelectedTarget", "Primary");
-      return new Pose2d(primaryTargetX, primaryTargetY, new Rotation2d());
+      return new Pose2d(primaryTargetX.get(), primaryTargetY.get(), new Rotation2d());
     }
   }
 }
