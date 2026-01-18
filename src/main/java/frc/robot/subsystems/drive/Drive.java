@@ -207,7 +207,8 @@ public class Drive extends SubsystemBase {
 
     // Update RobotState
     RobotState.getInstance().setEstimatedPose(getPose());
-    RobotState.getInstance().setFieldVelocity(getChassisSpeeds());
+    RobotState.getInstance()
+        .setFieldVelocity(ChassisSpeeds.fromRobotRelativeSpeeds(getChassisSpeeds(), getRotation()));
 
     // Update gyro alert
     gyroDisconnectedAlert.set(!gyroInputs.connected && Constants.getMode() != Mode.SIM);

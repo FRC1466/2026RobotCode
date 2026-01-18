@@ -8,6 +8,7 @@ import static frc.robot.subsystems.vision.VisionConstants.*;
 import com.pathplanner.lib.auto.AutoBuilder;
 import edu.wpi.first.math.geometry.Pose2d;
 import edu.wpi.first.math.geometry.Rotation2d;
+import edu.wpi.first.math.util.Units;
 import edu.wpi.first.wpilibj.Alert;
 import edu.wpi.first.wpilibj.Alert.AlertType;
 import edu.wpi.first.wpilibj.DriverStation;
@@ -18,7 +19,6 @@ import edu.wpi.first.wpilibj2.command.Command;
 import edu.wpi.first.wpilibj2.command.Commands;
 import edu.wpi.first.wpilibj2.command.button.CommandXboxController;
 import edu.wpi.first.wpilibj2.command.sysid.SysIdRoutine;
-import frc.robot.commands.AlignedDrive;
 import frc.robot.commands.DriveCommands;
 import frc.robot.generated.TunerConstants;
 import frc.robot.subsystems.drive.Drive;
@@ -27,6 +27,7 @@ import frc.robot.subsystems.drive.GyroIOPigeon2;
 import frc.robot.subsystems.drive.ModuleIO;
 import frc.robot.subsystems.drive.ModuleIOSim;
 import frc.robot.subsystems.drive.ModuleIOTalonFX;
+import frc.robot.subsystems.shooter.ShotCalculator;
 import frc.robot.subsystems.shooter.flywheel.Flywheel;
 import frc.robot.subsystems.shooter.flywheel.FlywheelIO;
 import frc.robot.subsystems.shooter.flywheel.FlywheelIOSim;
@@ -38,8 +39,8 @@ import frc.robot.subsystems.vision.VisionIO;
 import frc.robot.subsystems.vision.VisionIOPhotonVision;
 import frc.robot.subsystems.vision.VisionIOPhotonVisionSim;
 import frc.robot.util.AllianceFlipUtil;
-import frc.robot.util.LoggedTunableNumber;
 import frc.robot.util.TriggerUtil;
+import java.util.function.DoubleSupplier;
 import lombok.experimental.ExtensionMethod;
 import org.littletonrobotics.junction.networktables.LoggedDashboardChooser;
 
@@ -185,31 +186,67 @@ public class RobotContainer {
    * edu.wpi.first.wpilibj2.command.button.JoystickButton}.
    */
   private void configureButtonBindings() {
+    DoubleSupplier leftY = () -> -controller.getLeftY();
+    DoubleSupplier leftX = () -> -controller.getLeftX();
+    DoubleSupplier rightX = () -> -controller.getRightX();
+
     // Default command, normal field-relative drive
-    drive.setDefaultCommand(
-        DriveCommands.joystickDrive(
-            drive,
-            () -> -controller.getLeftY(),
-            () -> -controller.getLeftX(),
-            () -> -controller.getRightX()));
+    drive.setDefaultCommand(DriveCommands.joystickDrive(drive, leftY, leftX, rightX));
 
-    // Auto-align to target when A button is held
+    flywheel.setDefaultCommand(flywheel.stopCommand());
+    hood.setDefaultCommand(hood.runTrackTargetCommand());
+
+    // Right Bumper: Auto-aim robot to target and rev shooter (flywheel + hood)
     controller
-        .a()
+        .rightBumper()
         .whileTrue(
-            AlignedDrive.autoAlign(
-                drive, () -> controller.getLeftY(), () -> controller.getLeftX()));
+            Commands.parallel(
+                DriveCommands.joystickDriveAtAngle(
+                    drive,
+                    leftY,
+                    leftX,
+                    () -> ShotCalculator.getInstance().getParameters().goalHeading()),
+                flywheel.runTrackTargetCommand(),
+                hood.runTrackTargetCommand()));
 
-    flywheel.setDefaultCommand(Commands.run(() -> flywheel.runVelocity(0), flywheel));
+    controller.a().whileTrue(flywheel.runTrackTargetCommand());
 
-    LoggedTunableNumber speedLow = new LoggedTunableNumber("Shooter low vel", 50);
+    // POV: Manual control / preset speeds
+    controller.povUp().whileTrue(flywheel.runFixedCommand(() -> 105)); // Near max
+    controller.povDown().whileTrue(flywheel.runFixedCommand(() -> 45)); // Min range
+
+    // Left Bumper: Zero hood
+    controller.leftBumper().onTrue(hood.zeroCommand());
 
     controller
-        .povUp()
-        .whileTrue(Commands.run(() -> flywheel.runVelocity(speedLow.get()), flywheel));
-    controller.povLeft().whileTrue(Commands.run(() -> flywheel.runVelocity(100), flywheel));
-    controller.povRight().whileTrue(Commands.run(() -> flywheel.runVelocity(80), flywheel));
-    controller.povDown().whileTrue(Commands.run(() -> flywheel.runVelocity(58), flywheel));
+        .rightStick()
+        .whileTrue(
+            drive.defer(
+                () ->
+                    DriveCommands.joystickDriveAtAngle(
+                        drive,
+                        leftY,
+                        leftX,
+                        () -> {
+                          Rotation2d currentRotation = RobotState.getInstance().getRotation();
+                          // Snap to nearest 45 degrees, excluding 0, 90, 180, 270
+                          double angle = currentRotation.getDegrees();
+                          double snapped = Math.round(angle / 45.0) * 45.0;
+                          // Adjust if snapped to cardinal direction
+                          if (snapped % 90.0 == 0.0) {
+                            snapped += (angle > snapped) ? 45.0 : -45.0;
+                          }
+                          return Rotation2d.fromDegrees(snapped);
+                        })));
+
+    // B Button: Stop all shooter subsystems
+    controller
+        .b()
+        .onTrue(
+            Commands.parallel(
+                flywheel.stopCommand(),
+                hood.runFixedCommand(() -> Units.degreesToRadians(19), () -> 0.0)));
+
     // Reset gyro
     controller
         .start()

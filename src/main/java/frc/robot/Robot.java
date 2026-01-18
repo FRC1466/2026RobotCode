@@ -19,6 +19,7 @@ import edu.wpi.first.wpilibj.simulation.RoboRioSim;
 import edu.wpi.first.wpilibj2.command.Command;
 import edu.wpi.first.wpilibj2.command.CommandScheduler;
 import frc.robot.Constants.RobotType;
+import frc.robot.subsystems.shooter.ShotCalculator;
 import frc.robot.util.FullSubsystem;
 import frc.robot.util.LoggedTracer;
 import java.lang.reflect.Field;
@@ -168,6 +169,9 @@ public class Robot extends LoggedRobot {
   /** This function is called periodically during all modes. */
   @Override
   public void robotPeriodic() {
+    // Clear shooting parameters for the new loop
+    ShotCalculator.getInstance().clearShootingParameters();
+
     // Main periodic functions
     LoggedTracer.reset();
     CommandScheduler.getInstance().run();
