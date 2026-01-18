@@ -21,7 +21,6 @@ import edu.wpi.first.wpilibj2.command.CommandScheduler;
 import frc.robot.Constants.RobotType;
 import frc.robot.util.FullSubsystem;
 import frc.robot.util.LoggedTracer;
-import frc.robot.util.ShooterModel;
 import java.lang.reflect.Field;
 import java.util.HashMap;
 import java.util.Map;
@@ -95,13 +94,6 @@ public class Robot extends LoggedRobot {
 
     // Start AdvantageKit logger
     Logger.start();
-
-    // Initialize Shooter Information Util
-    if (Constants.getMode() != Constants.Mode.REAL) {
-      ShooterModel.initialize("src/main/deploy/shooterData/shooter_data.json");
-    } else {
-      ShooterModel.initialize("/home/lvuser/deploy/shooterData/shooter_data.json");
-    }
 
     // Adjust loop overrun warning timeout
     try {

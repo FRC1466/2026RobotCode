@@ -1,7 +1,7 @@
 // Copyright (c) 2025-2026 Webb Robotics
 // http://github.com/FRC1466
 
-package frc.robot.subsystems.shooter;
+package frc.robot.subsystems.shooter.flywheel;
 
 import static edu.wpi.first.units.Units.*;
 
@@ -16,7 +16,7 @@ import com.ctre.phoenix6.signals.NeutralModeValue;
 import edu.wpi.first.units.measure.*;
 import frc.robot.util.PhoenixUtil;
 
-public class ShooterIOTalonFX implements ShooterIO {
+public class FlywheelIOTalonFX implements FlywheelIO {
   private final TalonFX talon;
   private final StatusSignal<Angle> position;
   private final StatusSignal<AngularVelocity> velocity;
@@ -33,7 +33,7 @@ public class ShooterIOTalonFX implements ShooterIO {
   private double lastKv = 0.11;
   private boolean lastCoast = true;
 
-  public ShooterIOTalonFX() {
+  public FlywheelIOTalonFX() {
     talon = new TalonFX(14);
 
     var config = new TalonFXConfiguration();
@@ -63,7 +63,7 @@ public class ShooterIOTalonFX implements ShooterIO {
   }
 
   @Override
-  public void updateInputs(ShooterIOInputs inputs) {
+  public void updateInputs(FlywheelIOInputs inputs) {
     BaseStatusSignal.refreshAll(
         position, velocity, appliedVoltage, supplyCurrent, torqueCurrent, temp);
     inputs.connected =
@@ -78,7 +78,7 @@ public class ShooterIOTalonFX implements ShooterIO {
   }
 
   @Override
-  public void applyOutputs(ShooterIOOutputs outputs) {
+  public void applyOutputs(FlywheelIOOutputs outputs) {
     if (outputs.coast != lastCoast) {
       talon.setNeutralMode(outputs.coast ? NeutralModeValue.Coast : NeutralModeValue.Brake);
       lastCoast = outputs.coast;

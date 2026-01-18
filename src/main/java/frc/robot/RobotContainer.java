@@ -27,10 +27,12 @@ import frc.robot.subsystems.drive.GyroIOPigeon2;
 import frc.robot.subsystems.drive.ModuleIO;
 import frc.robot.subsystems.drive.ModuleIOSim;
 import frc.robot.subsystems.drive.ModuleIOTalonFX;
-import frc.robot.subsystems.shooter.Shooter;
-import frc.robot.subsystems.shooter.ShooterIO;
-import frc.robot.subsystems.shooter.ShooterIOSim;
-import frc.robot.subsystems.shooter.ShooterIOTalonFX;
+import frc.robot.subsystems.shooter.flywheel.Flywheel;
+import frc.robot.subsystems.shooter.flywheel.FlywheelIO;
+import frc.robot.subsystems.shooter.flywheel.FlywheelIOSim;
+import frc.robot.subsystems.shooter.flywheel.FlywheelIOTalonFX;
+import frc.robot.subsystems.shooter.hood.Hood;
+import frc.robot.subsystems.shooter.hood.HoodIO;
 import frc.robot.subsystems.vision.Vision;
 import frc.robot.subsystems.vision.VisionIO;
 import frc.robot.subsystems.vision.VisionIOPhotonVision;
@@ -52,7 +54,8 @@ public class RobotContainer {
   // Subsystems
   private Drive drive;
   private Vision vision;
-  private Shooter shooter;
+  private Flywheel flywheel;
+  private Hood hood;
 
   // Controller
   private final CommandXboxController controller = new CommandXboxController(0);
@@ -82,7 +85,8 @@ public class RobotContainer {
                   .map(
                       config -> new VisionIOPhotonVision(config.name(), config.robotToCamera()))
                   .toArray(VisionIO[]::new));*/
-          shooter = new Shooter(new ShooterIOTalonFX());
+          flywheel = new Flywheel(new FlywheelIOTalonFX());
+          hood = new Hood(new HoodIO() {}); // TODO: Implement HoodIOTalonFX/Sim
           break;
         }
         case DEVBOT -> {
@@ -100,7 +104,8 @@ public class RobotContainer {
                       .map(
                           config -> new VisionIOPhotonVision(config.name(), config.robotToCamera()))
                       .toArray(VisionIO[]::new));
-          shooter = new Shooter(new ShooterIOTalonFX());
+          flywheel = new Flywheel(new FlywheelIOTalonFX());
+          hood = new Hood(new HoodIO() {});
           break;
         }
         case SIMBOT -> {
@@ -120,7 +125,8 @@ public class RobotContainer {
                               new VisionIOPhotonVisionSim(
                                   config.name(), config.robotToCamera(), drive::getPose))
                       .toArray(VisionIO[]::new));
-          shooter = new Shooter(new ShooterIOSim());
+          flywheel = new Flywheel(new FlywheelIOSim());
+          hood = new Hood(new HoodIO() {});
           break;
         }
       }
@@ -142,8 +148,11 @@ public class RobotContainer {
               drive::addVisionMeasurement,
               cameras.values().stream().map(config -> new VisionIO() {}).toArray(VisionIO[]::new));
     }
-    if (shooter == null) {
-      shooter = new Shooter(new ShooterIO() {});
+    if (flywheel == null) {
+      flywheel = new Flywheel(new FlywheelIO() {});
+    }
+    if (hood == null) {
+      hood = new Hood(new HoodIO() {});
     }
 
     // Set up auto routines
@@ -191,14 +200,16 @@ public class RobotContainer {
             AlignedDrive.autoAlign(
                 drive, () -> controller.getLeftY(), () -> controller.getLeftX()));
 
-    shooter.setDefaultCommand(Commands.run(() -> shooter.runVelocity(0), shooter));
+    flywheel.setDefaultCommand(Commands.run(() -> flywheel.runVelocity(0), flywheel));
 
     LoggedTunableNumber speedLow = new LoggedTunableNumber("Shooter low vel", 50);
 
-    controller.povUp().whileTrue(Commands.run(() -> shooter.runVelocity(speedLow.get()), shooter));
-    controller.povLeft().whileTrue(Commands.run(() -> shooter.runVelocity(100), shooter));
-    controller.povRight().whileTrue(Commands.run(() -> shooter.runVelocity(80), shooter));
-    controller.povDown().whileTrue(Commands.run(() -> shooter.runVelocity(58), shooter));
+    controller
+        .povUp()
+        .whileTrue(Commands.run(() -> flywheel.runVelocity(speedLow.get()), flywheel));
+    controller.povLeft().whileTrue(Commands.run(() -> flywheel.runVelocity(100), flywheel));
+    controller.povRight().whileTrue(Commands.run(() -> flywheel.runVelocity(80), flywheel));
+    controller.povDown().whileTrue(Commands.run(() -> flywheel.runVelocity(58), flywheel));
     // Reset gyro
     controller
         .start()

@@ -1,13 +1,13 @@
 // Copyright (c) 2025-2026 Webb Robotics
 // http://github.com/FRC1466
 
-package frc.robot.subsystems.shooter;
+package frc.robot.subsystems.shooter.flywheel;
 
 import org.littletonrobotics.junction.AutoLog;
 
-public interface ShooterIO {
+public interface FlywheelIO {
   @AutoLog
-  public static class ShooterIOInputs {
+  public static class FlywheelIOInputs {
     public double positionRotations;
     public double velocityRps;
     public double appliedVoltage;
@@ -17,7 +17,7 @@ public interface ShooterIO {
     public boolean connected;
   }
 
-  public static class ShooterIOOutputs {
+  public static class FlywheelIOOutputs {
     public double velocityRps = 0.0;
     public double feedForward = 0.0;
     public boolean coast = true;
@@ -27,7 +27,7 @@ public interface ShooterIO {
     public double kV = 0.0;
   }
 
-  default void updateInputs(ShooterIOInputs inputs) {}
+  default void updateInputs(FlywheelIOInputs inputs) {}
 
-  default void applyOutputs(ShooterIOOutputs outputs) {}
+  default void applyOutputs(FlywheelIOOutputs outputs) {}
 }

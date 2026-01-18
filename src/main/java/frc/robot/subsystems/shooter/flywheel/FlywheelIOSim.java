@@ -1,7 +1,7 @@
 // Copyright (c) 2025-2026 Webb Robotics
 // http://github.com/FRC1466
 
-package frc.robot.subsystems.shooter;
+package frc.robot.subsystems.shooter.flywheel;
 
 import edu.wpi.first.math.MathUtil;
 import edu.wpi.first.math.controller.PIDController;
@@ -11,7 +11,7 @@ import edu.wpi.first.math.util.Units;
 import edu.wpi.first.wpilibj.simulation.DCMotorSim;
 import frc.robot.Constants;
 
-public class ShooterIOSim implements ShooterIO {
+public class FlywheelIOSim implements FlywheelIO {
   private static final DCMotor motorModel = DCMotor.getKrakenX60(1);
   private static final DCMotorSim sim =
       new DCMotorSim(LinearSystemId.createDCMotorSystem(motorModel, .025, 1), motorModel);
@@ -22,10 +22,10 @@ public class ShooterIOSim implements ShooterIO {
   private double setpointRps = 0.0;
   private double feedForward = 0.0;
 
-  public ShooterIOSim() {}
+  public FlywheelIOSim() {}
 
   @Override
-  public void updateInputs(ShooterIOInputs inputs) {
+  public void updateInputs(FlywheelIOInputs inputs) {
     if (closedLoop) {
       appliedVolts =
           controller.calculate(
@@ -51,7 +51,7 @@ public class ShooterIOSim implements ShooterIO {
   }
 
   @Override
-  public void applyOutputs(ShooterIOOutputs outputs) {
+  public void applyOutputs(FlywheelIOOutputs outputs) {
     closedLoop = !outputs.coast;
     setpointRps = outputs.velocityRps;
     feedForward =
