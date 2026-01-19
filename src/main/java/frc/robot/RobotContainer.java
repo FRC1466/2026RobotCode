@@ -237,7 +237,11 @@ public class RobotContainer {
                             snapped += (angle > snapped) ? 45.0 : -45.0;
                           }
                           return Rotation2d.fromDegrees(snapped);
-                        })));
+                        })))
+        .onTrue(Commands.runOnce(() -> vision.setRampMode(true))
+            .withName("EnableRampMode"))
+        .onFalse(Commands.runOnce(() -> vision.setRampMode(false))
+            .withName("DisableRampMode"));
 
     // B Button: Stop all shooter subsystems
     controller
