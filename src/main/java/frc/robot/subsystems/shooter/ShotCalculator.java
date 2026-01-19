@@ -58,31 +58,19 @@ public class ShotCalculator {
       new InterpolatingDoubleTreeMap();
 
   static {
-    shotHoodAngleMap.put(1.45, Rotation2d.fromDegrees(19.0));
-    shotHoodAngleMap.put(1.75, Rotation2d.fromDegrees(21.0));
-    shotHoodAngleMap.put(2.15, Rotation2d.fromDegrees(22.0));
-    shotHoodAngleMap.put(2.50, Rotation2d.fromDegrees(23.0));
-    shotHoodAngleMap.put(2.84, Rotation2d.fromDegrees(24.0));
-    shotHoodAngleMap.put(3.15, Rotation2d.fromDegrees(25.5));
-    shotHoodAngleMap.put(3.58, Rotation2d.fromDegrees(26.5));
-    shotHoodAngleMap.put(4.16, Rotation2d.fromDegrees(29.0));
-    shotHoodAngleMap.put(4.43, Rotation2d.fromDegrees(30.5));
-    shotHoodAngleMap.put(5.28, Rotation2d.fromDegrees(34.0));
+    shotHoodAngleMap.put((double) 1, Rotation2d.fromDegrees(19));
 
-    shotFlywheelSpeedMap.put(1.45, 45.0);
-    shotFlywheelSpeedMap.put(1.75, 50.0);
-    shotFlywheelSpeedMap.put(2.15, 55.0);
-    shotFlywheelSpeedMap.put(2.50, 58.0);
-    shotFlywheelSpeedMap.put(2.84, 59.0);
-    shotFlywheelSpeedMap.put(3.15, 65.0);
-    shotFlywheelSpeedMap.put(3.58, 75.0);
-    shotFlywheelSpeedMap.put(4.16, 88.0);
-    shotFlywheelSpeedMap.put(4.43, 95.0);
-    shotFlywheelSpeedMap.put(5.28, 105.0);
+    shotFlywheelSpeedMap.put(1.86, 45.0);
+    shotFlywheelSpeedMap.put(1.75, 47.0);
+    shotFlywheelSpeedMap.put(2.54, 51.0);
+    shotFlywheelSpeedMap.put(3.22, 57.0);
+    shotFlywheelSpeedMap.put(3.75, 61.0);
 
-    timeOfFlightMap.put(1.64227, 0.93);
-    timeOfFlightMap.put(2.859544, 1.0);
-    timeOfFlightMap.put(4.27071, 1.05);
+    timeOfFlightMap.put(1.86, 0.81);
+    timeOfFlightMap.put(1.52, 0.86);
+    timeOfFlightMap.put(2.54, .96);
+    timeOfFlightMap.put(3.22, 1.3);
+    timeOfFlightMap.put(3.75, 1.36);
   }
 
   public ShootingParameters getParameters() {

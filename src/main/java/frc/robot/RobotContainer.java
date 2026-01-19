@@ -8,6 +8,7 @@ import static frc.robot.subsystems.vision.VisionConstants.*;
 import com.pathplanner.lib.auto.AutoBuilder;
 import edu.wpi.first.math.geometry.Pose2d;
 import edu.wpi.first.math.geometry.Rotation2d;
+import edu.wpi.first.math.geometry.Translation2d;
 import edu.wpi.first.math.util.Units;
 import edu.wpi.first.wpilibj.Alert;
 import edu.wpi.first.wpilibj.Alert.AlertType;
@@ -37,7 +38,6 @@ import frc.robot.subsystems.shooter.hood.HoodIO;
 import frc.robot.subsystems.vision.Vision;
 import frc.robot.subsystems.vision.VisionIO;
 import frc.robot.subsystems.vision.VisionIOPhotonVision;
-import frc.robot.subsystems.vision.VisionIOPhotonVisionSim;
 import frc.robot.util.AllianceFlipUtil;
 import frc.robot.util.TriggerUtil;
 import java.util.function.DoubleSupplier;
@@ -79,13 +79,11 @@ public class RobotContainer {
                   new ModuleIOTalonFX(TunerConstants.FrontRight),
                   new ModuleIOTalonFX(TunerConstants.BackLeft),
                   new ModuleIOTalonFX(TunerConstants.BackRight));
-          /*vision =
-          new Vision(
-              drive::addVisionMeasurement,
-              compCameras.values().stream()
-                  .map(
-                      config -> new VisionIOPhotonVision(config.name(), config.robotToCamera()))
-                  .toArray(VisionIO[]::new));*/
+          vision =
+              new Vision(
+                  drive::addVisionMeasurement,
+                  new VisionIOPhotonVision(camera0Name, robotToCamera0));
+
           flywheel = new Flywheel(new FlywheelIOTalonFX());
           hood = new Hood(new HoodIO() {}); // TODO: Implement HoodIOTalonFX/Sim
           break;
@@ -98,13 +96,6 @@ public class RobotContainer {
                   new ModuleIOTalonFX(TunerConstants.FrontRight),
                   new ModuleIOTalonFX(TunerConstants.BackLeft),
                   new ModuleIOTalonFX(TunerConstants.BackRight));
-          vision =
-              new Vision(
-                  drive::addVisionMeasurement,
-                  devCameras.values().stream()
-                      .map(
-                          config -> new VisionIOPhotonVision(config.name(), config.robotToCamera()))
-                      .toArray(VisionIO[]::new));
           flywheel = new Flywheel(new FlywheelIOTalonFX());
           hood = new Hood(new HoodIO() {});
           break;
@@ -117,15 +108,6 @@ public class RobotContainer {
                   new ModuleIOSim(TunerConstants.FrontRight),
                   new ModuleIOSim(TunerConstants.BackLeft),
                   new ModuleIOSim(TunerConstants.BackRight));
-          vision =
-              new Vision(
-                  drive::addVisionMeasurement,
-                  simCameras.values().stream()
-                      .map(
-                          config ->
-                              new VisionIOPhotonVisionSim(
-                                  config.name(), config.robotToCamera(), drive::getPose))
-                      .toArray(VisionIO[]::new));
           flywheel = new Flywheel(new FlywheelIOSim());
           hood = new Hood(new HoodIO() {});
           break;
@@ -144,10 +126,7 @@ public class RobotContainer {
               new ModuleIO() {});
     }
     if (vision == null) {
-      vision =
-          new Vision(
-              drive::addVisionMeasurement,
-              cameras.values().stream().map(config -> new VisionIO() {}).toArray(VisionIO[]::new));
+      vision = new Vision(drive::addVisionMeasurement, new VisionIO() {});
     }
     if (flywheel == null) {
       flywheel = new Flywheel(new FlywheelIO() {});
@@ -237,11 +216,59 @@ public class RobotContainer {
                             snapped += (angle > snapped) ? 45.0 : -45.0;
                           }
                           return Rotation2d.fromDegrees(snapped);
-                        })))
-        .onTrue(Commands.runOnce(() -> vision.setRampMode(true))
-            .withName("EnableRampMode"))
-        .onFalse(Commands.runOnce(() -> vision.setRampMode(false))
-            .withName("DisableRampMode"));
+                        })));
+    // .onTrue(Commands.runOnce(() -> vision.setRampMode(true)).withName("EnableRampMode"))
+    // .onFalse(Commands.runOnce(() -> vision.setRampMode(false)).withName("DisableRampMode"));
+
+    // Mutable state for manual flywheel control
+    final double[] targetSpeed = {45.0};
+    final boolean[] flywheelActive = {false};
+
+    // Logging Command: Periodically logs distance and target speed to AdvantageScope
+    Commands.run(
+            () -> {
+              Pose2d currentPose = RobotState.getInstance().getEstimatedPose();
+              if (currentPose != null) {
+                Translation2d hubPose = AllianceFlipUtil.apply(FieldConstants.hubCenter);
+                double distance = currentPose.getTranslation().getDistance(hubPose);
+                org.littletonrobotics.junction.Logger.recordOutput("Debug/DistanceToHub", distance);
+              }
+              org.littletonrobotics.junction.Logger.recordOutput(
+                  "Debug/FlywheelTargetSpeed", targetSpeed[0]);
+            })
+        .ignoringDisable(true)
+        .withName("DebugLogger")
+        .schedule();
+
+    // X Button: Toggle flywheel spinning
+    controller
+        .x()
+        .onTrue(
+            Commands.runOnce(
+                    () -> {
+                      flywheelActive[0] = !flywheelActive[0];
+                      if (flywheelActive[0]) {
+                        // Supplier ensures speed updates dynamically without rescheduling
+                        flywheel.runFixedCommand(() -> targetSpeed[0]).schedule();
+                      } else {
+                        flywheel.stopCommand().schedule();
+                      }
+                    })
+                .withName("ToggleFlywheel"));
+
+    // POV Left: Decrease target speed
+    controller
+        .povLeft()
+        .onTrue(
+            Commands.runOnce(() -> targetSpeed[0] = Math.max(30.0, targetSpeed[0] - 1.0))
+                .withName("DecreaseSpeed"));
+
+    // POV Right: Increase target speed
+    controller
+        .povRight()
+        .onTrue(
+            Commands.runOnce(() -> targetSpeed[0] = Math.min(110.0, targetSpeed[0] + 1.0))
+                .withName("IncreaseSpeed"));
 
     // B Button: Stop all shooter subsystems
     controller

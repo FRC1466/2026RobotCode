@@ -25,10 +25,6 @@ public class Vision extends SubsystemBase {
   private final VisionIO[] io;
   private final VisionIOInputsAutoLogged[] inputs;
   private final Alert[] disconnectedAlerts;
-  
-  // Ramp mode: When true, vision updates are paused and next update will aggressively correct
-  private boolean rampMode = false;
-  private boolean needsAggressiveCorrection = false;
 
   public Vision(VisionConsumer consumer, VisionIO... io) {
     this.consumer = consumer;
@@ -56,28 +52,6 @@ public class Vision extends SubsystemBase {
    */
   public Rotation2d getTargetX(int cameraIndex) {
     return inputs[cameraIndex].latestTargetObservation.tx();
-  }
-
-  /**
-   * Enable "ramp mode" - disables vision updates while crossing the ramp.
-   * When disabled, the next vision measurement will aggressively correct the pose.
-   * Call this when entering ramp (e.g., when pressing snap-to-45 button).
-   * 
-   * @param enabled True when crossing ramp, false when back on flat ground
-   */
-  public void setRampMode(boolean enabled) {
-    if (rampMode && !enabled) {
-      // Exiting ramp mode - flag that we need aggressive correction on next update
-      needsAggressiveCorrection = true;
-    }
-    rampMode = enabled;
-  }
-
-  /**
-   * Returns whether ramp mode is currently active.
-   */
-  public boolean isRampMode() {
-    return rampMode;
   }
 
   @Override
@@ -141,11 +115,6 @@ public class Vision extends SubsystemBase {
           continue;
         }
 
-        // Skip vision updates if in ramp mode (crossing the bump)
-        if (rampMode) {
-          continue;
-        }
-
         // Calculate standard deviations
         double stdDevFactor =
             Math.pow(observation.averageTagDistance(), 2.0) / observation.tagCount();
@@ -158,13 +127,6 @@ public class Vision extends SubsystemBase {
         if (cameraIndex < cameraStdDevFactors.length) {
           linearStdDev *= cameraStdDevFactors[cameraIndex];
           angularStdDev *= cameraStdDevFactors[cameraIndex];
-        }
-
-        // If we need aggressive correction (just exited ramp), use very low std devs
-        if (needsAggressiveCorrection) {
-          linearStdDev = 0.01;  // Very high confidence in vision
-          angularStdDev = 0.01;
-          needsAggressiveCorrection = false; // Only do this once
         }
 
         // Send vision observation
@@ -200,8 +162,6 @@ public class Vision extends SubsystemBase {
         "Vision/Summary/RobotPosesAccepted", allRobotPosesAccepted.toArray(new Pose3d[0]));
     Logger.recordOutput(
         "Vision/Summary/RobotPosesRejected", allRobotPosesRejected.toArray(new Pose3d[0]));
-    Logger.recordOutput("Vision/RampMode", rampMode);
-    Logger.recordOutput("Vision/NeedsAggressiveCorrection", needsAggressiveCorrection);
   }
 
   @FunctionalInterface
