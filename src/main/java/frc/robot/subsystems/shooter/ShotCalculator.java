@@ -20,8 +20,11 @@ import org.littletonrobotics.junction.Logger;
 
 public class ShotCalculator {
   private static ShotCalculator instance;
+  /*private static final Transform2d robotToShooter =
+  new Transform2d(new Translation2d(0.15, 0.0), Rotation2d.fromDegrees(180));*/
+
   private static final Transform2d robotToShooter =
-      new Transform2d(new Translation2d(0.15, 0.0), Rotation2d.fromDegrees(180));
+      new Transform2d(new Translation2d(), Rotation2d.fromDegrees(180));
 
   private final LinearFilter goalHeadingFilter =
       LinearFilter.movingAverage((int) (0.1 / Constants.loopPeriodSecs));
