@@ -6,6 +6,7 @@ package frc.robot;
 import static frc.robot.subsystems.vision.VisionConstants.*;
 
 import com.pathplanner.lib.auto.AutoBuilder;
+import edu.wpi.first.math.filter.SlewRateLimiter;
 import edu.wpi.first.math.geometry.Pose2d;
 import edu.wpi.first.math.geometry.Rotation2d;
 import edu.wpi.first.math.geometry.Translation2d;
@@ -96,8 +97,8 @@ public class RobotContainer {
                   new ModuleIOTalonFX(TunerConstants.FrontRight),
                   new ModuleIOTalonFX(TunerConstants.BackLeft),
                   new ModuleIOTalonFX(TunerConstants.BackRight));
-          flywheel = new Flywheel(new FlywheelIOTalonFX());
-          hood = new Hood(new HoodIO() {});
+          // flywheel = new Flywheel(new FlywheelIOTalonFX());
+          // hood = new Hood(new HoodIO() {});
           break;
         }
         case SIMBOT -> {
@@ -165,9 +166,13 @@ public class RobotContainer {
    * edu.wpi.first.wpilibj2.command.button.JoystickButton}.
    */
   private void configureButtonBindings() {
-    DoubleSupplier leftY = () -> -controller.getLeftY();
-    DoubleSupplier leftX = () -> -controller.getLeftX();
-    DoubleSupplier rightX = () -> -controller.getRightX();
+    SlewRateLimiter yLimiter = new SlewRateLimiter(4);
+    SlewRateLimiter xLimiter = new SlewRateLimiter(4);
+    SlewRateLimiter tLimiter = new SlewRateLimiter(4);
+
+    DoubleSupplier leftY = () -> yLimiter.calculate(-controller.getLeftY());
+    DoubleSupplier leftX = () -> xLimiter.calculate(-controller.getLeftX());
+    DoubleSupplier rightX = () -> tLimiter.calculate(-controller.getRightX());
 
     // Default command, normal field-relative drive
     drive.setDefaultCommand(DriveCommands.joystickDrive(drive, leftY, leftX, rightX));
