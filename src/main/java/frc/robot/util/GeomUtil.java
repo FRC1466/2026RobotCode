@@ -1,5 +1,9 @@
-// Copyright (c) 2025-2026 Webb Robotics
-// http://github.com/FRC1466
+// Copyright (c) 2025-2026 Littleton Robotics
+// http://github.com/Mechanical-Advantage
+//
+// Use of this source code is governed by an MIT-style
+// license that can be found in the LICENSE file at
+// the root directory of this project.
 
 package frc.robot.util;
 
@@ -114,6 +118,17 @@ public class GeomUtil {
   }
 
   /**
+   * Converts a Transform3d to a Transform2d
+   *
+   * @param transform The original transform
+   * @return The resulting transform
+   */
+  public static Transform2d toTransform2d(Transform3d transform) {
+    return new Transform2d(
+        transform.getTranslation().toTranslation2d(), transform.getRotation().toRotation2d());
+  }
+
+  /**
    * Converts a Transform3d to a Pose3d to be used as a position or as the start of a kinematic
    * chain
    *
@@ -155,9 +170,5 @@ public class GeomUtil {
    */
   public static Pose2d withRotation(Pose2d pose, Rotation2d rotation) {
     return new Pose2d(pose.getTranslation(), rotation);
-  }
-
-  public static Pose2d withCoords(double x, double y) {
-    return new Pose2d(x, y, new Rotation2d());
   }
 }

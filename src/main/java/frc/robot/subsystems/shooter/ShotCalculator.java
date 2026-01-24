@@ -1,5 +1,9 @@
-// Copyright (c) 2025-2026 Webb Robotics
-// http://github.com/FRC1466
+// Copyright (c) 2025-2026 Littleton Robotics
+// http://github.com/Mechanical-Advantage
+//
+// Use of this source code is governed by an MIT-style
+// license that can be found in the LICENSE file at
+// the root directory of this project.
 
 package frc.robot.subsystems.shooter;
 
@@ -8,23 +12,22 @@ import edu.wpi.first.math.geometry.Pose2d;
 import edu.wpi.first.math.geometry.Rotation2d;
 import edu.wpi.first.math.geometry.Transform2d;
 import edu.wpi.first.math.geometry.Translation2d;
+import edu.wpi.first.math.geometry.Twist2d;
 import edu.wpi.first.math.interpolation.InterpolatingDoubleTreeMap;
 import edu.wpi.first.math.interpolation.InterpolatingTreeMap;
 import edu.wpi.first.math.interpolation.InverseInterpolator;
 import edu.wpi.first.math.kinematics.ChassisSpeeds;
+import lombok.experimental.ExtensionMethod;
 import frc.robot.Constants;
 import frc.robot.FieldConstants;
 import frc.robot.RobotState;
 import frc.robot.util.AllianceFlipUtil;
+import frc.robot.util.GeomUtil;
 import org.littletonrobotics.junction.Logger;
 
+@ExtensionMethod({GeomUtil.class})
 public class ShotCalculator {
   private static ShotCalculator instance;
-  /*private static final Transform2d robotToShooter =
-  new Transform2d(new Translation2d(0.15, 0.0), Rotation2d.fromDegrees(180));*/
-
-  private static final Transform2d robotToShooter =
-      new Transform2d(new Translation2d(), Rotation2d.fromDegrees(180));
 
   private final LinearFilter goalHeadingFilter =
       LinearFilter.movingAverage((int) (0.1 / Constants.loopPeriodSecs));
@@ -38,12 +41,16 @@ public class ShotCalculator {
   private double goalHeadingVelocity;
   private double hoodVelocity;
 
+  private static final Transform2d robotToShooter =
+      new Transform2d(new Translation2d(), Rotation2d.fromDegrees(180));
+
   public static ShotCalculator getInstance() {
     if (instance == null) instance = new ShotCalculator();
     return instance;
   }
 
   public record ShootingParameters(
+      boolean isValid,
       Rotation2d goalHeading,
       double goalHeadingVelocity,
       double hoodAngle,
@@ -53,6 +60,9 @@ public class ShotCalculator {
   // Cache parameters
   private ShootingParameters latestParameters = null;
 
+  private static double minDistance;
+  private static double maxDistance;
+  private static double phaseDelay;
   private static final InterpolatingTreeMap<Double, Rotation2d> shotHoodAngleMap =
       new InterpolatingTreeMap<>(InverseInterpolator.forDouble(), Rotation2d::interpolate);
   private static final InterpolatingDoubleTreeMap shotFlywheelSpeedMap =
@@ -61,6 +71,10 @@ public class ShotCalculator {
       new InterpolatingDoubleTreeMap();
 
   static {
+    minDistance = 0.5;
+    maxDistance = 10.0;
+    phaseDelay = 0.03;
+
     shotHoodAngleMap.put((double) 1, Rotation2d.fromDegrees(19));
 
     shotFlywheelSpeedMap.put(1.86, 45.0);
@@ -81,34 +95,50 @@ public class ShotCalculator {
       return latestParameters;
     }
 
-    // Calculate distance from robot center to target for time-of-flight lookup
-    Translation2d target = AllianceFlipUtil.apply(FieldConstants.hubCenter);
-    Pose2d robotPose = RobotState.getInstance().getEstimatedPose();
-    double robotToTargetDistance = target.getDistance(robotPose.getTranslation());
+    // Calculate estimated pose while accounting for phase delay
+    Pose2d estimatedPose = RobotState.getInstance().getEstimatedPose();
+    ChassisSpeeds fieldRelativeVelocity = RobotState.getInstance().getFieldVelocity();
+    ChassisSpeeds robotRelativeVelocity = ChassisSpeeds.fromFieldRelativeSpeeds(fieldRelativeVelocity, estimatedPose.getRotation());
+    estimatedPose =
+        estimatedPose.exp(
+            new Twist2d(
+                robotRelativeVelocity.vxMetersPerSecond * phaseDelay,
+                robotRelativeVelocity.vyMetersPerSecond * phaseDelay,
+                robotRelativeVelocity.omegaRadiansPerSecond * phaseDelay));
 
-    // Get robot velocity and calculate lookahead for velocity compensation
-    ChassisSpeeds robotVelocity = RobotState.getInstance().getFieldVelocity();
-    double timeOfFlight = timeOfFlightMap.get(robotToTargetDistance);
-    Translation2d robotLookaheadOffset =
-        new Translation2d(
-            robotVelocity.vxMetersPerSecond * timeOfFlight,
-            robotVelocity.vyMetersPerSecond * timeOfFlight);
-
-    // Calculate shooter position after robot has moved
-    Pose2d lookaheadRobotPose =
-        new Pose2d(robotPose.getTranslation().plus(robotLookaheadOffset), robotPose.getRotation());
-    Pose2d shooterPosition = lookaheadRobotPose.transformBy(robotToShooter);
+    // Calculate distance from robot to target
+    Translation2d target =
+        AllianceFlipUtil.apply(FieldConstants.Hub.topCenterPoint.toTranslation2d());
+    Pose2d shooterPosition = estimatedPose.transformBy(robotToShooter);
     double shooterToTargetDistance = target.getDistance(shooterPosition.getTranslation());
 
-    // Calculate parameters for the shot
-    goalHeading =
-        target
-            .minus(shooterPosition.getTranslation())
-            .getAngle()
-            .minus(robotToShooter.getRotation());
-    hoodAngle = shotHoodAngleMap.get(shooterToTargetDistance).getRadians();
+    // Calculate field relative shooter velocity
+    double shooterVelocityX = fieldRelativeVelocity.vxMetersPerSecond;
+    double shooterVelocityY = fieldRelativeVelocity.vyMetersPerSecond;
+
+    // Account for imparted velocity by robot to offset
+    double timeOfFlight;
+    Pose2d lookaheadPose = shooterPosition;
+    double lookaheadShooterToTargetDistance = shooterToTargetDistance;
+    for (int i = 0; i < 20; i++) {
+      timeOfFlight = timeOfFlightMap.get(lookaheadShooterToTargetDistance);
+      double offsetX = shooterVelocityX * timeOfFlight;
+      double offsetY = shooterVelocityY * timeOfFlight;
+      lookaheadPose =
+          new Pose2d(
+              shooterPosition.getTranslation().plus(new Translation2d(offsetX, offsetY)),
+              shooterPosition.getRotation());
+      lookaheadShooterToTargetDistance = target.getDistance(lookaheadPose.getTranslation());
+    }
+
+    // Calculate parameters accounted for imparted velocity
+    Rotation2d angleToTarget = target.minus(lookaheadPose.getTranslation()).getAngle();
+    goalHeading = angleToTarget.minus(robotToShooter.getRotation());
+    
+    hoodAngle = shotHoodAngleMap.get(lookaheadShooterToTargetDistance).getRadians();
     if (lastGoalHeading == null) lastGoalHeading = goalHeading;
     if (Double.isNaN(lastHoodAngle)) lastHoodAngle = hoodAngle;
+    
     goalHeadingVelocity =
         goalHeadingFilter.calculate(
             goalHeading.minus(lastGoalHeading).getRadians() / Constants.loopPeriodSecs);
@@ -116,17 +146,20 @@ public class ShotCalculator {
         hoodAngleFilter.calculate((hoodAngle - lastHoodAngle) / Constants.loopPeriodSecs);
     lastGoalHeading = goalHeading;
     lastHoodAngle = hoodAngle;
+    
     latestParameters =
         new ShootingParameters(
+            lookaheadShooterToTargetDistance >= minDistance
+                && lookaheadShooterToTargetDistance <= maxDistance,
             goalHeading,
             goalHeadingVelocity,
             hoodAngle,
             hoodVelocity,
-            shotFlywheelSpeedMap.get(shooterToTargetDistance));
+            shotFlywheelSpeedMap.get(lookaheadShooterToTargetDistance));
 
     // Log calculated values
-    Logger.recordOutput("ShotCalculator/LookaheadPose", shooterPosition);
-    Logger.recordOutput("ShotCalculator/ShooterToTargetDistance", shooterToTargetDistance);
+    Logger.recordOutput("ShotCalculator/LookaheadPose", lookaheadPose);
+    Logger.recordOutput("ShotCalculator/ShooterToTargetDistance", lookaheadShooterToTargetDistance);
 
     return latestParameters;
   }
