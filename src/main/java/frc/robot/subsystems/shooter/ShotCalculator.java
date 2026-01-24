@@ -71,8 +71,8 @@ public class ShotCalculator {
       new InterpolatingDoubleTreeMap();
 
   static {
-    minDistance = 0.5;
-    maxDistance = 10.0;
+    minDistance = 1.34;
+    maxDistance = 5.6;
     phaseDelay = 0.03;
 
     shotHoodAngleMap.put((double) 1, Rotation2d.fromDegrees(19));
