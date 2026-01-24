@@ -25,7 +25,7 @@ public class Vision extends SubsystemBase {
   private final VisionIO[] io;
   private final VisionIOInputsAutoLogged[] inputs;
   private final Alert[] disconnectedAlerts;
-  
+
   // Ramp mode: When true, vision updates are paused and next update will aggressively correct
   private boolean rampMode = false;
   private boolean needsAggressiveCorrection = false;
@@ -59,10 +59,10 @@ public class Vision extends SubsystemBase {
   }
 
   /**
-   * Enable "ramp mode" - disables vision updates while crossing the ramp.
-   * When disabled, the next vision measurement will aggressively correct the pose.
-   * Call this when entering ramp (e.g., when pressing snap-to-45 button).
-   * 
+   * Enable "ramp mode" - disables vision updates while crossing the ramp. When disabled, the next
+   * vision measurement will aggressively correct the pose. Call this when entering ramp (e.g., when
+   * pressing snap-to-45 button).
+   *
    * @param enabled True when crossing ramp, false when back on flat ground
    */
   public void setRampMode(boolean enabled) {
@@ -73,9 +73,7 @@ public class Vision extends SubsystemBase {
     rampMode = enabled;
   }
 
-  /**
-   * Returns whether ramp mode is currently active.
-   */
+  /** Returns whether ramp mode is currently active. */
   public boolean isRampMode() {
     return rampMode;
   }
@@ -162,7 +160,7 @@ public class Vision extends SubsystemBase {
 
         // If we need aggressive correction (just exited ramp), use very low std devs
         if (needsAggressiveCorrection) {
-          linearStdDev = 0.001;  // Very high confidence in vision
+          linearStdDev = 0.001; // Very high confidence in vision
           angularStdDev = 0.001;
           needsAggressiveCorrection = false; // Only do this once
         }

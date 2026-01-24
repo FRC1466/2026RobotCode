@@ -6,7 +6,6 @@ package frc.robot;
 import static frc.robot.subsystems.vision.VisionConstants.*;
 
 import com.pathplanner.lib.auto.AutoBuilder;
-import edu.wpi.first.math.filter.SlewRateLimiter;
 import edu.wpi.first.math.geometry.Pose2d;
 import edu.wpi.first.math.geometry.Rotation2d;
 import edu.wpi.first.math.geometry.Translation2d;
@@ -166,13 +165,9 @@ public class RobotContainer {
    * edu.wpi.first.wpilibj2.command.button.JoystickButton}.
    */
   private void configureButtonBindings() {
-    SlewRateLimiter yLimiter = new SlewRateLimiter(4);
-    SlewRateLimiter xLimiter = new SlewRateLimiter(4);
-    SlewRateLimiter tLimiter = new SlewRateLimiter(4);
-
-    DoubleSupplier leftY = () -> yLimiter.calculate(-controller.getLeftY());
-    DoubleSupplier leftX = () -> xLimiter.calculate(-controller.getLeftX());
-    DoubleSupplier rightX = () -> tLimiter.calculate(-controller.getRightX());
+    DoubleSupplier leftY = () -> -controller.getLeftY();
+    DoubleSupplier leftX = () -> -controller.getLeftX();
+    DoubleSupplier rightX = () -> -controller.getRightX();
 
     // Default command, normal field-relative drive
     drive.setDefaultCommand(DriveCommands.joystickDrive(drive, leftY, leftX, rightX));
@@ -222,10 +217,8 @@ public class RobotContainer {
                           }
                           return Rotation2d.fromDegrees(snapped);
                         })))
-        .onTrue(Commands.runOnce(() -> vision.setRampMode(true))
-            .withName("EnableRampMode"))
-        .onFalse(Commands.runOnce(() -> vision.setRampMode(false))
-            .withName("DisableRampMode"));
+        .onTrue(Commands.runOnce(() -> vision.setRampMode(true)).withName("EnableRampMode"))
+        .onFalse(Commands.runOnce(() -> vision.setRampMode(false)).withName("DisableRampMode"));
 
     // Mutable state for manual flywheel control
     final double[] targetSpeed = {45.0};
