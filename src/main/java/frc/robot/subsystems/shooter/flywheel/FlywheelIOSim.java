@@ -31,8 +31,6 @@ public class FlywheelIOSim implements FlywheelIO {
           controller.calculate(
                   Units.radiansToRotations(sim.getAngularVelocityRadPerSec()), setpointRps)
               + feedForward;
-    } else {
-      appliedVolts = 0.0;
     }
 
     appliedVolts = MathUtil.clamp(appliedVolts, -12.0, 12.0);
@@ -52,7 +50,15 @@ public class FlywheelIOSim implements FlywheelIO {
 
   @Override
   public void applyOutputs(FlywheelIOOutputs outputs) {
-    closedLoop = !outputs.coast;
+    if (outputs.controlMode == FlywheelIOOutputs.ControlMode.VOLTAGE) {
+      closedLoop = false;
+      appliedVolts = outputs.appliedVolts;
+    } else {
+      closedLoop = !outputs.coast;
+      if (!closedLoop) {
+        appliedVolts = 0.0;
+      }
+    }
     setpointRps = outputs.velocityRps;
     feedForward =
         outputs.feedForward + (outputs.kS * Math.signum(setpointRps)) + (outputs.kV * setpointRps);

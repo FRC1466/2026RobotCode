@@ -229,7 +229,7 @@ public class RobotContainer {
             () -> {
               Pose2d currentPose = RobotState.getInstance().getEstimatedPose();
               if (currentPose != null) {
-                Translation2d hubPose = AllianceFlipUtil.apply(FieldConstants.hubCenter);
+                Translation2d hubPose = AllianceFlipUtil.apply(FieldConstants.Hub.topCenterPoint.toTranslation2d());
                 double distance = currentPose.getTranslation().getDistance(hubPose);
                 org.littletonrobotics.junction.Logger.recordOutput("Debug/DistanceToHub", distance);
               }

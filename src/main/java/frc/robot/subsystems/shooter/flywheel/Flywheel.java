@@ -3,6 +3,11 @@
 
 package frc.robot.subsystems.shooter.flywheel;
 
+import static edu.wpi.first.units.Units.Volts;
+
+import com.ctre.phoenix6.SignalLogger;
+import edu.wpi.first.wpilibj.DriverStation;
+import edu.wpi.first.wpilibj2.command.sysid.SysIdRoutine;
 import edu.wpi.first.math.filter.Debouncer;
 import edu.wpi.first.wpilibj.Alert;
 import edu.wpi.first.wpilibj2.command.Command;
@@ -11,7 +16,9 @@ import frc.robot.subsystems.shooter.ShotCalculator;
 import frc.robot.subsystems.shooter.flywheel.FlywheelIO.FlywheelIOOutputs;
 import frc.robot.util.FullSubsystem;
 import frc.robot.util.LoggedTunableNumber;
+import java.util.function.BooleanSupplier;
 import java.util.function.DoubleSupplier;
+import lombok.Setter;
 import org.littletonrobotics.junction.Logger;
 
 public class Flywheel extends FullSubsystem {
@@ -22,6 +29,9 @@ public class Flywheel extends FullSubsystem {
   private final Debouncer motorConnectedDebouncer =
       new Debouncer(0.5, Debouncer.DebounceType.kFalling);
   private final Alert disconnected;
+  private final SysIdRoutine sysId;
+
+  @Setter private BooleanSupplier coastOverride = () -> false;
 
   public static final LoggedTunableNumber kS = new LoggedTunableNumber("Flywheel/kS", 0.19);
   public static final LoggedTunableNumber kV = new LoggedTunableNumber("Flywheel/kV", 0.11);
@@ -32,6 +42,16 @@ public class Flywheel extends FullSubsystem {
     this.io = io;
 
     disconnected = new Alert("Flywheel motor disconnected!", Alert.AlertType.kWarning);
+
+    sysId =
+        new SysIdRoutine(
+            new SysIdRoutine.Config(
+                null,
+                null,
+                null,
+                (state) -> SignalLogger.writeString("state", state.toString())),
+            new SysIdRoutine.Mechanism(
+                (voltage) -> runVolts(voltage.in(Volts)), null, this));
   }
 
   public void periodic() {
@@ -48,6 +68,13 @@ public class Flywheel extends FullSubsystem {
       outputs.kV = kV.get();
     }
 
+    if (DriverStation.isDisabled()) {
+      stop();
+      if (coastOverride.getAsBoolean()) {
+        outputs.coast = true;
+      }
+    }
+
     disconnected.set(
         Robot.showHardwareAlerts() && !motorConnectedDebouncer.calculate(inputs.connected));
   }
@@ -59,6 +86,7 @@ public class Flywheel extends FullSubsystem {
 
   /** Run closed loop at the specified velocity. */
   public void runVelocity(double velocityRps) {
+    outputs.controlMode = FlywheelIO.FlywheelIOOutputs.ControlMode.VELOCITY;
     outputs.coast = false;
     outputs.velocityRps = velocityRps;
     outputs.feedForward = 0.0;
@@ -69,8 +97,17 @@ public class Flywheel extends FullSubsystem {
 
   /** Stops the flywheel. */
   public void stop() {
+    outputs.controlMode = FlywheelIO.FlywheelIOOutputs.ControlMode.VOLTAGE;
+    outputs.appliedVolts = 0.0;
     outputs.velocityRps = 0.0;
     outputs.coast = true;
+  }
+
+  /** Run open loop at the specified voltage. */
+  public void runVolts(double volts) {
+    outputs.controlMode = FlywheelIO.FlywheelIOOutputs.ControlMode.VOLTAGE;
+    outputs.appliedVolts = volts;
+    outputs.coast = false;
   }
 
   /** Returns the current velocity in RPS. */
@@ -90,5 +127,13 @@ public class Flywheel extends FullSubsystem {
 
   public Command stopCommand() {
     return runOnce(this::stop);
+  }
+
+  public Command runSysIdQuasistatic(SysIdRoutine.Direction direction) {
+    return sysId.quasistatic(direction);
+  }
+
+  public Command runSysIdDynamic(SysIdRoutine.Direction direction) {
+    return sysId.dynamic(direction);
   }
 }

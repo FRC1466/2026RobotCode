@@ -10,6 +10,7 @@ import com.ctre.phoenix6.StatusSignal;
 import com.ctre.phoenix6.configs.Slot1Configs;
 import com.ctre.phoenix6.configs.TalonFXConfiguration;
 import com.ctre.phoenix6.controls.MotionMagicVelocityVoltage;
+import com.ctre.phoenix6.controls.VoltageOut;
 import com.ctre.phoenix6.hardware.TalonFX;
 import com.ctre.phoenix6.signals.InvertedValue;
 import com.ctre.phoenix6.signals.NeutralModeValue;
@@ -26,6 +27,7 @@ public class FlywheelIOTalonFX implements FlywheelIO {
   private final StatusSignal<Temperature> temp;
 
   private final MotionMagicVelocityVoltage request = new MotionMagicVelocityVoltage(0).withSlot(1);
+  private final VoltageOut voltageRequest = new VoltageOut(0);
 
   private double lastKp = 0.3;
   private double lastKd = 0.0;
@@ -101,9 +103,13 @@ public class FlywheelIOTalonFX implements FlywheelIO {
       lastKv = outputs.kV;
     }
 
-    talon.setControl(
-        request
-            .withVelocity(RotationsPerSecond.of(outputs.velocityRps))
-            .withFeedForward(outputs.feedForward));
+    if (outputs.controlMode == FlywheelIOOutputs.ControlMode.VOLTAGE) {
+      talon.setControl(voltageRequest.withOutput(outputs.appliedVolts));
+    } else {
+      talon.setControl(
+          request
+              .withVelocity(RotationsPerSecond.of(outputs.velocityRps))
+              .withFeedForward(outputs.feedForward));
+    }
   }
 }

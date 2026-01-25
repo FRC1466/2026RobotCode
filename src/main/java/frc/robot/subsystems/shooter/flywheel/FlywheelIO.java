@@ -18,8 +18,14 @@ public interface FlywheelIO {
   }
 
   public static class FlywheelIOOutputs {
+    public enum ControlMode {
+      VELOCITY,
+      VOLTAGE
+    }
+    public ControlMode controlMode = ControlMode.VELOCITY;
     public double velocityRps = 0.0;
     public double feedForward = 0.0;
+    public double appliedVolts = 0.0;
     public boolean coast = true;
     public double kP = 0.0;
     public double kD = 0.0;

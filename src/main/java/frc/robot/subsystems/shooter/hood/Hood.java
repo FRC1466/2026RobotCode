@@ -1,5 +1,9 @@
-// Copyright (c) 2025-2026 Webb Robotics
-// http://github.com/FRC1466
+// Copyright (c) 2025-2026 Littleton Robotics
+// http://github.com/Mechanical-Advantage
+//
+// Use of this source code is governed by an MIT-style
+// license that can be found in the LICENSE file at
+// the root directory of this project.
 
 package frc.robot.subsystems.shooter.hood;
 
@@ -14,6 +18,7 @@ import frc.robot.subsystems.shooter.ShotCalculator;
 import frc.robot.subsystems.shooter.hood.HoodIO.HoodIOOutputMode;
 import frc.robot.subsystems.shooter.hood.HoodIO.HoodIOOutputs;
 import frc.robot.util.FullSubsystem;
+import frc.robot.util.LoggedTracer;
 import frc.robot.util.LoggedTunableNumber;
 import java.util.function.BooleanSupplier;
 import java.util.function.DoubleSupplier;
@@ -25,8 +30,16 @@ public class Hood extends FullSubsystem {
   private static final double minAngle = Units.degreesToRadians(19);
   private static final double maxAngle = Units.degreesToRadians(51);
 
-  private static final LoggedTunableNumber kP = new LoggedTunableNumber("Hood/kP", 30000);
-  private static final LoggedTunableNumber kD = new LoggedTunableNumber("Hood/kD", 300);
+  private static final LoggedTunableNumber kP = new LoggedTunableNumber("Hood/kP");
+  private static final LoggedTunableNumber kD = new LoggedTunableNumber("Hood/kD");
+  private static final LoggedTunableNumber toleranceDeg =
+      new LoggedTunableNumber("Hood/ToleranceDeg");
+
+  static {
+    kP.initDefault(0);
+    kD.initDefault(0);
+    toleranceDeg.initDefault(1.0);
+  }
 
   private final HoodIO io;
   private final HoodIOInputsAutoLogged inputs = new HoodIOInputsAutoLogged();
@@ -69,6 +82,9 @@ public class Hood extends FullSubsystem {
     // Update tunable numbers
     outputs.kP = kP.get();
     outputs.kD = kD.get();
+
+    // Record cycle time
+    LoggedTracer.record("Hood");
   }
 
   @Override
@@ -94,6 +110,14 @@ public class Hood extends FullSubsystem {
   @AutoLogOutput(key = "Hood/MeasuredAngleRads")
   public double getMeasuredAngleRad() {
     return inputs.positionRads + hoodOffset;
+  }
+
+  @AutoLogOutput
+  public boolean atGoal() {
+    return DriverStation.isEnabled()
+        && hoodZeroed
+        && Math.abs(getMeasuredAngleRad() - goalAngle)
+            <= Units.degreesToRadians(toleranceDeg.get());
   }
 
   private void zero() {
