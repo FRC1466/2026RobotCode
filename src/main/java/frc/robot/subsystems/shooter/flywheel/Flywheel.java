@@ -32,7 +32,12 @@ public class Flywheel extends FullSubsystem {
   private final Alert disconnected;
   private final SysIdRoutine sysId;
 
-  @Setter private BooleanSupplier coastOverride = () -> false;
+  /**
+   * If true, force coast. Default to coast for safety and to reduce drag when the robot is
+   * disabled.
+   */
+  @Setter
+  private BooleanSupplier coastOverride = () -> true;
   @Getter @Setter private boolean useInternalBangBang = false;
 
   private Debouncer atGoalDebouncer;
@@ -41,6 +46,7 @@ public class Flywheel extends FullSubsystem {
   private boolean wasWithinTolerance = false;
   private long shotCount = 0;
   private boolean atGoal = false;
+  private Boolean lastBrakeMode = null;
 
   private static final LoggedTunableNumber flywheelTolerance =
       new LoggedTunableNumber("Flywheel/Tolerance", 1);
@@ -94,9 +100,13 @@ public class Flywheel extends FullSubsystem {
 
     if (DriverStation.isDisabled()) {
       stop();
-      if (coastOverride.getAsBoolean()) {
-        outputs.coast = true;
-      }
+    }
+
+    // Brake/coast is configured separately from the control mode.
+    boolean shouldBrake = !(DriverStation.isDisabled() || coastOverride.getAsBoolean());
+    if (lastBrakeMode == null || lastBrakeMode != shouldBrake) {
+      io.setBrakeMode(shouldBrake);
+      lastBrakeMode = shouldBrake;
     }
 
     disconnected.set(
@@ -118,10 +128,8 @@ public class Flywheel extends FullSubsystem {
   public void runVelocity(double velocityRps) {
     outputs.velocityRps = velocityRps;
     outputs.feedForward = 0.0;
-    outputs.coast = false;
 
-    // Calculate atGoal and logic
-    // Tolerance check
+    // Calculate at-goal / shot-counting
     boolean inTolerance = Math.abs(inputs.velocityRps - velocityRps) <= flywheelTolerance.get();
 
     // De-bounce
@@ -153,10 +161,9 @@ public class Flywheel extends FullSubsystem {
 
   /** Stops the flywheel. */
   public void stop() {
-    outputs.controlMode = FlywheelIO.FlywheelIOOutputs.ControlMode.VELOCITY;
+    outputs.controlMode = FlywheelIO.FlywheelIOOutputs.ControlMode.VOLTAGE;
     outputs.appliedVolts = 0.0;
     outputs.velocityRps = 0.0;
-    outputs.coast = true;
     atGoal = false;
   }
 
@@ -164,7 +171,6 @@ public class Flywheel extends FullSubsystem {
   public void runVolts(double volts) {
     outputs.controlMode = FlywheelIO.FlywheelIOOutputs.ControlMode.VOLTAGE;
     outputs.appliedVolts = volts;
-    outputs.coast = false;
   }
 
   /** Returns the current velocity in RPS. */

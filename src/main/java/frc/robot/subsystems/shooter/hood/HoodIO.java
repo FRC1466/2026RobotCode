@@ -18,22 +18,22 @@ public interface HoodIO {
     double tempCelsius = 0.0;
   }
 
-  public static enum HoodIOOutputMode {
-    BRAKE,
-    COAST,
-    CLOSED_LOOP
+  enum HoodIOOutputMode {
+    CLOSED_LOOP,
+    OPEN_LOOP
   }
 
   public static class HoodIOOutputs {
-
-    public HoodIOOutputMode mode = HoodIOOutputMode.BRAKE;
+    public HoodIOOutputMode mode = HoodIOOutputMode.CLOSED_LOOP;
     public double positionRad = 0.0;
-    public double velocityRadsPerSec = 0.0;
     public double kP = 0.0;
     public double kD = 0.0;
+    public double volts = 0.0; // Used for Open Loop only
   }
 
-  public default void updateInputs(HoodIOInputs inputs) {}
+  default void updateInputs(HoodIOInputs inputs) {}
 
-  public default void applyOutputs(HoodIOOutputs outputs) {}
+  default void applyOutputs(HoodIOOutputs outputs) {}
+
+  default void setBrakeMode(boolean enableBrake) {}
 }

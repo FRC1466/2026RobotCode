@@ -11,6 +11,7 @@ import com.ctre.phoenix6.configs.Slot1Configs;
 import com.ctre.phoenix6.configs.TalonFXConfiguration;
 import com.ctre.phoenix6.controls.DutyCycleOut;
 import com.ctre.phoenix6.controls.MotionMagicVelocityVoltage;
+import com.ctre.phoenix6.controls.StrictFollower;
 import com.ctre.phoenix6.controls.VoltageOut;
 import com.ctre.phoenix6.hardware.TalonFX;
 import com.ctre.phoenix6.signals.InvertedValue;
@@ -19,7 +20,12 @@ import edu.wpi.first.units.measure.*;
 import frc.robot.util.PhoenixUtil;
 
 public class FlywheelIOTalonFX implements FlywheelIO {
+  // TODO: Move CAN IDs into constants.
+  private static final int leaderId = 14;
+  private static final int followerId = 13;
+
   private final TalonFX talon;
+  private final TalonFX talonFollower;
   private final StatusSignal<Angle> position;
   private final StatusSignal<AngularVelocity> velocity;
   private final StatusSignal<Voltage> appliedVoltage;
@@ -35,10 +41,10 @@ public class FlywheelIOTalonFX implements FlywheelIO {
   private double lastKd = 0.0;
   private double lastKs = 0.19;
   private double lastKv = 0.11;
-  private boolean lastCoast = true;
 
   public FlywheelIOTalonFX() {
-    talon = new TalonFX(14);
+    talon = new TalonFX(leaderId);
+    talonFollower = new TalonFX(followerId);
 
     var config = new TalonFXConfiguration();
     config.Slot1.kS = 0.19;
@@ -47,9 +53,15 @@ public class FlywheelIOTalonFX implements FlywheelIO {
     config.MotionMagic.MotionMagicAcceleration = 500.0;
     config.MotionMagic.MotionMagicJerk = 0.0;
     config.MotorOutput.Inverted = InvertedValue.CounterClockwise_Positive;
+    config.MotorOutput.NeutralMode = NeutralModeValue.Coast;
     config.Feedback.SensorToMechanismRatio = 1.0;
 
+    var followerConfig = new TalonFXConfiguration();
+    followerConfig.MotorOutput.NeutralMode = NeutralModeValue.Coast;
+
     PhoenixUtil.tryUntilOk(5, () -> talon.getConfigurator().apply(config));
+    PhoenixUtil.tryUntilOk(5, () -> talonFollower.getConfigurator().apply(followerConfig));
+  PhoenixUtil.tryUntilOk(5, () -> talonFollower.setControl(new StrictFollower(talon.getDeviceID())));
 
     position = talon.getPosition();
     velocity = talon.getVelocity();
@@ -64,6 +76,13 @@ public class FlywheelIOTalonFX implements FlywheelIO {
             BaseStatusSignal.setUpdateFrequencyForAll(
                 50.0, position, velocity, appliedVoltage, supplyCurrent, torqueCurrent, temp));
     PhoenixUtil.tryUntilOk(5, () -> talon.optimizeBusUtilization());
+    PhoenixUtil.tryUntilOk(5, () -> talonFollower.optimizeBusUtilization());
+  }
+
+  @Override
+  public void setBrakeMode(boolean enableBrake) {
+    talon.setNeutralMode(enableBrake ? NeutralModeValue.Brake : NeutralModeValue.Coast);
+    talonFollower.setNeutralMode(enableBrake ? NeutralModeValue.Brake : NeutralModeValue.Coast);
   }
 
   @Override
@@ -83,10 +102,8 @@ public class FlywheelIOTalonFX implements FlywheelIO {
 
   @Override
   public void applyOutputs(FlywheelIOOutputs outputs) {
-    if (outputs.coast != lastCoast) {
-      talon.setNeutralMode(outputs.coast ? NeutralModeValue.Coast : NeutralModeValue.Brake);
-      lastCoast = outputs.coast;
-    }
+    // Re-assert follower behavior in case the controller was reset.
+    talonFollower.setControl(new StrictFollower(talon.getDeviceID()));
 
     if (outputs.kP != 0.0
         && (outputs.kP != lastKp

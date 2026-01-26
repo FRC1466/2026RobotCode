@@ -7,7 +7,7 @@ import org.littletonrobotics.junction.AutoLog;
 
 public interface FlywheelIO {
   @AutoLog
-  public static class FlywheelIOInputs {
+  class FlywheelIOInputs {
     public double positionRotations;
     public double velocityRps;
     public double appliedVoltage;
@@ -17,7 +17,7 @@ public interface FlywheelIO {
     public boolean connected;
   }
 
-  public static class FlywheelIOOutputs {
+  class FlywheelIOOutputs {
     public enum ControlMode {
       VELOCITY,
       VOLTAGE,
@@ -28,7 +28,6 @@ public interface FlywheelIO {
     public double velocityRps = 0.0;
     public double feedForward = 0.0;
     public double appliedVolts = 0.0;
-    public boolean coast = true;
     public double kP = 0.0;
     public double kD = 0.0;
     public double kS = 0.0;
@@ -38,4 +37,6 @@ public interface FlywheelIO {
   default void updateInputs(FlywheelIOInputs inputs) {}
 
   default void applyOutputs(FlywheelIOOutputs outputs) {}
+
+  default void setBrakeMode(boolean enableBrake) {}
 }

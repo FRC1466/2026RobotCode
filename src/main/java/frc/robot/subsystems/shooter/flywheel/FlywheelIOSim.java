@@ -12,7 +12,7 @@ import edu.wpi.first.wpilibj.simulation.DCMotorSim;
 import frc.robot.Constants;
 
 public class FlywheelIOSim implements FlywheelIO {
-  private static final DCMotor motorModel = DCMotor.getKrakenX60(1);
+  private static final DCMotor motorModel = DCMotor.getKrakenX60(2);
   private static final DCMotorSim sim =
       new DCMotorSim(LinearSystemId.createDCMotorSystem(motorModel, .025, 1), motorModel);
 
@@ -61,10 +61,7 @@ public class FlywheelIOSim implements FlywheelIO {
         appliedVolts = 0.0;
       }
     } else {
-      closedLoop = !outputs.coast;
-      if (!closedLoop) {
-        appliedVolts = 0.0;
-      }
+      closedLoop = true;
     }
     setpointRps = outputs.velocityRps;
     feedForward =
@@ -72,4 +69,7 @@ public class FlywheelIOSim implements FlywheelIO {
     controller.setP(outputs.kP);
     controller.setD(outputs.kD);
   }
+
+  @Override
+  public void setBrakeMode(boolean enableBrake) {}
 }

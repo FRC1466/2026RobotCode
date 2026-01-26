@@ -9,7 +9,6 @@ import com.pathplanner.lib.auto.AutoBuilder;
 import edu.wpi.first.math.geometry.Pose2d;
 import edu.wpi.first.math.geometry.Rotation2d;
 import edu.wpi.first.math.geometry.Translation2d;
-import edu.wpi.first.math.util.Units;
 import edu.wpi.first.wpilibj.Alert;
 import edu.wpi.first.wpilibj.Alert.AlertType;
 import edu.wpi.first.wpilibj.DriverStation;
@@ -35,6 +34,7 @@ import frc.robot.subsystems.shooter.flywheel.FlywheelIOSim;
 import frc.robot.subsystems.shooter.flywheel.FlywheelIOTalonFX;
 import frc.robot.subsystems.shooter.hood.Hood;
 import frc.robot.subsystems.shooter.hood.HoodIO;
+import frc.robot.subsystems.shooter.hood.HoodIOSim;
 import frc.robot.subsystems.vision.Vision;
 import frc.robot.subsystems.vision.VisionIO;
 import frc.robot.subsystems.vision.VisionIOPhotonVision;
@@ -85,7 +85,7 @@ public class RobotContainer {
                   new VisionIOPhotonVision(camera0Name, robotToCamera0));
 
           flywheel = new Flywheel(new FlywheelIOTalonFX());
-          hood = new Hood(new HoodIO() {}); // TODO: Implement HoodIOTalonFX/Sim
+          hood = new Hood(new HoodIO() {});
           break;
         }
         case DEVBOT -> {
@@ -109,7 +109,7 @@ public class RobotContainer {
                   new ModuleIOSim(TunerConstants.BackLeft),
                   new ModuleIOSim(TunerConstants.BackRight));
           flywheel = new Flywheel(new FlywheelIOSim());
-          hood = new Hood(new HoodIO() {});
+          hood = new Hood(new HoodIOSim());
           break;
         }
       }
@@ -193,9 +193,6 @@ public class RobotContainer {
     // POV: Manual control / preset speeds
     controller.povUp().whileTrue(flywheel.runFixedCommand(() -> 105)); // Near max
     controller.povDown().whileTrue(flywheel.runFixedCommand(() -> 45)); // Min range
-
-    // Left Bumper: Zero hood
-    controller.leftBumper().onTrue(hood.zeroCommand());
 
     controller
         .rightStick()
@@ -282,8 +279,7 @@ public class RobotContainer {
         .b()
         .onTrue(
             Commands.parallel(
-                flywheel.stopCommand(),
-                hood.runFixedCommand(() -> Units.degreesToRadians(19), () -> 0.0)));
+        flywheel.stopCommand(), hood.runFixedCommand(() -> 19.0)));
 
     // Reset gyro
     controller

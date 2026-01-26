@@ -23,8 +23,8 @@ import org.littletonrobotics.junction.AutoLogOutput;
 import org.littletonrobotics.junction.Logger;
 
 public class Hood extends FullSubsystem {
-  private static final double minAngle = Units.degreesToRadians(19);
-  private static final double maxAngle = Units.degreesToRadians(51);
+  private static final double minAngleDeg = 19.0;
+  private static final double maxAngleDeg = 51.0;
 
   private static final LoggedTunableNumber kP = new LoggedTunableNumber("Hood/kP");
   private static final LoggedTunableNumber kD = new LoggedTunableNumber("Hood/kD");
@@ -49,11 +49,10 @@ public class Hood extends FullSubsystem {
 
   @Setter private BooleanSupplier coastOverride = () -> false;
 
-  private double goalAngle = 0.0;
-  private double goalVelocity = 0.0;
+  /** Hood goal angle in degrees. */
+  private double goalAngleDeg = minAngleDeg;
 
-  private static double hoodOffset = 0.0;
-  private boolean hoodZeroed = false;
+  private Boolean lastBrakeMode = null;
 
   public Hood(HoodIO io) {
     this.io = io;
@@ -66,13 +65,12 @@ public class Hood extends FullSubsystem {
     motorDisconnectedAlert.set(
         Robot.showHardwareAlerts() && !motorConnectedDebouncer.calculate(inputs.motorConnected));
 
-    // Stop when disabled
-    if (DriverStation.isDisabled() || !hoodZeroed) {
-      outputs.mode = HoodIOOutputMode.BRAKE;
-
-      if (coastOverride.getAsBoolean()) {
-        outputs.mode = HoodIOOutputMode.COAST;
-      }
+    // Brake/coast is configured separately from the control mode.
+    // Default is brake unless overridden to coast.
+    boolean shouldBrake = !coastOverride.getAsBoolean();
+    if (lastBrakeMode == null || lastBrakeMode != shouldBrake) {
+      io.setBrakeMode(shouldBrake);
+      lastBrakeMode = shouldBrake;
     }
 
     // Update tunable numbers
@@ -85,55 +83,59 @@ public class Hood extends FullSubsystem {
 
   @Override
   public void periodicAfterScheduler() {
-    if (DriverStation.isEnabled() && hoodZeroed) {
-      outputs.positionRad = MathUtil.clamp(goalAngle, minAngle, maxAngle) - hoodOffset;
-      outputs.velocityRadsPerSec = goalVelocity;
+    if (DriverStation.isEnabled()) {
+      double clampedGoalDeg = MathUtil.clamp(goalAngleDeg, minAngleDeg, maxAngleDeg);
+      outputs.positionRad = Units.degreesToRadians(clampedGoalDeg);
       outputs.mode = HoodIOOutputMode.CLOSED_LOOP;
+      outputs.volts = 0.0;
 
       // Log state
-      Logger.recordOutput("Hood/Profile/GoalPositionRad", goalAngle);
-      Logger.recordOutput("Hood/Profile/GoalVelocityRadPerSec", goalVelocity);
+      Logger.recordOutput("Hood/Profile/GoalPositionDeg", clampedGoalDeg);
+    } else {
+      outputs.mode = HoodIOOutputMode.OPEN_LOOP;
+      outputs.volts = 0.0;
     }
 
     io.applyOutputs(outputs);
   }
 
-  private void setGoalParams(double angle, double velocity) {
-    goalAngle = angle;
-    goalVelocity = velocity;
+  private void setGoalDeg(double angleDeg) {
+    goalAngleDeg = angleDeg;
   }
 
-  @AutoLogOutput(key = "Hood/MeasuredAngleRads")
-  public double getMeasuredAngleRad() {
-    return inputs.positionRads + hoodOffset;
+  @AutoLogOutput(key = "Hood/MeasuredAngleDeg")
+  public double getMeasuredAngleDeg() {
+    return unitsToDeg(inputs.positionRads);
   }
 
   @AutoLogOutput
   public boolean atGoal() {
     return DriverStation.isEnabled()
-        && hoodZeroed
-        && Math.abs(getMeasuredAngleRad() - goalAngle)
-            <= Units.degreesToRadians(toleranceDeg.get());
-  }
-
-  private void zero() {
-    hoodOffset = minAngle - inputs.positionRads;
-    hoodZeroed = true;
+        && Math.abs(getMeasuredAngleDeg() - goalAngleDeg) <= toleranceDeg.get();
   }
 
   public Command runTrackTargetCommand() {
     return run(
         () -> {
           var params = ShotCalculator.getInstance().getParameters();
-          setGoalParams(params.hoodAngle(), params.hoodVelocity());
+          // ShotCalculator currently provides radians.
+          setGoalDeg(unitsToDeg(params.hoodAngle()));
         });
   }
 
-  public Command runFixedCommand(DoubleSupplier angle, DoubleSupplier velocity) {
-    return run(() -> setGoalParams(angle.getAsDouble(), velocity.getAsDouble()));
+  public Command runFixedCommand(DoubleSupplier angle) {
+    return run(() -> setGoalDeg(angle.getAsDouble()));
   }
 
-  public Command zeroCommand() {
-    return runOnce(this::zero).ignoringDisable(true);
+  public Command runVolts(DoubleSupplier volts) {
+    return run(
+        () -> {
+          outputs.mode = HoodIOOutputMode.OPEN_LOOP;
+          outputs.volts = volts.getAsDouble();
+        });
+  }
+
+  private static double unitsToDeg(double radians) {
+    return Units.radiansToDegrees(radians);
   }
 }
