@@ -1,9 +1,5 @@
-// Copyright (c) 2025-2026 Littleton Robotics
-// http://github.com/Mechanical-Advantage
-//
-// Use of this source code is governed by an MIT-style
-// license that can be found in the LICENSE file at
-// the root directory of this project.
+// Copyright (c) 2025-2026 Webb Robotics
+// http://github.com/FRC1466
 
 package frc.robot.subsystems.shooter;
 
@@ -17,12 +13,12 @@ import edu.wpi.first.math.interpolation.InterpolatingDoubleTreeMap;
 import edu.wpi.first.math.interpolation.InterpolatingTreeMap;
 import edu.wpi.first.math.interpolation.InverseInterpolator;
 import edu.wpi.first.math.kinematics.ChassisSpeeds;
-import lombok.experimental.ExtensionMethod;
 import frc.robot.Constants;
 import frc.robot.FieldConstants;
 import frc.robot.RobotState;
 import frc.robot.util.AllianceFlipUtil;
 import frc.robot.util.GeomUtil;
+import lombok.experimental.ExtensionMethod;
 import org.littletonrobotics.junction.Logger;
 
 @ExtensionMethod({GeomUtil.class})
@@ -98,7 +94,8 @@ public class ShotCalculator {
     // Calculate estimated pose while accounting for phase delay
     Pose2d estimatedPose = RobotState.getInstance().getEstimatedPose();
     ChassisSpeeds fieldRelativeVelocity = RobotState.getInstance().getFieldVelocity();
-    ChassisSpeeds robotRelativeVelocity = ChassisSpeeds.fromFieldRelativeSpeeds(fieldRelativeVelocity, estimatedPose.getRotation());
+    ChassisSpeeds robotRelativeVelocity =
+        ChassisSpeeds.fromFieldRelativeSpeeds(fieldRelativeVelocity, estimatedPose.getRotation());
     estimatedPose =
         estimatedPose.exp(
             new Twist2d(
@@ -134,11 +131,11 @@ public class ShotCalculator {
     // Calculate parameters accounted for imparted velocity
     Rotation2d angleToTarget = target.minus(lookaheadPose.getTranslation()).getAngle();
     goalHeading = angleToTarget.minus(robotToShooter.getRotation());
-    
+
     hoodAngle = shotHoodAngleMap.get(lookaheadShooterToTargetDistance).getRadians();
     if (lastGoalHeading == null) lastGoalHeading = goalHeading;
     if (Double.isNaN(lastHoodAngle)) lastHoodAngle = hoodAngle;
-    
+
     goalHeadingVelocity =
         goalHeadingFilter.calculate(
             goalHeading.minus(lastGoalHeading).getRadians() / Constants.loopPeriodSecs);
@@ -146,7 +143,7 @@ public class ShotCalculator {
         hoodAngleFilter.calculate((hoodAngle - lastHoodAngle) / Constants.loopPeriodSecs);
     lastGoalHeading = goalHeading;
     lastHoodAngle = hoodAngle;
-    
+
     latestParameters =
         new ShootingParameters(
             lookaheadShooterToTargetDistance >= minDistance

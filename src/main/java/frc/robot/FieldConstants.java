@@ -1,9 +1,5 @@
-// Copyright (c) 2025-2026 Littleton Robotics
-// http://github.com/Mechanical-Advantage
-//
-// Use of this source code is governed by an MIT-style
-// license that can be found in the LICENSE file at
-// the root directory of this project.
+// Copyright (c) 2025-2026 Webb Robotics
+// http://github.com/FRC1466
 
 package frc.robot;
 
@@ -332,11 +328,12 @@ public class FieldConstants {
         synchronized (this) {
           if (layout == null) {
             try {
-              Path p = Path.of(
-                          Filesystem.getDeployDirectory().getPath(),
-                          "apriltags",
-                          fieldType.getJsonFolder(),
-                          name + ".json");
+              Path p =
+                  Path.of(
+                      Filesystem.getDeployDirectory().getPath(),
+                      "apriltags",
+                      fieldType.getJsonFolder(),
+                      name + ".json");
               layout = new AprilTagFieldLayout(p);
               layoutString = new ObjectMapper().writeValueAsString(layout);
             } catch (IOException e) {

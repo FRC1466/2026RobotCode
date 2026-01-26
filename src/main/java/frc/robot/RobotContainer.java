@@ -229,7 +229,8 @@ public class RobotContainer {
             () -> {
               Pose2d currentPose = RobotState.getInstance().getEstimatedPose();
               if (currentPose != null) {
-                Translation2d hubPose = AllianceFlipUtil.apply(FieldConstants.Hub.topCenterPoint.toTranslation2d());
+                Translation2d hubPose =
+                    AllianceFlipUtil.apply(FieldConstants.Hub.topCenterPoint.toTranslation2d());
                 double distance = currentPose.getTranslation().getDistance(hubPose);
                 org.littletonrobotics.junction.Logger.recordOutput("Debug/DistanceToHub", distance);
               }
@@ -239,6 +240,12 @@ public class RobotContainer {
         .ignoringDisable(true)
         .withName("DebugLogger")
         .schedule();
+
+    controller
+        .leftBumper()
+        .onTrue(
+            Commands.runOnce(
+                () -> flywheel.setUseInternalBangBang(!flywheel.isUseInternalBangBang())));
 
     // X Button: Toggle flywheel spinning
     controller

@@ -6,11 +6,11 @@ package frc.robot.subsystems.shooter.flywheel;
 import static edu.wpi.first.units.Units.Volts;
 
 import com.ctre.phoenix6.SignalLogger;
-import edu.wpi.first.wpilibj.DriverStation;
-import edu.wpi.first.wpilibj2.command.sysid.SysIdRoutine;
 import edu.wpi.first.math.filter.Debouncer;
 import edu.wpi.first.wpilibj.Alert;
+import edu.wpi.first.wpilibj.DriverStation;
 import edu.wpi.first.wpilibj2.command.Command;
+import edu.wpi.first.wpilibj2.command.sysid.SysIdRoutine;
 import frc.robot.Robot;
 import frc.robot.subsystems.shooter.ShotCalculator;
 import frc.robot.subsystems.shooter.flywheel.FlywheelIO.FlywheelIOOutputs;
@@ -18,6 +18,7 @@ import frc.robot.util.FullSubsystem;
 import frc.robot.util.LoggedTunableNumber;
 import java.util.function.BooleanSupplier;
 import java.util.function.DoubleSupplier;
+import lombok.Getter;
 import lombok.Setter;
 import org.littletonrobotics.junction.Logger;
 
@@ -32,6 +33,21 @@ public class Flywheel extends FullSubsystem {
   private final SysIdRoutine sysId;
 
   @Setter private BooleanSupplier coastOverride = () -> false;
+  @Getter @Setter private boolean useInternalBangBang = false;
+
+  private Debouncer atGoalDebouncer;
+  private Debouncer flywheelToleranceDebouncer;
+
+  private boolean wasWithinTolerance = false;
+  private long shotCount = 0;
+  private boolean atGoal = false;
+
+  private static final LoggedTunableNumber flywheelTolerance =
+      new LoggedTunableNumber("Flywheel/Tolerance", 1);
+  private static final LoggedTunableNumber flywheelToleranceDebounce =
+      new LoggedTunableNumber("Flywheel/ToleranceDebounce", 0.025);
+  private static final LoggedTunableNumber atGoalDebounce =
+      new LoggedTunableNumber("Flywheel/AtGoalDebounce", 0.2);
 
   public static final LoggedTunableNumber kS = new LoggedTunableNumber("Flywheel/kS", 0.19);
   public static final LoggedTunableNumber kV = new LoggedTunableNumber("Flywheel/kV", 0.11);
@@ -46,17 +62,25 @@ public class Flywheel extends FullSubsystem {
     sysId =
         new SysIdRoutine(
             new SysIdRoutine.Config(
-                null,
-                null,
-                null,
-                (state) -> SignalLogger.writeString("state", state.toString())),
-            new SysIdRoutine.Mechanism(
-                (voltage) -> runVolts(voltage.in(Volts)), null, this));
+                null, null, null, (state) -> SignalLogger.writeString("state", state.toString())),
+            new SysIdRoutine.Mechanism((voltage) -> runVolts(voltage.in(Volts)), null, this));
+
+    atGoalDebouncer = new Debouncer(atGoalDebounce.get(), Debouncer.DebounceType.kFalling);
+    flywheelToleranceDebouncer =
+        new Debouncer(flywheelToleranceDebounce.get(), Debouncer.DebounceType.kFalling);
   }
 
   public void periodic() {
     io.updateInputs(inputs);
     Logger.processInputs("Flywheel", inputs);
+
+    if (flywheelToleranceDebounce.hasChanged(hashCode())) {
+      flywheelToleranceDebouncer =
+          new Debouncer(flywheelToleranceDebounce.get(), Debouncer.DebounceType.kFalling);
+    }
+    if (atGoalDebounce.hasChanged(hashCode())) {
+      atGoalDebouncer = new Debouncer(atGoalDebounce.get(), Debouncer.DebounceType.kFalling);
+    }
 
     if (kP.hasChanged(hashCode())
         || kD.hasChanged(hashCode())
@@ -77,6 +101,12 @@ public class Flywheel extends FullSubsystem {
 
     disconnected.set(
         Robot.showHardwareAlerts() && !motorConnectedDebouncer.calculate(inputs.connected));
+
+    Logger.recordOutput("Flywheel/AtGoal", atGoal);
+    Logger.recordOutput("Flywheel/ShotCount", shotCount);
+    Logger.recordOutput("Flywheel/ControlMode", outputs.controlMode);
+    Logger.recordOutput("Flywheel/Setpoint", outputs.velocityRps);
+    Logger.recordOutput("Flywheel/CurrentVelocity", inputs.velocityRps);
   }
 
   @Override
@@ -86,10 +116,36 @@ public class Flywheel extends FullSubsystem {
 
   /** Run closed loop at the specified velocity. */
   public void runVelocity(double velocityRps) {
-    outputs.controlMode = FlywheelIO.FlywheelIOOutputs.ControlMode.VELOCITY;
-    outputs.coast = false;
     outputs.velocityRps = velocityRps;
     outputs.feedForward = 0.0;
+    outputs.coast = false;
+
+    // Calculate atGoal and logic
+    // Tolerance check
+    boolean inTolerance = Math.abs(inputs.velocityRps - velocityRps) <= flywheelTolerance.get();
+
+    // De-bounce
+    boolean isWithinTolerance = flywheelToleranceDebouncer.calculate(inTolerance);
+    atGoal = atGoalDebouncer.calculate(inTolerance);
+
+    // Shot counting (falling edge of isWithinTolerance/inTolerance effectively)
+    if (!isWithinTolerance && wasWithinTolerance) {
+      shotCount++;
+    }
+    wasWithinTolerance = isWithinTolerance;
+
+    // Control Mode Selection
+    if (useInternalBangBang) {
+      if (isWithinTolerance) {
+        // When within tolerance (stable), use Velocity control to hold speed smoothly
+        outputs.controlMode = FlywheelIO.FlywheelIOOutputs.ControlMode.VELOCITY;
+      } else {
+        // When outside tolerance (spin up or recovery), use aggressive Bang-Bang
+        outputs.controlMode = FlywheelIO.FlywheelIOOutputs.ControlMode.DUTY_CYCLE_BANG_BANG;
+      }
+    } else {
+      outputs.controlMode = FlywheelIO.FlywheelIOOutputs.ControlMode.VELOCITY;
+    }
 
     // Log flywheel setpoint
     Logger.recordOutput("Flywheel/Setpoint", outputs.velocityRps);
@@ -97,10 +153,11 @@ public class Flywheel extends FullSubsystem {
 
   /** Stops the flywheel. */
   public void stop() {
-    outputs.controlMode = FlywheelIO.FlywheelIOOutputs.ControlMode.VOLTAGE;
+    outputs.controlMode = FlywheelIO.FlywheelIOOutputs.ControlMode.VELOCITY;
     outputs.appliedVolts = 0.0;
     outputs.velocityRps = 0.0;
     outputs.coast = true;
+    atGoal = false;
   }
 
   /** Run open loop at the specified voltage. */

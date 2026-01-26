@@ -53,6 +53,13 @@ public class FlywheelIOSim implements FlywheelIO {
     if (outputs.controlMode == FlywheelIOOutputs.ControlMode.VOLTAGE) {
       closedLoop = false;
       appliedVolts = outputs.appliedVolts;
+    } else if (outputs.controlMode == FlywheelIOOutputs.ControlMode.DUTY_CYCLE_BANG_BANG) {
+      closedLoop = false;
+      if (Units.radiansToRotations(sim.getAngularVelocityRadPerSec()) < outputs.velocityRps) {
+        appliedVolts = 12.0;
+      } else {
+        appliedVolts = 0.0;
+      }
     } else {
       closedLoop = !outputs.coast;
       if (!closedLoop) {

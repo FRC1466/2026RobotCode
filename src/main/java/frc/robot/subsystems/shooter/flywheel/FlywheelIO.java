@@ -20,8 +20,10 @@ public interface FlywheelIO {
   public static class FlywheelIOOutputs {
     public enum ControlMode {
       VELOCITY,
-      VOLTAGE
+      VOLTAGE,
+      DUTY_CYCLE_BANG_BANG
     }
+
     public ControlMode controlMode = ControlMode.VELOCITY;
     public double velocityRps = 0.0;
     public double feedForward = 0.0;

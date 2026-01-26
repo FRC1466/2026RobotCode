@@ -9,13 +9,13 @@ public interface HoodIO {
 
   @AutoLog
   public static class HoodIOInputs {
-    public boolean motorConnected = false;
-    public double positionRads = 0.0;
-    public double velocityRadsPerSec = 0.0;
-    public double appliedVolts = 0.0;
-    public double supplyCurrentAmps = 0.0;
-    public double torqueCurrentAmps = 0.0;
-    public double tempCelsius = 0.0;
+    boolean motorConnected = false;
+    double positionRads = 0.0;
+    double velocityRadsPerSec = 0.0;
+    double appliedVolts = 0.0;
+    double supplyCurrentAmps = 0.0;
+    double torqueCurrentAmps = 0.0;
+    double tempCelsius = 0.0;
   }
 
   public static enum HoodIOOutputMode {
@@ -27,7 +27,6 @@ public interface HoodIO {
   public static class HoodIOOutputs {
 
     public HoodIOOutputMode mode = HoodIOOutputMode.BRAKE;
-    // Closed loop control
     public double positionRad = 0.0;
     public double velocityRadsPerSec = 0.0;
     public double kP = 0.0;

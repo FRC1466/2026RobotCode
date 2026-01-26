@@ -9,6 +9,7 @@ import com.ctre.phoenix6.BaseStatusSignal;
 import com.ctre.phoenix6.StatusSignal;
 import com.ctre.phoenix6.configs.Slot1Configs;
 import com.ctre.phoenix6.configs.TalonFXConfiguration;
+import com.ctre.phoenix6.controls.DutyCycleOut;
 import com.ctre.phoenix6.controls.MotionMagicVelocityVoltage;
 import com.ctre.phoenix6.controls.VoltageOut;
 import com.ctre.phoenix6.hardware.TalonFX;
@@ -28,6 +29,7 @@ public class FlywheelIOTalonFX implements FlywheelIO {
 
   private final MotionMagicVelocityVoltage request = new MotionMagicVelocityVoltage(0).withSlot(1);
   private final VoltageOut voltageRequest = new VoltageOut(0);
+  private final DutyCycleOut dutyCycleRequest = new DutyCycleOut(0);
 
   private double lastKp = 0.3;
   private double lastKd = 0.0;
@@ -105,6 +107,13 @@ public class FlywheelIOTalonFX implements FlywheelIO {
 
     if (outputs.controlMode == FlywheelIOOutputs.ControlMode.VOLTAGE) {
       talon.setControl(voltageRequest.withOutput(outputs.appliedVolts));
+    } else if (outputs.controlMode == FlywheelIOOutputs.ControlMode.DUTY_CYCLE_BANG_BANG) {
+      double currentSpeed = velocity.getValue().in(RotationsPerSecond);
+      if (currentSpeed < outputs.velocityRps) {
+        talon.setControl(dutyCycleRequest.withOutput(1.0));
+      } else {
+        talon.setControl(dutyCycleRequest.withOutput(0.0));
+      }
     } else {
       talon.setControl(
           request
