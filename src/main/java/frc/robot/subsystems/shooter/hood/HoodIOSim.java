@@ -30,8 +30,7 @@ public class HoodIOSim implements HoodIO {
   @Override
   public void updateInputs(HoodIOInputs inputs) {
     if (closedLoop) {
-      appliedVolts =
-      MathUtil.clamp(controller.calculate(sim.getAngleRads()), -12.0, 12.0);
+      appliedVolts = MathUtil.clamp(controller.calculate(sim.getAngleRads()), -12.0, 12.0);
     }
 
     sim.setInputVoltage(appliedVolts);

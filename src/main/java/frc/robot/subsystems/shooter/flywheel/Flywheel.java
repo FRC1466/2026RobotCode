@@ -36,8 +36,8 @@ public class Flywheel extends FullSubsystem {
    * If true, force coast. Default to coast for safety and to reduce drag when the robot is
    * disabled.
    */
-  @Setter
-  private BooleanSupplier coastOverride = () -> true;
+  @Setter private BooleanSupplier coastOverride = () -> true;
+
   @Getter @Setter private boolean useInternalBangBang = false;
 
   private Debouncer atGoalDebouncer;
