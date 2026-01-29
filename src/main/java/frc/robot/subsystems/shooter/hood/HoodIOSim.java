@@ -14,12 +14,12 @@ public class HoodIOSim implements HoodIO {
   private static final double gearing = 8.0;
   private static final double moi = 0.1; // kg * m^2
   private static final double armLength = 0.5; // m
-  private static final double minAngle = Units.degreesToRadians(19.0);
-  private static final double maxAngle = Units.degreesToRadians(51.0);
+  private static final double minAngle = Units.degreesToRadians(0.0);
+  private static final double maxAngle = Units.degreesToRadians(32.0);
 
   private final SingleJointedArmSim sim =
       new SingleJointedArmSim(
-          DCMotor.getKrakenX44(1), gearing, moi, armLength, minAngle, maxAngle, true, minAngle);
+          DCMotor.getKrakenX44(1), gearing, moi, armLength, minAngle, maxAngle, false, minAngle);
 
   private final PIDController controller =
       new PIDController(0.0, 0.0, 0.0, Constants.loopPeriodSecs);
