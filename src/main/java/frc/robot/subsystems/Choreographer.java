@@ -12,6 +12,7 @@ import frc.robot.subsystems.shooter.ShotCalculator;
 import frc.robot.subsystems.shooter.ShotCalculator.ShootingParameters;
 import frc.robot.subsystems.shooter.flywheel.Flywheel;
 import frc.robot.subsystems.shooter.hood.Hood;
+import java.util.function.BooleanSupplier;
 import lombok.Getter;
 import org.littletonrobotics.junction.AutoLogOutput;
 import org.littletonrobotics.junction.Logger;
@@ -128,5 +129,10 @@ public class Choreographer extends SubsystemBase {
   @AutoLogOutput(key = "Choreographer/ReadyToShoot")
   public boolean isReadyToShoot() {
     return currentState == State.READY_TO_SHOOT;
+  }
+
+  public void setCoastOverride(BooleanSupplier shouldCoast) {
+    flywheel.setCoastOverride(shouldCoast);
+    hood.setCoastOverride(shouldCoast);
   }
 }

@@ -43,6 +43,7 @@ import frc.robot.util.TriggerUtil;
 import java.util.function.DoubleSupplier;
 import lombok.experimental.ExtensionMethod;
 import org.littletonrobotics.junction.networktables.LoggedDashboardChooser;
+import org.littletonrobotics.junction.networktables.LoggedNetworkBoolean;
 
 /**
  * This class is where the bulk of the robot should be declared. Since Command-based is a
@@ -138,6 +139,10 @@ public class RobotContainer {
 
     // Instantiate Choreographer
     choreographer = new Choreographer(drive, flywheel, hood);
+
+    LoggedNetworkBoolean coastOverride =
+        new LoggedNetworkBoolean("Choreographer/CoastOverride", false);
+    choreographer.setCoastOverride(coastOverride);
 
     // Set up auto routines
     autoChooser = new LoggedDashboardChooser<>("Auto Choices", AutoBuilder.buildAutoChooser());
