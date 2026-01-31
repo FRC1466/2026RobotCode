@@ -252,12 +252,6 @@ public class RobotContainer {
                 .ignoringDisable(true)
                 .withName("DebugLogger"));
 
-    controller
-        .leftBumper()
-        .onTrue(
-            Commands.runOnce(
-                () -> flywheel.setUseInternalBangBang(!flywheel.isUseInternalBangBang())));
-
     // X Button: Toggle flywheel spinning
     controller
         .x()
