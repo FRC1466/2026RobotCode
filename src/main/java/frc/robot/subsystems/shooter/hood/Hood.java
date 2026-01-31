@@ -9,6 +9,7 @@ import edu.wpi.first.math.util.Units;
 import edu.wpi.first.wpilibj.Alert;
 import edu.wpi.first.wpilibj.DriverStation;
 import edu.wpi.first.wpilibj2.command.Command;
+import frc.robot.Constants;
 import frc.robot.Robot;
 import frc.robot.subsystems.shooter.ShotCalculator;
 import frc.robot.subsystems.shooter.hood.HoodIO.HoodIOOutputMode;
@@ -23,8 +24,8 @@ import org.littletonrobotics.junction.AutoLogOutput;
 import org.littletonrobotics.junction.Logger;
 
 public class Hood extends FullSubsystem {
-  private static final double minAngleDeg = 19.0;
-  private static final double maxAngleDeg = 51.0;
+  private static final double minAngleDeg = 0.0;
+  private static final double maxAngleDeg = 32.0;
 
   private static final LoggedTunableNumber kP = new LoggedTunableNumber("Hood/kP");
   private static final LoggedTunableNumber kD = new LoggedTunableNumber("Hood/kD");
@@ -32,8 +33,16 @@ public class Hood extends FullSubsystem {
       new LoggedTunableNumber("Hood/ToleranceDeg");
 
   static {
-    kP.initDefault(0);
-    kD.initDefault(0);
+    switch (Constants.getMode()) {
+      case REAL, REPLAY -> {
+        kP.initDefault(0.0);
+        kD.initDefault(0.0);
+      }
+      case SIM -> {
+        kP.initDefault(2.0);
+        kD.initDefault(0.35);
+      }
+    }
     toleranceDeg.initDefault(1.0);
   }
 
@@ -50,7 +59,7 @@ public class Hood extends FullSubsystem {
   @Setter private BooleanSupplier coastOverride = () -> false;
 
   /** Hood goal angle in degrees. */
-  private double goalAngleDeg = minAngleDeg;
+  @Setter private double goalAngleDeg = minAngleDeg;
 
   private Boolean lastBrakeMode = null;
 
@@ -99,17 +108,13 @@ public class Hood extends FullSubsystem {
     io.applyOutputs(outputs);
   }
 
-  private void setGoalDeg(double angleDeg) {
-    goalAngleDeg = angleDeg;
-  }
-
   @AutoLogOutput(key = "Hood/MeasuredAngleDeg")
   public double getMeasuredAngleDeg() {
     return unitsToDeg(inputs.positionRads);
   }
 
-  @AutoLogOutput
-  public boolean atGoal() {
+  @AutoLogOutput(key = "Hood/AtGoal")
+  public boolean isAtGoal() {
     return DriverStation.isEnabled()
         && Math.abs(getMeasuredAngleDeg() - goalAngleDeg) <= toleranceDeg.get();
   }
@@ -119,12 +124,17 @@ public class Hood extends FullSubsystem {
         () -> {
           var params = ShotCalculator.getInstance().getParameters();
           // ShotCalculator currently provides radians.
-          setGoalDeg(unitsToDeg(params.hoodAngle()));
+          setGoalAngleDeg(unitsToDeg(params.hoodAngle()));
         });
   }
 
   public Command runFixedCommand(DoubleSupplier angle) {
-    return run(() -> setGoalDeg(angle.getAsDouble()));
+    return run(() -> setGoalAngleDeg(angle.getAsDouble()));
+  }
+
+  /** Stows the hood to the minimum safe angle. */
+  public void stow() {
+    setGoalAngleDeg(minAngleDeg);
   }
 
   public Command runVolts(DoubleSupplier volts) {

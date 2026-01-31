@@ -71,7 +71,7 @@ public class ShotCalculator {
     maxDistance = 5.6;
     phaseDelay = 0.03;
 
-    shotHoodAngleMap.put(1.0, Rotation2d.fromDegrees(19));
+    shotHoodAngleMap.put(1.0, Rotation2d.fromDegrees(0));
     shotHoodAngleMap.put(4.0, Rotation2d.fromDegrees(32));
 
     shotFlywheelSpeedMap.put(1.86, 45.0);

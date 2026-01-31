@@ -11,6 +11,7 @@ import edu.wpi.first.wpilibj.Alert;
 import edu.wpi.first.wpilibj.DriverStation;
 import edu.wpi.first.wpilibj2.command.Command;
 import edu.wpi.first.wpilibj2.command.sysid.SysIdRoutine;
+import frc.robot.Constants;
 import frc.robot.Robot;
 import frc.robot.subsystems.shooter.ShotCalculator;
 import frc.robot.subsystems.shooter.flywheel.FlywheelIO.FlywheelIOOutputs;
@@ -38,7 +39,7 @@ public class Flywheel extends FullSubsystem {
    */
   @Setter private BooleanSupplier coastOverride = () -> true;
 
-  @Getter @Setter private boolean useInternalBangBang = false;
+  @Getter @Setter private boolean useInternalBangBang = true;
 
   private Debouncer atGoalDebouncer;
   private Debouncer flywheelToleranceDebouncer;
@@ -55,10 +56,27 @@ public class Flywheel extends FullSubsystem {
   private static final LoggedTunableNumber atGoalDebounce =
       new LoggedTunableNumber("Flywheel/AtGoalDebounce", 0.2);
 
-  public static final LoggedTunableNumber kS = new LoggedTunableNumber("Flywheel/kS", 0.19);
-  public static final LoggedTunableNumber kV = new LoggedTunableNumber("Flywheel/kV", 0.11);
-  public static final LoggedTunableNumber kP = new LoggedTunableNumber("Flywheel/kP", 0.3);
-  public static final LoggedTunableNumber kD = new LoggedTunableNumber("Flywheel/kD", 0.0);
+  public static final LoggedTunableNumber kS = new LoggedTunableNumber("Flywheel/kS");
+  public static final LoggedTunableNumber kV = new LoggedTunableNumber("Flywheel/kV");
+  public static final LoggedTunableNumber kP = new LoggedTunableNumber("Flywheel/kP");
+  public static final LoggedTunableNumber kD = new LoggedTunableNumber("Flywheel/kD");
+
+  static {
+    switch (Constants.getMode()) {
+      case REAL, REPLAY -> {
+        kS.initDefault(0.19);
+        kV.initDefault(0.11);
+        kP.initDefault(0.3);
+        kD.initDefault(0.0);
+      }
+      case SIM -> {
+        kS.initDefault(0.0);
+        kV.initDefault(0.0);
+        kP.initDefault(12.0);
+        kD.initDefault(0.0);
+      }
+    }
+  }
 
   public Flywheel(FlywheelIO io) {
     this.io = io;
@@ -74,6 +92,10 @@ public class Flywheel extends FullSubsystem {
     atGoalDebouncer = new Debouncer(atGoalDebounce.get(), Debouncer.DebounceType.kFalling);
     flywheelToleranceDebouncer =
         new Debouncer(flywheelToleranceDebounce.get(), Debouncer.DebounceType.kFalling);
+  }
+
+  public boolean isAtGoal() {
+    return atGoal;
   }
 
   public void periodic() {

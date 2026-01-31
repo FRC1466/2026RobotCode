@@ -121,6 +121,16 @@ public class DriveCommands {
     // Construct command
     return Commands.run(
             () -> {
+              if (ANGLE_KP.hasChanged(ANGLE_KP.hashCode())
+                  || ANGLE_KD.hasChanged(ANGLE_KD.hashCode())
+                  || ANGLE_MAX_VELOCITY.hasChanged(ANGLE_MAX_VELOCITY.hashCode())
+                  || ANGLE_MAX_ACCELERATION.hasChanged(ANGLE_MAX_ACCELERATION.hashCode())) {
+                angleController.setP(ANGLE_KP.get());
+                angleController.setD(ANGLE_KD.get());
+                angleController.setConstraints(
+                    new TrapezoidProfile.Constraints(
+                        ANGLE_MAX_VELOCITY.get(), ANGLE_MAX_ACCELERATION.get()));
+              }
               // Get linear velocity
               Translation2d linearVelocity =
                   getLinearVelocityFromJoysticks(xSupplier.getAsDouble(), ySupplier.getAsDouble());

@@ -21,13 +21,13 @@ import edu.wpi.first.wpilibj2.command.button.CommandXboxController;
 import edu.wpi.first.wpilibj2.command.sysid.SysIdRoutine;
 import frc.robot.commands.DriveCommands;
 import frc.robot.generated.TunerConstants;
+import frc.robot.subsystems.Choreographer;
 import frc.robot.subsystems.drive.Drive;
 import frc.robot.subsystems.drive.GyroIO;
 import frc.robot.subsystems.drive.GyroIOPigeon2;
 import frc.robot.subsystems.drive.ModuleIO;
 import frc.robot.subsystems.drive.ModuleIOSim;
 import frc.robot.subsystems.drive.ModuleIOTalonFX;
-import frc.robot.subsystems.shooter.ShotCalculator;
 import frc.robot.subsystems.shooter.flywheel.Flywheel;
 import frc.robot.subsystems.shooter.flywheel.FlywheelIO;
 import frc.robot.subsystems.shooter.flywheel.FlywheelIOSim;
@@ -43,6 +43,7 @@ import frc.robot.util.TriggerUtil;
 import java.util.function.DoubleSupplier;
 import lombok.experimental.ExtensionMethod;
 import org.littletonrobotics.junction.networktables.LoggedDashboardChooser;
+import org.littletonrobotics.junction.networktables.LoggedNetworkBoolean;
 
 /**
  * This class is where the bulk of the robot should be declared. Since Command-based is a
@@ -57,6 +58,7 @@ public class RobotContainer {
   private Vision vision;
   private Flywheel flywheel;
   private Hood hood;
+  private Choreographer choreographer;
 
   // Controller
   private final CommandXboxController controller = new CommandXboxController(0);
@@ -135,6 +137,13 @@ public class RobotContainer {
       hood = new Hood(new HoodIO() {});
     }
 
+    // Instantiate Choreographer
+    choreographer = new Choreographer(drive, flywheel, hood);
+
+    LoggedNetworkBoolean coastOverride =
+        new LoggedNetworkBoolean("Choreographer/CoastOverride", false);
+    choreographer.setCoastOverride(coastOverride);
+
     // Set up auto routines
     autoChooser = new LoggedDashboardChooser<>("Auto Choices", AutoBuilder.buildAutoChooser());
 
@@ -172,21 +181,15 @@ public class RobotContainer {
     // Default command, normal field-relative drive
     drive.setDefaultCommand(DriveCommands.joystickDrive(drive, leftY, leftX, rightX));
 
-    flywheel.setDefaultCommand(flywheel.stopCommand());
-    hood.setDefaultCommand(hood.runTrackTargetCommand());
-
-    // Right Bumper: Auto-aim robot to target and rev shooter (flywheel + hood)
+    // Right Bumper: Auto-aim and shoot
     controller
         .rightBumper()
         .whileTrue(
             Commands.parallel(
+                choreographer.setGoalCommand(Choreographer.Goal.SCORE_HUB),
                 DriveCommands.joystickDriveAtAngle(
-                    drive,
-                    leftY,
-                    leftX,
-                    () -> ShotCalculator.getInstance().getParameters().goalHeading()),
-                flywheel.runTrackTargetCommand(),
-                hood.runTrackTargetCommand()));
+                    drive, leftY, leftX, choreographer::getTargetHeading)))
+        .onFalse(choreographer.setGoalCommand(Choreographer.Goal.IDLE));
 
     controller.a().whileTrue(flywheel.runTrackTargetCommand());
 
