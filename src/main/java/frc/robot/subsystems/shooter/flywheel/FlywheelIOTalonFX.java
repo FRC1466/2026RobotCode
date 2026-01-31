@@ -63,7 +63,10 @@ public class FlywheelIOTalonFX implements FlywheelIO {
     PhoenixUtil.tryUntilOk(5, () -> talon.getConfigurator().apply(config));
     PhoenixUtil.tryUntilOk(5, () -> talonFollower.getConfigurator().apply(followerConfig));
     PhoenixUtil.tryUntilOk(
-        5, () -> talonFollower.setControl(new Follower(talon.getDeviceID(), MotorAlignmentValue.Opposed)));
+        5,
+        () ->
+            talonFollower.setControl(
+                new Follower(talon.getDeviceID(), MotorAlignmentValue.Opposed)));
 
     position = talon.getPosition();
     velocity = talon.getVelocity();
