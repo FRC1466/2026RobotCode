@@ -35,6 +35,8 @@ import edu.wpi.first.math.numbers.N1;
 import edu.wpi.first.math.numbers.N3;
 import edu.wpi.first.math.system.plant.DCMotor;
 import edu.wpi.first.math.util.Units;
+import edu.wpi.first.units.measure.Mass;
+import edu.wpi.first.units.measure.MomentOfInertia;
 import edu.wpi.first.wpilibj.Alert;
 import edu.wpi.first.wpilibj.Alert.AlertType;
 import edu.wpi.first.wpilibj.DriverStation;
@@ -68,13 +70,14 @@ public class Drive extends SubsystemBase {
       new PathConstraints(3.0, 3.0, 4 * Math.PI, 2 * Math.PI);
 
   // PathPlanner config constants
-  private static final double ROBOT_MASS_KG = 29;
-  private static final double ROBOT_MOI = 2.1;
-  private static final double WHEEL_COF = 1.2;
+  private static final double WHEEL_COF = 1.916;
+  private static final Mass ROBOT_MASS = Pounds.of(64);
+  private static final MomentOfInertia ROBOT_MOI = KilogramSquareMeters.of(2.11);
+
   private static final RobotConfig PP_CONFIG =
       new RobotConfig(
-          ROBOT_MASS_KG,
-          ROBOT_MOI,
+          ROBOT_MASS.in(Kilograms),
+          ROBOT_MOI.in(KilogramSquareMeters),
           new ModuleConfig(
               TunerConstants.FrontLeft.WheelRadius,
               TunerConstants.kSpeedAt12Volts.in(MetersPerSecond),
