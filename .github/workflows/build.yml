@@ -1,18 +1,34 @@
-name: Build
+name: CI
 
 on:
   push:
+    branches-ignore:
+      - 'event**'
   pull_request:
 
 jobs:
-  build:
-    name: Build
+  build-and-test:
+    name: Build & Test
     runs-on: ubuntu-latest
     container: wpilib/roborio-cross-ubuntu:2024-22.04
     steps:
-      - name: Checkout repository
+      - name: Checkout
         uses: actions/checkout@v4
+      
+      - name: Setup Gradle cache
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/.gradle/caches
+            ~/.gradle/wrapper
+          key: ${{ runner.os }}-gradle-${{ hashFiles('**/*.gradle*', '**/gradle-wrapper.properties') }}
+          restore-keys: ${{ runner.os }}-gradle-
+      
       - name: Grant execute permission
         run: chmod +x gradlew
-      - name: Build robot code
-        run: ./gradlew build
+      
+      - name: Check formatting
+        run: ./gradlew spotlessCheck
+      
+      - name: Build and test
+        run: ./gradlew build test --no-daemon
