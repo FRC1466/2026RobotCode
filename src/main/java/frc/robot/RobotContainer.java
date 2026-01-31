@@ -18,6 +18,7 @@ import edu.wpi.first.wpilibj.smartdashboard.SmartDashboard;
 import edu.wpi.first.wpilibj2.command.Command;
 import edu.wpi.first.wpilibj2.command.Commands;
 import edu.wpi.first.wpilibj2.command.button.CommandXboxController;
+import edu.wpi.first.wpilibj2.command.button.RobotModeTriggers;
 import edu.wpi.first.wpilibj2.command.sysid.SysIdRoutine;
 import frc.robot.commands.DriveCommands;
 import frc.robot.generated.TunerConstants;
@@ -232,21 +233,24 @@ public class RobotContainer {
     final boolean[] flywheelActive = {false};
 
     // Logging Command: Periodically logs distance and target speed to AdvantageScope
-    Commands.run(
-            () -> {
-              Pose2d currentPose = RobotState.getInstance().getEstimatedPose();
-              if (currentPose != null) {
-                Translation2d hubPose =
-                    AllianceFlipUtil.apply(FieldConstants.Hub.topCenterPoint.toTranslation2d());
-                double distance = currentPose.getTranslation().getDistance(hubPose);
-                org.littletonrobotics.junction.Logger.recordOutput("Debug/DistanceToHub", distance);
-              }
-              org.littletonrobotics.junction.Logger.recordOutput(
-                  "Debug/FlywheelTargetSpeed", targetSpeed[0]);
-            })
-        .ignoringDisable(true)
-        .withName("DebugLogger")
-        .schedule();
+    RobotModeTriggers.teleop()
+        .whileTrue(
+            Commands.run(
+                    () -> {
+                      Pose2d currentPose = RobotState.getInstance().getEstimatedPose();
+                      if (currentPose != null) {
+                        Translation2d hubPose =
+                            AllianceFlipUtil.apply(
+                                FieldConstants.Hub.topCenterPoint.toTranslation2d());
+                        double distance = currentPose.getTranslation().getDistance(hubPose);
+                        org.littletonrobotics.junction.Logger.recordOutput(
+                            "Debug/DistanceToHub", distance);
+                      }
+                      org.littletonrobotics.junction.Logger.recordOutput(
+                          "Debug/FlywheelTargetSpeed", targetSpeed[0]);
+                    })
+                .ignoringDisable(true)
+                .withName("DebugLogger"));
 
     controller
         .leftBumper()
@@ -258,17 +262,11 @@ public class RobotContainer {
     controller
         .x()
         .onTrue(
-            Commands.runOnce(
-                    () -> {
-                      flywheelActive[0] = !flywheelActive[0];
-                      if (flywheelActive[0]) {
-                        // Supplier ensures speed updates dynamically without rescheduling
-                        flywheel.runFixedCommand(() -> targetSpeed[0]).schedule();
-                      } else {
-                        flywheel.stopCommand().schedule();
-                      }
-                    })
-                .withName("ToggleFlywheel"));
+            Commands.either(
+                    flywheel.stopCommand(),
+                    flywheel.runFixedCommand(() -> targetSpeed[0]),
+                    () -> flywheelActive[0])
+                .andThen(Commands.runOnce(() -> flywheelActive[0] = !flywheelActive[0])));
 
     // POV Left: Decrease target speed
     controller
