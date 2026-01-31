@@ -277,9 +277,7 @@ public class RobotContainer {
     // B Button: Stop all shooter subsystems
     controller
         .b()
-        .onTrue(
-            Commands.parallel(
-        flywheel.stopCommand(), hood.runFixedCommand(() -> 19.0)));
+        .onTrue(Commands.parallel(flywheel.stopCommand(), hood.runFixedCommand(() -> 19.0)));
 
     // Reset gyro
     controller

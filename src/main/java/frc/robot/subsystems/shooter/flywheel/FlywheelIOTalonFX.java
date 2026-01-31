@@ -10,11 +10,12 @@ import com.ctre.phoenix6.StatusSignal;
 import com.ctre.phoenix6.configs.Slot1Configs;
 import com.ctre.phoenix6.configs.TalonFXConfiguration;
 import com.ctre.phoenix6.controls.DutyCycleOut;
+import com.ctre.phoenix6.controls.Follower;
 import com.ctre.phoenix6.controls.MotionMagicVelocityVoltage;
-import com.ctre.phoenix6.controls.StrictFollower;
 import com.ctre.phoenix6.controls.VoltageOut;
 import com.ctre.phoenix6.hardware.TalonFX;
 import com.ctre.phoenix6.signals.InvertedValue;
+import com.ctre.phoenix6.signals.MotorAlignmentValue;
 import com.ctre.phoenix6.signals.NeutralModeValue;
 import edu.wpi.first.units.measure.*;
 import frc.robot.util.PhoenixUtil;
@@ -61,7 +62,8 @@ public class FlywheelIOTalonFX implements FlywheelIO {
 
     PhoenixUtil.tryUntilOk(5, () -> talon.getConfigurator().apply(config));
     PhoenixUtil.tryUntilOk(5, () -> talonFollower.getConfigurator().apply(followerConfig));
-  PhoenixUtil.tryUntilOk(5, () -> talonFollower.setControl(new StrictFollower(talon.getDeviceID())));
+    PhoenixUtil.tryUntilOk(
+        5, () -> talonFollower.setControl(new Follower(talon.getDeviceID(), MotorAlignmentValue.Opposed)));
 
     position = talon.getPosition();
     velocity = talon.getVelocity();
@@ -102,9 +104,6 @@ public class FlywheelIOTalonFX implements FlywheelIO {
 
   @Override
   public void applyOutputs(FlywheelIOOutputs outputs) {
-    // Re-assert follower behavior in case the controller was reset.
-    talonFollower.setControl(new StrictFollower(talon.getDeviceID()));
-
     if (outputs.kP != 0.0
         && (outputs.kP != lastKp
             || outputs.kD != lastKd

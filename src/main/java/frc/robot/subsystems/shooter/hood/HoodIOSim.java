@@ -6,20 +6,20 @@ package frc.robot.subsystems.shooter.hood;
 import edu.wpi.first.math.MathUtil;
 import edu.wpi.first.math.controller.PIDController;
 import edu.wpi.first.math.system.plant.DCMotor;
+import edu.wpi.first.math.system.plant.LinearSystemId;
 import edu.wpi.first.math.util.Units;
-import edu.wpi.first.wpilibj.simulation.SingleJointedArmSim;
+import edu.wpi.first.wpilibj.simulation.DCMotorSim;
 import frc.robot.Constants;
 
 public class HoodIOSim implements HoodIO {
   private static final double gearing = 8.0;
-  private static final double moi = 0.1; // kg * m^2
-  private static final double armLength = 0.5; // m
+  private static final double moi = 0.001; // kg * m^2 (smaller, more responsive)
   private static final double minAngle = Units.degreesToRadians(19.0);
   private static final double maxAngle = Units.degreesToRadians(51.0);
 
-  private final SingleJointedArmSim sim =
-      new SingleJointedArmSim(
-          DCMotor.getKrakenX44(1), gearing, moi, armLength, minAngle, maxAngle, true, minAngle);
+  private static final DCMotor motorModel = DCMotor.getKrakenX44(1);
+  private static final DCMotorSim sim =
+      new DCMotorSim(LinearSystemId.createDCMotorSystem(motorModel, moi, gearing), motorModel);
 
   private final PIDController controller =
       new PIDController(0.0, 0.0, 0.0, Constants.loopPeriodSecs);
@@ -30,16 +30,18 @@ public class HoodIOSim implements HoodIO {
   @Override
   public void updateInputs(HoodIOInputs inputs) {
     if (closedLoop) {
-      appliedVolts =
-      MathUtil.clamp(controller.calculate(sim.getAngleRads()), -12.0, 12.0);
+      appliedVolts = MathUtil.clamp(controller.calculate(sim.getAngularPositionRad()), -12.0, 12.0);
     }
 
     sim.setInputVoltage(appliedVolts);
     sim.update(Constants.loopPeriodSecs);
 
+    // Clamp position to physical limits
+    double position = MathUtil.clamp(sim.getAngularPositionRad(), minAngle, maxAngle);
+
     inputs.motorConnected = true;
-    inputs.positionRads = sim.getAngleRads();
-    inputs.velocityRadsPerSec = sim.getVelocityRadPerSec();
+    inputs.positionRads = position;
+    inputs.velocityRadsPerSec = sim.getAngularVelocityRadPerSec();
     inputs.appliedVolts = appliedVolts;
     inputs.supplyCurrentAmps = sim.getCurrentDrawAmps();
     inputs.torqueCurrentAmps = sim.getCurrentDrawAmps();
