@@ -6,9 +6,8 @@ package frc.robot.subsystems.shooter.hood;
 import edu.wpi.first.math.MathUtil;
 import edu.wpi.first.math.controller.PIDController;
 import edu.wpi.first.math.system.plant.DCMotor;
-import edu.wpi.first.math.system.plant.LinearSystemId;
 import edu.wpi.first.math.util.Units;
-import edu.wpi.first.wpilibj.simulation.DCMotorSim;
+import edu.wpi.first.wpilibj.simulation.SingleJointedArmSim;
 import frc.robot.Constants;
 
 public class HoodIOSim implements HoodIO {
@@ -38,11 +37,11 @@ public class HoodIOSim implements HoodIO {
     sim.update(Constants.loopPeriodSecs);
 
     // Clamp position to physical limits
-    double position = MathUtil.clamp(sim.getAngularPositionRad(), minAngle, maxAngle);
+    double position = MathUtil.clamp(sim.getAngleRads(), minAngle, maxAngle);
 
     inputs.motorConnected = true;
     inputs.positionRads = position;
-    inputs.velocityRadsPerSec = sim.getAngularVelocityRadPerSec();
+    inputs.velocityRadsPerSec = sim.getVelocityRadPerSec();
     inputs.appliedVolts = appliedVolts;
     inputs.supplyCurrentAmps = sim.getCurrentDrawAmps();
     inputs.torqueCurrentAmps = sim.getCurrentDrawAmps();
