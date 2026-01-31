@@ -59,6 +59,7 @@ public class RobotContainer {
   private Flywheel flywheel;
   private Hood hood;
   private Choreographer choreographer;
+  private Autos autos;
 
   // Controller
   private final CommandXboxController controller = new CommandXboxController(0);
@@ -144,8 +145,14 @@ public class RobotContainer {
         new LoggedNetworkBoolean("Choreographer/CoastOverride", false);
     choreographer.setCoastOverride(coastOverride);
 
+    // Set up Autos
+    autos = new Autos(drive, flywheel, hood, choreographer);
+
     // Set up auto routines
     autoChooser = new LoggedDashboardChooser<>("Auto Choices", AutoBuilder.buildAutoChooser());
+
+    // Add Choreo autos
+    autoChooser.addOption("Depot Auto (Choreo)", autos.depotAuto().cmd());
 
     // Set up SysId routines
     autoChooser.addOption(
