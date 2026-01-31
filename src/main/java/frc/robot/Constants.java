@@ -12,9 +12,6 @@ public final class Constants {
   public static final double loopPeriodSecs = 0.02;
   public static final double loopPeriodWatchdogSecs = 0.2;
 
-  public static double fieldLengthMeters = 16.4592;
-  public static double fieldWidthMeters = 8.2296;
-
   public static Mode getMode() {
     return switch (robot) {
       case COMPBOT, DEVBOT -> RobotBase.isReal() ? Mode.REAL : Mode.REPLAY;
