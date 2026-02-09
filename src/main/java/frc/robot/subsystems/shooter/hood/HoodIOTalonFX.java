@@ -7,9 +7,10 @@ import static edu.wpi.first.units.Units.*;
 
 import com.ctre.phoenix6.BaseStatusSignal;
 import com.ctre.phoenix6.StatusSignal;
+import com.ctre.phoenix6.configs.MotionMagicConfigs;
 import com.ctre.phoenix6.configs.Slot0Configs;
 import com.ctre.phoenix6.configs.TalonFXConfiguration;
-import com.ctre.phoenix6.controls.PositionVoltage;
+import com.ctre.phoenix6.controls.MotionMagicVoltage;
 import com.ctre.phoenix6.controls.VoltageOut;
 import com.ctre.phoenix6.hardware.TalonFX;
 import com.ctre.phoenix6.signals.InvertedValue;
@@ -19,7 +20,6 @@ import frc.robot.util.PhoenixUtil;
 
 public class HoodIOTalonFX implements HoodIO {
   private final TalonFX talon;
-
   private final StatusSignal<Angle> position;
   private final StatusSignal<AngularVelocity> velocity;
   private final StatusSignal<Voltage> appliedVoltage;
@@ -27,22 +27,26 @@ public class HoodIOTalonFX implements HoodIO {
   private final StatusSignal<Current> torqueCurrent;
   private final StatusSignal<Temperature> temp;
 
-  private final PositionVoltage request = new PositionVoltage(0).withSlot(0);
+  private final MotionMagicVoltage request = new MotionMagicVoltage(0).withSlot(0);
+  private final MotionMagicConfigs motionMagicConfigs =
+      new MotionMagicConfigs().withMotionMagicAcceleration(120).withMotionMagicCruiseVelocity(120);
   private final VoltageOut voltageRequest = new VoltageOut(0);
 
   private double lastKp = 0.0;
   private double lastKd = 0.0;
 
   public HoodIOTalonFX() {
-    talon = new TalonFX(15);
+    talon = new TalonFX(17);
 
     var config = new TalonFXConfiguration();
     config.CurrentLimits.SupplyCurrentLimit = 40.0;
     config.CurrentLimits.SupplyCurrentLimitEnable = true;
-    config.MotorOutput.Inverted = InvertedValue.CounterClockwise_Positive;
+    config.MotorOutput.Inverted = InvertedValue.Clockwise_Positive;
     config.MotorOutput.NeutralMode = NeutralModeValue.Brake;
-    config.Feedback.RotorToSensorRatio = 8.0;
-    config.Feedback.SensorToMechanismRatio = 1.0;
+
+    // Configured for 8:1 reduction first stage, then 10:190 output stage
+    // Total reduction: 8 * (190 / 10) = 152
+    config.Feedback.SensorToMechanismRatio = 152.0;
 
     config.Slot0.kP = 0.0;
     config.Slot0.kD = 0.0;

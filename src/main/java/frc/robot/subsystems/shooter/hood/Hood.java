@@ -24,8 +24,8 @@ import org.littletonrobotics.junction.AutoLogOutput;
 import org.littletonrobotics.junction.Logger;
 
 public class Hood extends FullSubsystem {
-  private static final double minAngleDeg = 0.0;
-  private static final double maxAngleDeg = 31.0;
+  private static final double minAngleDeg = 0.1;
+  private static final double maxAngleDeg = 32.0;
 
   private static final LoggedTunableNumber kP = new LoggedTunableNumber("Hood/kP");
   private static final LoggedTunableNumber kD = new LoggedTunableNumber("Hood/kD");
@@ -35,8 +35,8 @@ public class Hood extends FullSubsystem {
   static {
     switch (Constants.getMode()) {
       case REAL, REPLAY -> {
-        kP.initDefault(0.0);
-        kD.initDefault(0.0);
+        kP.initDefault(1000);
+        kD.initDefault(0);
       }
       case SIM -> {
         kP.initDefault(2.0);
