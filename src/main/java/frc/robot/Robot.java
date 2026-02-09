@@ -19,8 +19,9 @@ import edu.wpi.first.wpilibj.simulation.RoboRioSim;
 import edu.wpi.first.wpilibj2.command.Command;
 import edu.wpi.first.wpilibj2.command.CommandScheduler;
 import frc.robot.Constants.RobotType;
+import frc.robot.subsystems.shooter.ShotCalculator;
+import frc.robot.util.FullSubsystem;
 import frc.robot.util.LoggedTracer;
-import frc.robot.util.ShooterModel;
 import java.lang.reflect.Field;
 import java.util.HashMap;
 import java.util.Map;
@@ -95,13 +96,6 @@ public class Robot extends LoggedRobot {
     // Start AdvantageKit logger
     Logger.start();
 
-    // Initialize Shooter Information Util
-    if (Constants.getMode() != Constants.Mode.REAL) {
-      ShooterModel.initialize("src/main/deploy/shooterData/shooter_data.json");
-    } else {
-      ShooterModel.initialize("/home/lvuser/deploy/shooterData/shooter_data.json");
-    }
-
     // Adjust loop overrun warning timeout
     try {
       Field watchdogField = IterativeRobotBase.class.getDeclaredField("m_watchdog");
@@ -158,7 +152,7 @@ public class Robot extends LoggedRobot {
         .onCommandInterrupt((Command command) -> logCommandFunction.accept(command, false));
 
     // Configure Driver Station for sim
-    RoboRioSim.setTeamNumber(6328);
+    RoboRioSim.setTeamNumber(1466);
     if (Constants.robot == RobotType.SIMBOT) {
       DriverStationSim.setAllianceStationId(AllianceStationID.Blue1);
       DriverStationSim.notifyNewData();
@@ -175,10 +169,15 @@ public class Robot extends LoggedRobot {
   /** This function is called periodically during all modes. */
   @Override
   public void robotPeriodic() {
+    // Clear shooting parameters for the new loop
+    ShotCalculator.getInstance().clearShootingParameters();
+
     // Main periodic functions
     LoggedTracer.reset();
     CommandScheduler.getInstance().run();
     LoggedTracer.record("Commands");
+    FullSubsystem.runAllPeriodicAfterScheduler();
+    LoggedTracer.record("PeriodicAfterScheduler");
 
     // Print auto duration
     if (autonomousCommand != null) {
@@ -208,6 +207,11 @@ public class Robot extends LoggedRobot {
     robotContainer.updateDashboardOutputs();
 
     LoggedTracer.record("RobotPeriodic");
+  }
+
+  /** Whether to display alerts related to hardware faults. */
+  public static boolean showHardwareAlerts() {
+    return Constants.getMode() != Constants.Mode.SIM && Timer.getTimestamp() > 30.0;
   }
 
   /** This function is called once when the robot is disabled. */
