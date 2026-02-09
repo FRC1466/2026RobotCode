@@ -22,7 +22,7 @@ import frc.robot.util.PhoenixUtil;
 
 public class HoodIOTalonFX implements HoodIO {
   private final TalonFX talon;
-  private final CANcoder cancoder;
+  
   private final StatusSignal<Angle> position;
   private final StatusSignal<AngularVelocity> velocity;
   private final StatusSignal<Voltage> appliedVoltage;
@@ -38,19 +38,12 @@ public class HoodIOTalonFX implements HoodIO {
 
   public HoodIOTalonFX() {
     talon = new TalonFX(15);
-    cancoder = new CANcoder(15);
-
-    var cancoderConfig = new CANcoderConfiguration();
-    cancoderConfig.MagnetSensor.MagnetOffset = 0.0;
-    PhoenixUtil.tryUntilOk(5, () -> cancoder.getConfigurator().apply(cancoderConfig));
 
     var config = new TalonFXConfiguration();
     config.CurrentLimits.SupplyCurrentLimit = 40.0;
     config.CurrentLimits.SupplyCurrentLimitEnable = true;
     config.MotorOutput.Inverted = InvertedValue.CounterClockwise_Positive;
     config.MotorOutput.NeutralMode = NeutralModeValue.Brake;
-    config.Feedback.FeedbackSensorSource = FeedbackSensorSourceValue.FusedCANcoder;
-    config.Feedback.FeedbackRemoteSensorID = cancoder.getDeviceID();
     config.Feedback.RotorToSensorRatio = 8.0;
     config.Feedback.SensorToMechanismRatio = 1.0;
 
