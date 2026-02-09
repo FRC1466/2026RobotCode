@@ -3,7 +3,6 @@
 
 package frc.robot.subsystems.shooter;
 
-import edu.wpi.first.math.filter.LinearFilter;
 import edu.wpi.first.math.geometry.Pose2d;
 import edu.wpi.first.math.geometry.Rotation2d;
 import edu.wpi.first.math.geometry.Transform2d;
@@ -13,11 +12,13 @@ import edu.wpi.first.math.interpolation.InterpolatingDoubleTreeMap;
 import edu.wpi.first.math.interpolation.InterpolatingTreeMap;
 import edu.wpi.first.math.interpolation.InverseInterpolator;
 import edu.wpi.first.math.kinematics.ChassisSpeeds;
-import frc.robot.Constants;
 import frc.robot.FieldConstants;
 import frc.robot.RobotState;
 import frc.robot.util.AllianceFlipUtil;
 import frc.robot.util.GeomUtil;
+import frc.robot.util.LoggedTunableNumber;
+import lombok.Getter;
+import lombok.Setter;
 import lombok.experimental.ExtensionMethod;
 import org.littletonrobotics.junction.Logger;
 
@@ -25,17 +26,10 @@ import org.littletonrobotics.junction.Logger;
 public class ShotCalculator {
   private static ShotCalculator instance;
 
-  private final LinearFilter goalHeadingFilter =
-      LinearFilter.movingAverage((int) (0.1 / Constants.loopPeriodSecs));
-  private final LinearFilter hoodAngleFilter =
-      LinearFilter.movingAverage((int) (0.1 / Constants.loopPeriodSecs));
-
   private Rotation2d lastGoalHeading;
   private double lastHoodAngle;
   private Rotation2d goalHeading;
   private double hoodAngle = Double.NaN;
-  private double goalHeadingVelocity;
-  private double hoodVelocity;
 
   private static final Transform2d robotToShooter =
       new Transform2d(new Translation2d(), Rotation2d.fromDegrees(180));
@@ -46,15 +40,18 @@ public class ShotCalculator {
   }
 
   public record ShootingParameters(
-      boolean isValid,
-      Rotation2d goalHeading,
-      double goalHeadingVelocity,
-      double hoodAngle,
-      double hoodVelocity,
-      double flywheelSpeed) {}
+      boolean isValid, Rotation2d goalHeading, double hoodAngle, double flywheelSpeed) {}
 
   // Cache parameters
   private ShootingParameters latestParameters = null;
+
+  /** When true, getParameters() returns fixed default values instead of computing from pose. */
+  @Getter @Setter private boolean useDefaults = false;
+
+  private static final LoggedTunableNumber defaultFlywheelSpeed =
+      new LoggedTunableNumber("ShotCalculator/DefaultFlywheelSpeed", 50.0);
+  private static final LoggedTunableNumber defaultHoodAngleDeg =
+      new LoggedTunableNumber("ShotCalculator/DefaultHoodAngleDeg", 15.0);
 
   private static double minDistance;
   private static double maxDistance;
@@ -91,6 +88,20 @@ public class ShotCalculator {
     if (latestParameters != null) {
       return latestParameters;
     }
+
+    if (useDefaults) {
+      Pose2d estimatedPose = RobotState.getInstance().getEstimatedPose();
+      latestParameters =
+          new ShootingParameters(
+              true,
+              estimatedPose.getRotation(),
+              Math.toRadians(defaultHoodAngleDeg.get()),
+              defaultFlywheelSpeed.get());
+      Logger.recordOutput("ShotCalculator/UsingDefaults", true);
+      return latestParameters;
+    }
+
+    Logger.recordOutput("ShotCalculator/UsingDefaults", false);
 
     // Calculate estimated pose while accounting for phase delay
     Pose2d estimatedPose = RobotState.getInstance().getEstimatedPose();
@@ -137,11 +148,6 @@ public class ShotCalculator {
     if (lastGoalHeading == null) lastGoalHeading = goalHeading;
     if (Double.isNaN(lastHoodAngle)) lastHoodAngle = hoodAngle;
 
-    goalHeadingVelocity =
-        goalHeadingFilter.calculate(
-            goalHeading.minus(lastGoalHeading).getRadians() / Constants.loopPeriodSecs);
-    hoodVelocity =
-        hoodAngleFilter.calculate((hoodAngle - lastHoodAngle) / Constants.loopPeriodSecs);
     lastGoalHeading = goalHeading;
     lastHoodAngle = hoodAngle;
 
@@ -150,9 +156,7 @@ public class ShotCalculator {
             lookaheadShooterToTargetDistance >= minDistance
                 && lookaheadShooterToTargetDistance <= maxDistance,
             goalHeading,
-            goalHeadingVelocity,
             hoodAngle,
-            hoodVelocity,
             shotFlywheelSpeedMap.get(lookaheadShooterToTargetDistance));
 
     // Log calculated values

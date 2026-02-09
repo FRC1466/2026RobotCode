@@ -18,6 +18,7 @@ import edu.wpi.first.wpilibj.smartdashboard.SmartDashboard;
 import edu.wpi.first.wpilibj2.command.Command;
 import edu.wpi.first.wpilibj2.command.Commands;
 import edu.wpi.first.wpilibj2.command.button.CommandXboxController;
+import edu.wpi.first.wpilibj2.command.button.RobotModeTriggers;
 import edu.wpi.first.wpilibj2.command.sysid.SysIdRoutine;
 import frc.robot.commands.DriveCommands;
 import frc.robot.generated.TunerConstants;
@@ -41,6 +42,7 @@ import frc.robot.subsystems.vision.Vision;
 import frc.robot.subsystems.vision.VisionIO;
 import frc.robot.subsystems.vision.VisionIOPhotonVision;
 import frc.robot.util.AllianceFlipUtil;
+import frc.robot.util.HubShiftUtil;
 import frc.robot.util.TriggerUtil;
 import java.util.function.DoubleSupplier;
 import lombok.experimental.ExtensionMethod;
@@ -60,7 +62,10 @@ public class RobotContainer {
   private Vision vision;
   private Flywheel flywheel;
   private Hood hood;
+  private Spindexer spindexer;
+  private Kicker kicker;
   private Choreographer choreographer;
+  private Autos autos;
 
   private Intake intake;
 
@@ -92,6 +97,8 @@ public class RobotContainer {
 
           flywheel = new Flywheel(new FlywheelIOTalonFX());
           hood = new Hood(new HoodIO() {});
+          spindexer = new Spindexer(new SpindexerIOTalonFX());
+          kicker = new Kicker(new KickerIOTalonFX());
           break;
         }
         case DEVBOT -> {
@@ -117,6 +124,8 @@ public class RobotContainer {
                   new ModuleIOSim(TunerConstants.BackRight));
           flywheel = new Flywheel(new FlywheelIOSim());
           hood = new Hood(new HoodIOSim());
+          spindexer = new Spindexer(new SpindexerIOSim());
+          kicker = new Kicker(new KickerIOSim());
           break;
         }
       }
@@ -141,16 +150,28 @@ public class RobotContainer {
     if (hood == null) {
       hood = new Hood(new HoodIO() {});
     }
+    if (spindexer == null) {
+      spindexer = new Spindexer(new SpindexerIO() {});
+    }
+    if (kicker == null) {
+      kicker = new Kicker(new KickerIO() {});
+    }
 
     // Instantiate Choreographer
-    choreographer = new Choreographer(drive, flywheel, hood);
+    choreographer = new Choreographer(drive, flywheel, hood, spindexer, kicker);
 
     LoggedNetworkBoolean coastOverride =
         new LoggedNetworkBoolean("Choreographer/CoastOverride", false);
     choreographer.setCoastOverride(coastOverride);
 
+    // Set up Autos
+    autos = new Autos(drive, flywheel, hood, choreographer);
+
     // Set up auto routines
     autoChooser = new LoggedDashboardChooser<>("Auto Choices", AutoBuilder.buildAutoChooser());
+
+    // Add Choreo autos
+    autoChooser.addOption("Depot Auto (Choreo)", autos.depotAuto().cmd());
 
     // Set up SysId routines
     autoChooser.addOption(
@@ -230,43 +251,34 @@ public class RobotContainer {
     final boolean[] flywheelActive = {false};
 
     // Logging Command: Periodically logs distance and target speed to AdvantageScope
-    Commands.run(
-            () -> {
-              Pose2d currentPose = RobotState.getInstance().getEstimatedPose();
-              if (currentPose != null) {
-                Translation2d hubPose =
-                    AllianceFlipUtil.apply(FieldConstants.Hub.topCenterPoint.toTranslation2d());
-                double distance = currentPose.getTranslation().getDistance(hubPose);
-                org.littletonrobotics.junction.Logger.recordOutput("Debug/DistanceToHub", distance);
-              }
-              org.littletonrobotics.junction.Logger.recordOutput(
-                  "Debug/FlywheelTargetSpeed", targetSpeed[0]);
-            })
-        .ignoringDisable(true)
-        .withName("DebugLogger")
-        .schedule();
-
-    controller
-        .leftBumper()
-        .onTrue(
-            Commands.runOnce(
-                () -> flywheel.setUseInternalBangBang(!flywheel.isUseInternalBangBang())));
+    RobotModeTriggers.teleop()
+        .whileTrue(
+            Commands.run(
+                    () -> {
+                      Pose2d currentPose = RobotState.getInstance().getEstimatedPose();
+                      if (currentPose != null) {
+                        Translation2d hubPose =
+                            AllianceFlipUtil.apply(
+                                FieldConstants.Hub.topCenterPoint.toTranslation2d());
+                        double distance = currentPose.getTranslation().getDistance(hubPose);
+                        org.littletonrobotics.junction.Logger.recordOutput(
+                            "Debug/DistanceToHub", distance);
+                      }
+                      org.littletonrobotics.junction.Logger.recordOutput(
+                          "Debug/FlywheelTargetSpeed", targetSpeed[0]);
+                    })
+                .ignoringDisable(true)
+                .withName("DebugLogger"));
 
     // X Button: Toggle flywheel spinning
     controller
         .x()
         .onTrue(
-            Commands.runOnce(
-                    () -> {
-                      flywheelActive[0] = !flywheelActive[0];
-                      if (flywheelActive[0]) {
-                        // Supplier ensures speed updates dynamically without rescheduling
-                        flywheel.runFixedCommand(() -> targetSpeed[0]).schedule();
-                      } else {
-                        flywheel.stopCommand().schedule();
-                      }
-                    })
-                .withName("ToggleFlywheel"));
+            Commands.either(
+                    flywheel.stopCommand(),
+                    flywheel.runFixedCommand(() -> targetSpeed[0]),
+                    () -> flywheelActive[0])
+                .andThen(Commands.runOnce(() -> flywheelActive[0] = !flywheelActive[0])));
 
     // POV Left: Decrease target speed
     controller
@@ -286,6 +298,18 @@ public class RobotContainer {
     controller
         .b()
         .onTrue(Commands.parallel(flywheel.stopCommand(), hood.runFixedCommand(() -> 19.0)));
+
+    // Y Button: Toggle ShotCalculator default values mode
+    controller
+        .y()
+        .onTrue(
+            Commands.runOnce(
+                    () -> {
+                      var calc = ShotCalculator.getInstance();
+                      calc.setUseDefaults(!calc.isUseDefaults());
+                    })
+                .withName("ToggleShotCalcDefaults")
+                .ignoringDisable(true));
 
     // Reset gyro
     controller
