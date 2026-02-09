@@ -29,6 +29,11 @@ import frc.robot.subsystems.drive.GyroIOPigeon2;
 import frc.robot.subsystems.drive.ModuleIO;
 import frc.robot.subsystems.drive.ModuleIOSim;
 import frc.robot.subsystems.drive.ModuleIOTalonFX;
+import frc.robot.subsystems.kicker.Kicker;
+import frc.robot.subsystems.kicker.KickerIO;
+import frc.robot.subsystems.kicker.KickerIOSim;
+import frc.robot.subsystems.kicker.KickerIOTalonFX;
+import frc.robot.subsystems.shooter.ShotCalculator;
 import frc.robot.subsystems.shooter.flywheel.Flywheel;
 import frc.robot.subsystems.shooter.flywheel.FlywheelIO;
 import frc.robot.subsystems.shooter.flywheel.FlywheelIOSim;
@@ -36,10 +41,15 @@ import frc.robot.subsystems.shooter.flywheel.FlywheelIOTalonFX;
 import frc.robot.subsystems.shooter.hood.Hood;
 import frc.robot.subsystems.shooter.hood.HoodIO;
 import frc.robot.subsystems.shooter.hood.HoodIOSim;
+import frc.robot.subsystems.spindexer.Spindexer;
+import frc.robot.subsystems.spindexer.SpindexerIO;
+import frc.robot.subsystems.spindexer.SpindexerIOSim;
+import frc.robot.subsystems.spindexer.SpindexerIOTalonFX;
 import frc.robot.subsystems.vision.Vision;
 import frc.robot.subsystems.vision.VisionIO;
 import frc.robot.subsystems.vision.VisionIOPhotonVision;
 import frc.robot.util.AllianceFlipUtil;
+import frc.robot.util.HubShiftUtil;
 import frc.robot.util.TriggerUtil;
 import java.util.function.DoubleSupplier;
 import lombok.experimental.ExtensionMethod;
@@ -59,6 +69,8 @@ public class RobotContainer {
   private Vision vision;
   private Flywheel flywheel;
   private Hood hood;
+  private Spindexer spindexer;
+  private Kicker kicker;
   private Choreographer choreographer;
   private Autos autos;
 
@@ -90,6 +102,8 @@ public class RobotContainer {
 
           flywheel = new Flywheel(new FlywheelIOTalonFX());
           hood = new Hood(new HoodIO() {});
+          spindexer = new Spindexer(new SpindexerIOTalonFX());
+          kicker = new Kicker(new KickerIOTalonFX());
           break;
         }
         case DEVBOT -> {
@@ -114,6 +128,8 @@ public class RobotContainer {
                   new ModuleIOSim(TunerConstants.BackRight));
           flywheel = new Flywheel(new FlywheelIOSim());
           hood = new Hood(new HoodIOSim());
+          spindexer = new Spindexer(new SpindexerIOSim());
+          kicker = new Kicker(new KickerIOSim());
           break;
         }
       }
@@ -138,9 +154,15 @@ public class RobotContainer {
     if (hood == null) {
       hood = new Hood(new HoodIO() {});
     }
+    if (spindexer == null) {
+      spindexer = new Spindexer(new SpindexerIO() {});
+    }
+    if (kicker == null) {
+      kicker = new Kicker(new KickerIO() {});
+    }
 
     // Instantiate Choreographer
-    choreographer = new Choreographer(drive, flywheel, hood);
+    choreographer = new Choreographer(drive, flywheel, hood, spindexer, kicker);
 
     LoggedNetworkBoolean coastOverride =
         new LoggedNetworkBoolean("Choreographer/CoastOverride", false);
@@ -281,6 +303,18 @@ public class RobotContainer {
         .b()
         .onTrue(Commands.parallel(flywheel.stopCommand(), hood.runFixedCommand(() -> 19.0)));
 
+    // Y Button: Toggle ShotCalculator default values mode
+    controller
+        .y()
+        .onTrue(
+            Commands.runOnce(
+                    () -> {
+                      var calc = ShotCalculator.getInstance();
+                      calc.setUseDefaults(!calc.isUseDefaults());
+                    })
+                .withName("ToggleShotCalcDefaults")
+                .ignoringDisable(true));
+
     // Reset gyro
     controller
         .start()
@@ -294,6 +328,9 @@ public class RobotContainer {
                                 AllianceFlipUtil.apply(Rotation2d.kZero))))
                 .withName("ResetGyro")
                 .ignoringDisable(true));
+
+    RobotModeTriggers.teleop().onTrue(Commands.runOnce(() -> HubShiftUtil.initialize()));
+    RobotModeTriggers.autonomous().onTrue(Commands.runOnce(() -> HubShiftUtil.initialize()));
   }
 
   /** Update dashboard outputs. */

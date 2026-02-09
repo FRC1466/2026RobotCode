@@ -25,7 +25,7 @@ import org.littletonrobotics.junction.Logger;
 
 public class Hood extends FullSubsystem {
   private static final double minAngleDeg = 0.0;
-  private static final double maxAngleDeg = 32.0;
+  private static final double maxAngleDeg = 31.0;
 
   private static final LoggedTunableNumber kP = new LoggedTunableNumber("Hood/kP");
   private static final LoggedTunableNumber kD = new LoggedTunableNumber("Hood/kD");
