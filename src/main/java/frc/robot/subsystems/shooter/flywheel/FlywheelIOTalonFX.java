@@ -48,12 +48,12 @@ public class FlywheelIOTalonFX implements FlywheelIO {
     talonFollower = new TalonFX(followerId);
 
     var config = new TalonFXConfiguration();
-    config.Slot1.kS = 0.19;
+    config.Slot1.kS = 0.24;
     config.Slot1.kP = 0.3;
-    config.Slot1.kV = 0.11;
+    config.Slot1.kV = 0.1225;
     config.MotionMagic.MotionMagicAcceleration = 500.0;
     config.MotionMagic.MotionMagicJerk = 0.0;
-    config.MotorOutput.Inverted = InvertedValue.CounterClockwise_Positive;
+    config.MotorOutput.Inverted = InvertedValue.Clockwise_Positive;
     config.MotorOutput.NeutralMode = NeutralModeValue.Coast;
     config.Feedback.SensorToMechanismRatio = 1.0;
 

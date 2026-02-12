@@ -29,6 +29,12 @@ public class Hood extends FullSubsystem {
 
   private static final LoggedTunableNumber kP = new LoggedTunableNumber("Hood/kP");
   private static final LoggedTunableNumber kD = new LoggedTunableNumber("Hood/kD");
+  private static final LoggedTunableNumber kV = new LoggedTunableNumber("Hood/kV");
+  private static final LoggedTunableNumber kS = new LoggedTunableNumber("Hood/kS");
+  private static final LoggedTunableNumber cruiseVelocity =
+      new LoggedTunableNumber("Hood/CruiseVelocity");
+  private static final LoggedTunableNumber acceleration =
+      new LoggedTunableNumber("Hood/Acceleration");
   private static final LoggedTunableNumber toleranceDeg =
       new LoggedTunableNumber("Hood/ToleranceDeg");
 
@@ -37,10 +43,18 @@ public class Hood extends FullSubsystem {
       case REAL, REPLAY -> {
         kP.initDefault(1000);
         kD.initDefault(0);
+        kV.initDefault(0);
+        kS.initDefault(0);
+        cruiseVelocity.initDefault(0);
+        acceleration.initDefault(0);
       }
       case SIM -> {
         kP.initDefault(2.0);
         kD.initDefault(0.35);
+        kV.initDefault(0);
+        kS.initDefault(0);
+        cruiseVelocity.initDefault(0);
+        acceleration.initDefault(0);
       }
     }
     toleranceDeg.initDefault(1.0);
@@ -85,6 +99,10 @@ public class Hood extends FullSubsystem {
     // Update tunable numbers
     outputs.kP = kP.get();
     outputs.kD = kD.get();
+    outputs.kV = kV.get();
+    outputs.kS = kS.get();
+    outputs.cruiseVelocity = cruiseVelocity.get();
+    outputs.acceleration = acceleration.get();
 
     // Record cycle time
     LoggedTracer.record("Hood");

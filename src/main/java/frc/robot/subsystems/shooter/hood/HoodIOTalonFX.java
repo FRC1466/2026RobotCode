@@ -28,12 +28,14 @@ public class HoodIOTalonFX implements HoodIO {
   private final StatusSignal<Temperature> temp;
 
   private final MotionMagicVoltage request = new MotionMagicVoltage(0).withSlot(0);
-  private final MotionMagicConfigs motionMagicConfigs =
-      new MotionMagicConfigs().withMotionMagicAcceleration(120).withMotionMagicCruiseVelocity(120);
   private final VoltageOut voltageRequest = new VoltageOut(0);
 
   private double lastKp = 0.0;
   private double lastKd = 0.0;
+  private double lastKs = 0.0;
+  private double lastKv = 0.0;
+  private double lastCruiseVelocity = 0.0;
+  private double lastAcceleration = 0.0;
 
   public HoodIOTalonFX() {
     talon = new TalonFX(17);
@@ -50,6 +52,14 @@ public class HoodIOTalonFX implements HoodIO {
 
     config.Slot0.kP = 0.0;
     config.Slot0.kD = 0.0;
+    config.Slot0.kS = 0.0;
+    config.Slot0.kV = 0.0;
+    config.Slot0.kA = 0.0;
+
+    // Motion Magic profile constraints (in mechanism rotations per second)
+    config.MotionMagic.MotionMagicCruiseVelocity = 2.0;
+    config.MotionMagic.MotionMagicAcceleration = 4.0;
+    config.MotionMagic.MotionMagicJerk = 0.0;
 
     PhoenixUtil.tryUntilOk(5, () -> talon.getConfigurator().apply(config));
 
@@ -66,6 +76,8 @@ public class HoodIOTalonFX implements HoodIO {
             BaseStatusSignal.setUpdateFrequencyForAll(
                 50.0, position, velocity, appliedVoltage, supplyCurrent, torqueCurrent, temp));
     PhoenixUtil.tryUntilOk(5, () -> talon.optimizeBusUtilization());
+
+    PhoenixUtil.tryUntilOk(5, () -> talon.setPosition(0.0));
   }
 
   @Override
@@ -93,15 +105,34 @@ public class HoodIOTalonFX implements HoodIO {
     if (outputs.mode == HoodIOOutputMode.OPEN_LOOP) {
       talon.setControl(voltageRequest.withOutput(outputs.volts));
     } else if (outputs.mode == HoodIOOutputMode.CLOSED_LOOP) {
-      if (outputs.kP != lastKp || outputs.kD != lastKd) {
+      if (outputs.kP != lastKp
+          || outputs.kD != lastKd
+          || outputs.kS != lastKs
+          || outputs.kV != lastKv) {
         var slot0 = new Slot0Configs();
         slot0.kP = outputs.kP;
         slot0.kD = outputs.kD;
+        slot0.kS = outputs.kS;
+        slot0.kV = outputs.kV;
 
         PhoenixUtil.tryUntilOk(5, () -> talon.getConfigurator().apply(slot0));
         lastKp = outputs.kP;
         lastKd = outputs.kD;
+        lastKs = outputs.kS;
+        lastKv = outputs.kV;
       }
+
+      if (outputs.cruiseVelocity != lastCruiseVelocity
+          || outputs.acceleration != lastAcceleration) {
+        var mmConfigs = new MotionMagicConfigs();
+        mmConfigs.MotionMagicCruiseVelocity = outputs.cruiseVelocity;
+        mmConfigs.MotionMagicAcceleration = outputs.acceleration;
+
+        PhoenixUtil.tryUntilOk(5, () -> talon.getConfigurator().apply(mmConfigs));
+        lastCruiseVelocity = outputs.cruiseVelocity;
+        lastAcceleration = outputs.acceleration;
+      }
+
       talon.setControl(request.withPosition(Rotations.of(outputs.positionRad / (2 * Math.PI))));
     }
   }

@@ -22,7 +22,6 @@ import edu.wpi.first.wpilibj2.command.button.RobotModeTriggers;
 import edu.wpi.first.wpilibj2.command.sysid.SysIdRoutine;
 import frc.robot.commands.DriveCommands;
 import frc.robot.generated.TunerConstants;
-import frc.robot.subsystems.Choreographer;
 import frc.robot.subsystems.drive.Drive;
 import frc.robot.subsystems.drive.GyroIO;
 import frc.robot.subsystems.drive.GyroIOPigeon2;
@@ -30,6 +29,11 @@ import frc.robot.subsystems.drive.ModuleIO;
 import frc.robot.subsystems.drive.ModuleIOSim;
 import frc.robot.subsystems.drive.ModuleIOTalonFX;
 import frc.robot.subsystems.intake.Intake;
+import frc.robot.subsystems.kicker.Kicker;
+import frc.robot.subsystems.kicker.KickerIO;
+import frc.robot.subsystems.kicker.KickerIOSim;
+import frc.robot.subsystems.kicker.KickerIOTalonFX;
+import frc.robot.subsystems.shooter.ShotCalculator;
 import frc.robot.subsystems.shooter.flywheel.Flywheel;
 import frc.robot.subsystems.shooter.flywheel.FlywheelIO;
 import frc.robot.subsystems.shooter.flywheel.FlywheelIOSim;
@@ -38,11 +42,14 @@ import frc.robot.subsystems.shooter.hood.Hood;
 import frc.robot.subsystems.shooter.hood.HoodIO;
 import frc.robot.subsystems.shooter.hood.HoodIOSim;
 import frc.robot.subsystems.shooter.hood.HoodIOTalonFX;
+import frc.robot.subsystems.spindexer.Spindexer;
+import frc.robot.subsystems.spindexer.SpindexerIO;
+import frc.robot.subsystems.spindexer.SpindexerIOSim;
+import frc.robot.subsystems.spindexer.SpindexerIOTalonFX;
 import frc.robot.subsystems.vision.Vision;
 import frc.robot.subsystems.vision.VisionIO;
 import frc.robot.subsystems.vision.VisionIOPhotonVision;
 import frc.robot.util.AllianceFlipUtil;
-import frc.robot.util.HubShiftUtil;
 import frc.robot.util.TriggerUtil;
 import java.util.function.DoubleSupplier;
 import lombok.experimental.ExtensionMethod;
@@ -64,9 +71,8 @@ public class RobotContainer {
   private Hood hood;
   private Spindexer spindexer;
   private Kicker kicker;
-  private Choreographer choreographer;
+  // private Choreographer choreographer;
   private Autos autos;
-
   private Intake intake;
 
   // Controller
@@ -109,9 +115,9 @@ public class RobotContainer {
               new ModuleIOTalonFX(TunerConstants.FrontRight),
               new ModuleIOTalonFX(TunerConstants.BackLeft),
               new ModuleIOTalonFX(TunerConstants.BackRight));*/
-          // flywheel = new Flywheel(new FlywheelIOTalonFX());
+          flywheel = new Flywheel(new FlywheelIOTalonFX());
           hood = new Hood(new HoodIOTalonFX());
-          intake = new Intake();
+          // intake = new Intake();
           break;
         }
         case SIMBOT -> {
@@ -158,20 +164,20 @@ public class RobotContainer {
     }
 
     // Instantiate Choreographer
-    choreographer = new Choreographer(drive, flywheel, hood, spindexer, kicker);
+    // choreographer = new Choreographer(drive, flywheel, hood, spindexer, kicker);
 
     LoggedNetworkBoolean coastOverride =
         new LoggedNetworkBoolean("Choreographer/CoastOverride", false);
-    choreographer.setCoastOverride(coastOverride);
+    // choreographer.setCoastOverride(coastOverride);
 
     // Set up Autos
-    autos = new Autos(drive, flywheel, hood, choreographer);
+    // autos = new Autos(drive, flywheel, hood, choreographer);
 
     // Set up auto routines
     autoChooser = new LoggedDashboardChooser<>("Auto Choices", AutoBuilder.buildAutoChooser());
 
     // Add Choreo autos
-    autoChooser.addOption("Depot Auto (Choreo)", autos.depotAuto().cmd());
+    // autoChooser.addOption("Depot Auto (Choreo)", autos.depotAuto().cmd());
 
     // Set up SysId routines
     autoChooser.addOption(
@@ -208,14 +214,14 @@ public class RobotContainer {
     drive.setDefaultCommand(DriveCommands.joystickDrive(drive, leftY, leftX, rightX));
 
     // Right Bumper: Auto-aim and shoot
-    controller
-        .rightBumper()
-        .whileTrue(
-            Commands.parallel(
-                choreographer.setGoalCommand(Choreographer.Goal.SCORE_HUB),
-                DriveCommands.joystickDriveAtAngle(
-                    drive, leftY, leftX, choreographer::getTargetHeading)))
-        .onFalse(choreographer.setGoalCommand(Choreographer.Goal.IDLE));
+    /*controller
+    .rightBumper()
+    .whileTrue(
+        Commands.parallel(
+            choreographer.setGoalCommand(Choreographer.Goal.SCORE_HUB),
+            DriveCommands.joystickDriveAtAngle(
+                drive, leftY, leftX, choreographer::getTargetHeading)))
+    .onFalse(choreographer.setGoalCommand(Choreographer.Goal.IDLE));*/
 
     controller.a().whileTrue(flywheel.runTrackTargetCommand());
 
@@ -301,7 +307,8 @@ public class RobotContainer {
 
     // Y Button: Toggle ShotCalculator default values mode
     controller
-        .y()
+        .rightBumper()
+        .and(controller.leftBumper())
         .onTrue(
             Commands.runOnce(
                     () -> {
@@ -327,13 +334,15 @@ public class RobotContainer {
 
     controller
         .y()
-        .onTrue(Commands.run(() -> hood.setGoalAngleDeg(15)))
-        .onFalse(Commands.runOnce(() -> hood.stow()));
+        .and(controller.y().doublePress().negate())
+        .whileTrue(Commands.run(() -> hood.setGoalAngleDeg(15), hood).withName("Hood to 15"))
+        .onFalse(Commands.runOnce(() -> hood.stow(), hood).withName("HoodStow"));
+
     controller
         .y()
         .doublePress()
-        .onTrue(Commands.run(() -> hood.setGoalAngleDeg(25)))
-        .onFalse(Commands.runOnce(() -> hood.stow()));
+        .whileTrue(Commands.run(() -> hood.setGoalAngleDeg(25), hood).withName("Hood to 25"))
+        .onFalse(Commands.runOnce(() -> hood.stow(), hood).withName("HoodStow"));
   }
 
   /** Update dashboard outputs. */

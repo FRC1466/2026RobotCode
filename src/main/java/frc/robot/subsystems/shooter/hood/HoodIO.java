@@ -28,6 +28,10 @@ public interface HoodIO {
     public double positionRad = 0.0;
     public double kP = 0.0;
     public double kD = 0.0;
+    public double kS = 0.0;
+    public double kV = 0.0;
+    public double cruiseVelocity = 0.0;
+    public double acceleration = 0.0;
     public double volts = 0.0; // Used for Open Loop only
   }
 
