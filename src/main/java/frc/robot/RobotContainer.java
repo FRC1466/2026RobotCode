@@ -29,7 +29,15 @@ import frc.robot.subsystems.drive.GyroIOPigeon2;
 import frc.robot.subsystems.drive.ModuleIO;
 import frc.robot.subsystems.drive.ModuleIOSim;
 import frc.robot.subsystems.drive.ModuleIOTalonFX;
-import frc.robot.subsystems.intake.Intake;
+import frc.robot.subsystems.intake.rollers.IntakeRollers;
+import frc.robot.subsystems.intake.rollers.IntakeRollersIO;
+import frc.robot.subsystems.intake.rollers.IntakeRollersIOSim;
+import frc.robot.subsystems.intake.rollers.IntakeRollersIOTalonFX;
+import frc.robot.subsystems.kicker.Kicker;
+import frc.robot.subsystems.kicker.KickerIO;
+import frc.robot.subsystems.kicker.KickerIOSim;
+import frc.robot.subsystems.kicker.KickerIOTalonFX;
+import frc.robot.subsystems.shooter.ShotCalculator;
 import frc.robot.subsystems.shooter.flywheel.Flywheel;
 import frc.robot.subsystems.shooter.flywheel.FlywheelIO;
 import frc.robot.subsystems.shooter.flywheel.FlywheelIOSim;
@@ -70,7 +78,7 @@ public class RobotContainer {
   private Choreographer choreographer;
   private Autos autos;
 
-  private Intake intake;
+  private IntakeRollers intakeRollers;
 
   // Controller
   private final CommandXboxController controller = new CommandXboxController(0);
@@ -114,7 +122,7 @@ public class RobotContainer {
               new ModuleIOTalonFX(TunerConstants.BackRight));*/
           // flywheel = new Flywheel(new FlywheelIOTalonFX());
           hood = new Hood(new HoodIOTalonFX());
-          intake = new Intake();
+          intakeRollers = new IntakeRollers(new IntakeRollersIOTalonFX());
           break;
         }
         case SIMBOT -> {
@@ -129,6 +137,7 @@ public class RobotContainer {
           hood = new Hood(new HoodIOSim());
           spindexer = new Spindexer(new SpindexerIOSim());
           kicker = new Kicker(new KickerIOSim());
+          intakeRollers = new IntakeRollers(new IntakeRollersIOSim());
           break;
         }
       }
@@ -158,6 +167,9 @@ public class RobotContainer {
     }
     if (kicker == null) {
       kicker = new Kicker(new KickerIO() {});
+    }
+    if (intakeRollers == null) {
+      intakeRollers = new IntakeRollers(new IntakeRollersIO() {});
     }
 
     // Instantiate Choreographer
