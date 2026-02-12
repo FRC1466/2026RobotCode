@@ -7,7 +7,6 @@ import static edu.wpi.first.units.Units.*;
 
 import com.ctre.phoenix6.BaseStatusSignal;
 import com.ctre.phoenix6.StatusSignal;
-import com.ctre.phoenix6.configs.MotionMagicConfigs;
 import com.ctre.phoenix6.configs.Slot0Configs;
 import com.ctre.phoenix6.configs.TalonFXConfiguration;
 import com.ctre.phoenix6.controls.MotionMagicVoltage;
@@ -28,8 +27,6 @@ public class HoodIOTalonFX implements HoodIO {
   private final StatusSignal<Temperature> temp;
 
   private final MotionMagicVoltage request = new MotionMagicVoltage(0).withSlot(0);
-  private final MotionMagicConfigs motionMagicConfigs =
-      new MotionMagicConfigs().withMotionMagicAcceleration(120).withMotionMagicCruiseVelocity(120);
   private final VoltageOut voltageRequest = new VoltageOut(0);
 
   private double lastKp = 0.0;
@@ -50,6 +47,10 @@ public class HoodIOTalonFX implements HoodIO {
 
     config.Slot0.kP = 0.0;
     config.Slot0.kD = 0.0;
+
+    // Configured for Motion Magic
+    config.MotionMagic.MotionMagicAcceleration = 120;
+    config.MotionMagic.MotionMagicCruiseVelocity = 120;
 
     PhoenixUtil.tryUntilOk(5, () -> talon.getConfigurator().apply(config));
 
@@ -102,7 +103,7 @@ public class HoodIOTalonFX implements HoodIO {
         lastKp = outputs.kP;
         lastKd = outputs.kD;
       }
-      talon.setControl(request.withPosition(Rotations.of(outputs.positionRad / (2 * Math.PI))));
+      talon.setControl(request.withPosition(Radians.of(outputs.positionRad)));
     }
   }
 }
