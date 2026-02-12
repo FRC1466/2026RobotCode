@@ -17,7 +17,7 @@ import frc.robot.util.PhoenixUtil;
 
 public class SpindexerIOTalonFX implements SpindexerIO {
   // TODO: Move CAN ID into constants.
-  private static final int motorId = 15;
+  private static final int motorId = 30;
 
   private final TalonFX talon;
   private final StatusSignal<AngularVelocity> velocity;

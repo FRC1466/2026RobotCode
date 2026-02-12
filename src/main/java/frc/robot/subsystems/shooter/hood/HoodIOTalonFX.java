@@ -36,7 +36,7 @@ public class HoodIOTalonFX implements HoodIO {
   private double lastKd = 0.0;
 
   public HoodIOTalonFX() {
-    talon = new TalonFX(17);
+    talon = new TalonFX(42);
 
     var config = new TalonFXConfiguration();
     config.CurrentLimits.SupplyCurrentLimit = 40.0;

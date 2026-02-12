@@ -17,7 +17,7 @@ import frc.robot.util.PhoenixUtil;
 
 public class KickerIOTalonFX implements KickerIO {
   // TODO: Move CAN ID into constants.
-  private static final int motorId = 16;
+  private static final int motorId = 31;
 
   private final TalonFX talon;
   private final StatusSignal<AngularVelocity> velocity;

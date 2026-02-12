@@ -20,7 +20,7 @@ import frc.robot.util.PhoenixUtil;
 
 public class IntakePivotIOTalonFX implements IntakePivotIO {
   // TODO: Move CAN ID into constants.
-  private static final int motorId = 20;
+  private static final int motorId = 21;
 
   private final TalonFX talon;
   private final StatusSignal<Angle> position;

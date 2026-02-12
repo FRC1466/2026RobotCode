@@ -17,7 +17,7 @@ import frc.robot.util.PhoenixUtil;
 
 public class IntakeRollersIOTalonFX implements IntakeRollersIO {
   // TODO: Move CAN ID into constants.
-  private static final int motorId = 15;
+  private static final int motorId = 20;
 
   private final TalonFX talon;
   private final StatusSignal<AngularVelocity> velocity;
