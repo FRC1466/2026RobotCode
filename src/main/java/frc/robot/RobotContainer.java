@@ -29,6 +29,10 @@ import frc.robot.subsystems.drive.GyroIOPigeon2;
 import frc.robot.subsystems.drive.ModuleIO;
 import frc.robot.subsystems.drive.ModuleIOSim;
 import frc.robot.subsystems.drive.ModuleIOTalonFX;
+import frc.robot.subsystems.intake.pivot.IntakePivot;
+import frc.robot.subsystems.intake.pivot.IntakePivotIO;
+import frc.robot.subsystems.intake.pivot.IntakePivotIOSim;
+import frc.robot.subsystems.intake.pivot.IntakePivotIOTalonFX;
 import frc.robot.subsystems.intake.rollers.IntakeRollers;
 import frc.robot.subsystems.intake.rollers.IntakeRollersIO;
 import frc.robot.subsystems.intake.rollers.IntakeRollersIOSim;
@@ -79,6 +83,7 @@ public class RobotContainer {
   private Autos autos;
 
   private IntakeRollers intakeRollers;
+  private IntakePivot intakePivot;
 
   // Controller
   private final CommandXboxController controller = new CommandXboxController(0);
@@ -123,6 +128,7 @@ public class RobotContainer {
           // flywheel = new Flywheel(new FlywheelIOTalonFX());
           hood = new Hood(new HoodIOTalonFX());
           intakeRollers = new IntakeRollers(new IntakeRollersIOTalonFX());
+          intakePivot = new IntakePivot(new IntakePivotIOTalonFX());
           break;
         }
         case SIMBOT -> {
@@ -138,6 +144,7 @@ public class RobotContainer {
           spindexer = new Spindexer(new SpindexerIOSim());
           kicker = new Kicker(new KickerIOSim());
           intakeRollers = new IntakeRollers(new IntakeRollersIOSim());
+          intakePivot = new IntakePivot(new IntakePivotIOSim());
           break;
         }
       }
@@ -170,6 +177,9 @@ public class RobotContainer {
     }
     if (intakeRollers == null) {
       intakeRollers = new IntakeRollers(new IntakeRollersIO() {});
+    }
+    if (intakePivot == null) {
+      intakePivot = new IntakePivot(new IntakePivotIO() {});
     }
 
     // Instantiate Choreographer

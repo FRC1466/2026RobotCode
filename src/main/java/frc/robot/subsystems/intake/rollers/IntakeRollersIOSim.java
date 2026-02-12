@@ -11,8 +11,7 @@ import edu.wpi.first.wpilibj.simulation.DCMotorSim;
 import frc.robot.Constants;
 
 public class IntakeRollersIOSim implements IntakeRollersIO {
-  // TODO: Change to 1 motor when hardware is updated.
-  private static final DCMotor motorModel = DCMotor.getKrakenX44(2);
+  private static final DCMotor motorModel = DCMotor.getKrakenX44(1);
   private static final DCMotorSim sim =
       new DCMotorSim(LinearSystemId.createDCMotorSystem(motorModel, 0.005, 1), motorModel);
 
