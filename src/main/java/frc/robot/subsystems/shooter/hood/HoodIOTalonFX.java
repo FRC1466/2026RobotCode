@@ -61,6 +61,10 @@ public class HoodIOTalonFX implements HoodIO {
     config.MotionMagic.MotionMagicAcceleration = 4.0;
     config.MotionMagic.MotionMagicJerk = 0.0;
 
+    // Configured for Motion Magic
+    config.MotionMagic.MotionMagicAcceleration = 120;
+    config.MotionMagic.MotionMagicCruiseVelocity = 120;
+
     PhoenixUtil.tryUntilOk(5, () -> talon.getConfigurator().apply(config));
 
     position = talon.getPosition();
@@ -121,7 +125,6 @@ public class HoodIOTalonFX implements HoodIO {
         lastKs = outputs.kS;
         lastKv = outputs.kV;
       }
-
       if (outputs.cruiseVelocity != lastCruiseVelocity
           || outputs.acceleration != lastAcceleration) {
         var mmConfigs = new MotionMagicConfigs();
@@ -133,7 +136,7 @@ public class HoodIOTalonFX implements HoodIO {
         lastAcceleration = outputs.acceleration;
       }
 
-      talon.setControl(request.withPosition(Rotations.of(outputs.positionRad / (2 * Math.PI))));
+      talon.setControl(request.withPosition(Radians.of(outputs.positionRad)));
     }
   }
 }
