@@ -3,6 +3,7 @@
 
 package frc.robot.subsystems.shooter.flywheel;
 
+import static edu.wpi.first.units.Units.Second;
 import static edu.wpi.first.units.Units.Volts;
 
 import com.ctre.phoenix6.SignalLogger;
@@ -58,15 +59,17 @@ public class Flywheel extends FullSubsystem {
 
   public static final LoggedTunableNumber kS = new LoggedTunableNumber("Flywheel/kS");
   public static final LoggedTunableNumber kV = new LoggedTunableNumber("Flywheel/kV");
+  public static final LoggedTunableNumber kA = new LoggedTunableNumber("Flywheel/kA");
   public static final LoggedTunableNumber kP = new LoggedTunableNumber("Flywheel/kP");
   public static final LoggedTunableNumber kD = new LoggedTunableNumber("Flywheel/kD");
 
   static {
     switch (Constants.getMode()) {
       case REAL, REPLAY -> {
-        kS.initDefault(0.24);
-        kV.initDefault(0.1225);
-        kP.initDefault(0.2);
+        kS.initDefault(0.23013);
+        kV.initDefault(0.12021);
+        kA.initDefault(0.0082275);
+        kP.initDefault(0.1);
         kD.initDefault(0.0);
       }
       case SIM -> {
@@ -83,15 +86,26 @@ public class Flywheel extends FullSubsystem {
 
     disconnected = new Alert("Flywheel motor disconnected!", Alert.AlertType.kWarning);
 
+    // Configure SysId with slower ramp rates for flywheel (default is 1 V/s quasistatic, 7 V/s
+    // dynamic)
     sysId =
         new SysIdRoutine(
             new SysIdRoutine.Config(
-                null, null, null, (state) -> SignalLogger.writeString("state", state.toString())),
+                Volts.of(0.5).per(Second), // Slower ramp rate: 0.5 V/s for quasistatic
+                Volts.of(4), // Lower step voltage: 4V for dynamic tests
+                Second.of(10), // 10 second timeout per test
+                (state) -> SignalLogger.writeString("SysIdTestState", state.toString())),
             new SysIdRoutine.Mechanism((voltage) -> runVolts(voltage.in(Volts)), null, this));
 
     atGoalDebouncer = new Debouncer(atGoalDebounce.get(), Debouncer.DebounceType.kFalling);
     flywheelToleranceDebouncer =
         new Debouncer(flywheelToleranceDebounce.get(), Debouncer.DebounceType.kFalling);
+
+    // Initialize PID values
+    outputs.kP = kP.get();
+    outputs.kD = kD.get();
+    outputs.kS = kS.get();
+    outputs.kV = kV.get();
   }
 
   public boolean isAtGoal() {

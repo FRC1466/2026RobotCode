@@ -96,6 +96,8 @@ public class Robot extends LoggedRobot {
     // Start AdvantageKit logger
     Logger.start();
 
+    // Note: SignalLogger can be toggled via controller buttons (see RobotContainer)
+
     // Adjust loop overrun warning timeout
     try {
       Field watchdogField = IterativeRobotBase.class.getDeclaredField("m_watchdog");

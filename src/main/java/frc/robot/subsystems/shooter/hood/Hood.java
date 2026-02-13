@@ -45,8 +45,8 @@ public class Hood extends FullSubsystem {
         kD.initDefault(0);
         kV.initDefault(0);
         kS.initDefault(0);
-        cruiseVelocity.initDefault(0);
-        acceleration.initDefault(0);
+        cruiseVelocity.initDefault(4);
+        acceleration.initDefault(4);
       }
       case SIM -> {
         kP.initDefault(2.0);

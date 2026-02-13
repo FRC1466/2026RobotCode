@@ -107,11 +107,11 @@ public class FlywheelIOTalonFX implements FlywheelIO {
 
   @Override
   public void applyOutputs(FlywheelIOOutputs outputs) {
-    if (outputs.kP != 0.0
-        && (outputs.kP != lastKp
-            || outputs.kD != lastKd
-            || outputs.kS != lastKs
-            || outputs.kV != lastKv)) {
+    // Update PID gains if any have changed
+    if (outputs.kP != lastKp
+        || outputs.kD != lastKd
+        || outputs.kS != lastKs
+        || outputs.kV != lastKv) {
       var slot1 = new Slot1Configs();
       slot1.kP = outputs.kP;
       slot1.kD = outputs.kD;

@@ -5,7 +5,6 @@ package frc.robot;
 
 import static frc.robot.subsystems.vision.VisionConstants.*;
 
-import com.pathplanner.lib.auto.AutoBuilder;
 import edu.wpi.first.math.geometry.Pose2d;
 import edu.wpi.first.math.geometry.Rotation2d;
 import edu.wpi.first.math.geometry.Translation2d;
@@ -33,7 +32,6 @@ import frc.robot.subsystems.kicker.Kicker;
 import frc.robot.subsystems.kicker.KickerIO;
 import frc.robot.subsystems.kicker.KickerIOSim;
 import frc.robot.subsystems.kicker.KickerIOTalonFX;
-import frc.robot.subsystems.shooter.ShotCalculator;
 import frc.robot.subsystems.shooter.flywheel.Flywheel;
 import frc.robot.subsystems.shooter.flywheel.FlywheelIO;
 import frc.robot.subsystems.shooter.flywheel.FlywheelIOSim;
@@ -174,7 +172,8 @@ public class RobotContainer {
     // autos = new Autos(drive, flywheel, hood, choreographer);
 
     // Set up auto routines
-    autoChooser = new LoggedDashboardChooser<>("Auto Choices", AutoBuilder.buildAutoChooser());
+    autoChooser = new LoggedDashboardChooser<>("Auto Choices");
+    autoChooser.addDefaultOption("None", Commands.none());
 
     // Add Choreo autos
     // autoChooser.addOption("Depot Auto (Choreo)", autos.depotAuto().cmd());
@@ -252,6 +251,10 @@ public class RobotContainer {
     final double[] targetSpeed = {45.0};
     final boolean[] flywheelActive = {false};
 
+    // Pre-compute expensive operations to avoid teleop init overrun
+    Translation2d hubPose =
+        AllianceFlipUtil.apply(FieldConstants.Hub.topCenterPoint.toTranslation2d());
+
     // Logging Command: Periodically logs distance and target speed to AdvantageScope
     RobotModeTriggers.teleop()
         .whileTrue(
@@ -259,9 +262,6 @@ public class RobotContainer {
                     () -> {
                       Pose2d currentPose = RobotState.getInstance().getEstimatedPose();
                       if (currentPose != null) {
-                        Translation2d hubPose =
-                            AllianceFlipUtil.apply(
-                                FieldConstants.Hub.topCenterPoint.toTranslation2d());
                         double distance = currentPose.getTranslation().getDistance(hubPose);
                         org.littletonrobotics.junction.Logger.recordOutput(
                             "Debug/DistanceToHub", distance);
@@ -269,7 +269,6 @@ public class RobotContainer {
                       org.littletonrobotics.junction.Logger.recordOutput(
                           "Debug/FlywheelTargetSpeed", targetSpeed[0]);
                     })
-                .ignoringDisable(true)
                 .withName("DebugLogger"));
 
     // X Button: Toggle flywheel spinning
@@ -299,17 +298,20 @@ public class RobotContainer {
     // B Button: Stop all shooter subsystems
     controller.b().onTrue(Commands.parallel(flywheel.stopCommand(), hood.runFixedCommand(() -> 0)));
 
-    // Y Button: Toggle ShotCalculator default values mode
+    // Left Bumper + Right Bumper: Toggle flywheel internal bang-bang mode
     controller
         .rightBumper()
         .and(controller.leftBumper())
         .onTrue(
             Commands.runOnce(
                     () -> {
-                      var calc = ShotCalculator.getInstance();
-                      calc.setUseDefaults(!calc.isUseDefaults());
+                      flywheel.setUseInternalBangBang(!flywheel.isUseInternalBangBang());
+                      System.out.println(
+                          "*** Flywheel Internal Bang-Bang: "
+                              + flywheel.isUseInternalBangBang()
+                              + " ***");
                     })
-                .withName("ToggleShotCalcDefaults")
+                .withName("ToggleFlywheelBangBang")
                 .ignoringDisable(true));
 
     // Reset gyro
@@ -329,14 +331,12 @@ public class RobotContainer {
     controller
         .y()
         .and(controller.y().doublePress().negate())
-        .whileTrue(Commands.run(() -> hood.setGoalAngleDeg(15), hood).withName("Hood to 15"))
-        .onFalse(Commands.runOnce(() -> hood.stow(), hood).withName("HoodStow"));
+        .whileTrue(Commands.run(() -> hood.setGoalAngleDeg(15), hood).withName("Hood to 15"));
 
     controller
         .y()
         .doublePress()
-        .whileTrue(Commands.run(() -> hood.setGoalAngleDeg(25), hood).withName("Hood to 25"))
-        .onFalse(Commands.runOnce(() -> hood.stow(), hood).withName("HoodStow"));
+        .whileTrue(Commands.run(() -> hood.setGoalAngleDeg(25), hood).withName("Hood to 25"));
 
     controller
         .a()
