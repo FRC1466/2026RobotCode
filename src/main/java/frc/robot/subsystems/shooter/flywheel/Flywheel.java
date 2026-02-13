@@ -50,7 +50,7 @@ public class Flywheel extends FullSubsystem {
   private Boolean lastBrakeMode = null;
 
   private static final LoggedTunableNumber flywheelTolerance =
-      new LoggedTunableNumber("Flywheel/Tolerance", 1);
+      new LoggedTunableNumber("Flywheel/Tolerance", 5);
   private static final LoggedTunableNumber flywheelToleranceDebounce =
       new LoggedTunableNumber("Flywheel/ToleranceDebounce", 0.025);
   private static final LoggedTunableNumber atGoalDebounce =
@@ -64,9 +64,9 @@ public class Flywheel extends FullSubsystem {
   static {
     switch (Constants.getMode()) {
       case REAL, REPLAY -> {
-        kS.initDefault(0.19);
-        kV.initDefault(0.11);
-        kP.initDefault(0.3);
+        kS.initDefault(0.24);
+        kV.initDefault(0.1225);
+        kP.initDefault(0.2);
         kD.initDefault(0.0);
       }
       case SIM -> {

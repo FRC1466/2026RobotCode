@@ -117,7 +117,7 @@ public class RobotContainer {
               new ModuleIOTalonFX(TunerConstants.BackRight));*/
           flywheel = new Flywheel(new FlywheelIOTalonFX());
           hood = new Hood(new HoodIOTalonFX());
-          // intake = new Intake();
+          intake = new Intake();
           break;
         }
         case SIMBOT -> {
@@ -223,11 +223,7 @@ public class RobotContainer {
                 drive, leftY, leftX, choreographer::getTargetHeading)))
     .onFalse(choreographer.setGoalCommand(Choreographer.Goal.IDLE));*/
 
-    controller.a().whileTrue(flywheel.runTrackTargetCommand());
-
-    // POV: Manual control / preset speeds
-    controller.povUp().whileTrue(flywheel.runFixedCommand(() -> 105)); // Near max
-    controller.povDown().whileTrue(flywheel.runFixedCommand(() -> 45)); // Min range
+    // controller.a().whileTrue(flywheel.runTrackTargetCommand());
 
     controller
         .rightStick()
@@ -301,9 +297,7 @@ public class RobotContainer {
                 .withName("IncreaseSpeed"));
 
     // B Button: Stop all shooter subsystems
-    controller
-        .b()
-        .onTrue(Commands.parallel(flywheel.stopCommand(), hood.runFixedCommand(() -> 19.0)));
+    controller.b().onTrue(Commands.parallel(flywheel.stopCommand(), hood.runFixedCommand(() -> 0)));
 
     // Y Button: Toggle ShotCalculator default values mode
     controller
@@ -343,6 +337,18 @@ public class RobotContainer {
         .doublePress()
         .whileTrue(Commands.run(() -> hood.setGoalAngleDeg(25), hood).withName("Hood to 25"))
         .onFalse(Commands.runOnce(() -> hood.stow(), hood).withName("HoodStow"));
+
+    controller
+        .a()
+        .and(controller.a().doublePress().negate())
+        .whileTrue(Commands.run(() -> intake.setDutyCycle(.5), intake).withName("Intake .5 duty"))
+        .onFalse(Commands.runOnce(() -> intake.setDutyCycle(0), intake).withName("Intake off"));
+
+    controller
+        .a()
+        .doublePress()
+        .whileTrue(Commands.run(() -> intake.setDutyCycle(1), intake).withName("Intake 1 duty"))
+        .onFalse(Commands.runOnce(() -> intake.setDutyCycle(0), intake).withName("Intake off"));
   }
 
   /** Update dashboard outputs. */
