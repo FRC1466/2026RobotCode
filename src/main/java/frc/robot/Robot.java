@@ -26,6 +26,7 @@ import java.lang.reflect.Field;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.function.BiConsumer;
+import org.littletonrobotics.junction.AutoLogOutputManager;
 import org.littletonrobotics.junction.LogFileUtil;
 import org.littletonrobotics.junction.LoggedRobot;
 import org.littletonrobotics.junction.Logger;
@@ -162,6 +163,9 @@ public class Robot extends LoggedRobot {
 
     // Reset alert timers
     disabledTimer.restart();
+
+    // Set up auto logging for RobotState
+    AutoLogOutputManager.addObject(RobotState.getInstance());
 
     // Instantiate our RobotContainer. This will perform all our button bindings,
     // and put our autonomous chooser on the dashboard.

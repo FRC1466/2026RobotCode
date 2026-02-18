@@ -6,9 +6,10 @@ package frc.robot.util;
 import edu.wpi.first.wpilibj.DriverStation;
 import edu.wpi.first.wpilibj.DriverStation.Alliance;
 import edu.wpi.first.wpilibj.Timer;
+import frc.robot.subsystems.shooter.ShotCalculator;
 
 public class HubShiftUtil {
-  private enum ShiftEnum {
+  public enum ShiftEnum {
     TRANSITION,
     SHIFT1,
     SHIFT2,
@@ -19,7 +20,7 @@ public class HubShiftUtil {
     DISABLED;
   }
 
-  private record ShiftInfo(
+  public record ShiftInfo(
       ShiftEnum currentShift, double elapsedTime, double remainingTime, boolean active) {}
 
   private static Timer shiftTimer = new Timer();
@@ -27,7 +28,18 @@ public class HubShiftUtil {
 
   private static final double[] shiftStartTimes = {0.0, 10.0, 35.0, 60.0, 85.0, 110.0};
   private static final double[] shiftEndTimes = {10.0, 35.0, 60.0, 85.0, 110.0, 140.0};
-  private static final double autoEndTime = 20.0;
+
+  private static final double minFuelCountDelay = 1.0;
+  private static final double maxFuelCountDelay = 2.0;
+  private static final double shiftEndFuelCountExtension = 3.0;
+  private static final double minTimeOfFlight = ShotCalculator.getMinTimeOfFlight();
+  private static final double maxTimeOfFlight = ShotCalculator.getMaxTimeOfFlight();
+  private static final double approachingActiveFudge = -1 * (minTimeOfFlight + minFuelCountDelay);
+  private static final double endingActiveFudge =
+      shiftEndFuelCountExtension + -1 * (maxTimeOfFlight + maxFuelCountDelay);
+
+  public static final double autoEndTime = 20.0;
+  public static final double teleopDuration = 140.0;
   private static final boolean[] activeSchedule = {true, true, false, true, false, true};
   private static final boolean[] inactiveSchedule = {true, false, true, false, true, true};
 
@@ -51,20 +63,25 @@ public class HubShiftUtil {
     shiftTimer.restart();
   }
 
-  public static ShiftInfo getShiftInfo() {
-    double currentTime = shiftTimer.get();
-    boolean[] currentSchedule = inactiveSchedule;
+  private static boolean[] getSchedule() {
+    boolean[] currentSchedule;
     Alliance startAlliance = getFirstActiveAlliance();
     currentSchedule =
         startAlliance == DriverStation.getAlliance().orElse(Alliance.Blue)
             ? activeSchedule
             : inactiveSchedule;
-    double stateTimeElapsed = 0.0;
+    return currentSchedule;
+  }
+
+  private static ShiftInfo getShiftInfo(
+      boolean[] currentSchedule, double[] shiftStartTimes, double[] shiftEndTimes) {
+    double currentTime = shiftTimer.get();
+    double stateTimeElapsed = shiftTimer.get();
     double stateTimeRemaining = 0.0;
     boolean active = false;
     ShiftEnum currentShift = ShiftEnum.DISABLED;
 
-    if (DriverStation.isAutonomous()) {
+    if (DriverStation.isAutonomousEnabled()) {
       stateTimeElapsed = currentTime;
       stateTimeRemaining = autoEndTime - currentTime;
       active = true;
@@ -105,5 +122,51 @@ public class HubShiftUtil {
     }
     ShiftInfo shiftInfo = new ShiftInfo(currentShift, stateTimeElapsed, stateTimeRemaining, active);
     return shiftInfo;
+  }
+
+  public static ShiftInfo getOfficialShiftInfo() {
+    return getShiftInfo(getSchedule(), shiftStartTimes, shiftEndTimes);
+  }
+
+  public static ShiftInfo getShiftedShiftInfo() {
+    boolean[] shiftSchedule = getSchedule();
+    // Starting active
+    if (shiftSchedule[1] == true) {
+      double[] shiftedShiftStartTimes = {
+        0.0,
+        10.0,
+        35.0 + endingActiveFudge,
+        60.0 + approachingActiveFudge,
+        85.0 + endingActiveFudge,
+        110.0 + approachingActiveFudge
+      };
+      double[] shiftedShiftEndTimes = {
+        10.0,
+        35.0 + endingActiveFudge,
+        60.0 + approachingActiveFudge,
+        85.0 + endingActiveFudge,
+        110.0 + approachingActiveFudge,
+        140.0
+      };
+      return getShiftInfo(shiftSchedule, shiftedShiftStartTimes, shiftedShiftEndTimes);
+    }
+    double[] shiftedShiftStartTimes = {
+      0.0,
+      10.0 + endingActiveFudge,
+      35.0 + approachingActiveFudge,
+      60.0 + endingActiveFudge,
+      85.0 + approachingActiveFudge,
+      110.0
+    };
+    double[] shiftedShiftEndTimes = {
+      10.0 + endingActiveFudge,
+      35.0 + approachingActiveFudge,
+      60.0 + endingActiveFudge,
+      85.0 + approachingActiveFudge,
+      110.0,
+      140.0
+    };
+    return getShiftInfo(shiftSchedule, shiftedShiftStartTimes, shiftedShiftEndTimes);
+    // }
   }
 }

@@ -7,12 +7,12 @@ import static edu.wpi.first.units.Units.*;
 
 import com.ctre.phoenix6.BaseStatusSignal;
 import com.ctre.phoenix6.StatusSignal;
+import com.ctre.phoenix6.configs.Slot0Configs;
 import com.ctre.phoenix6.configs.Slot1Configs;
 import com.ctre.phoenix6.configs.TalonFXConfiguration;
-import com.ctre.phoenix6.controls.DutyCycleOut;
 import com.ctre.phoenix6.controls.Follower;
+import com.ctre.phoenix6.controls.MotionMagicVelocityTorqueCurrentFOC;
 import com.ctre.phoenix6.controls.MotionMagicVelocityVoltage;
-import com.ctre.phoenix6.controls.VoltageOut;
 import com.ctre.phoenix6.hardware.TalonFX;
 import com.ctre.phoenix6.signals.InvertedValue;
 import com.ctre.phoenix6.signals.MotorAlignmentValue;
@@ -31,26 +31,30 @@ public class FlywheelIOTalonFX implements FlywheelIO {
   private final StatusSignal<AngularVelocity> velocity;
   private final StatusSignal<Voltage> appliedVoltage;
   private final StatusSignal<Current> supplyCurrent;
+  private final StatusSignal<Current> supplyCurrentFollower;
   private final StatusSignal<Current> torqueCurrent;
   private final StatusSignal<Temperature> temp;
+  private final StatusSignal<Temperature> tempFollower;
 
-  private final MotionMagicVelocityVoltage request = new MotionMagicVelocityVoltage(0).withSlot(1);
-  private final VoltageOut voltageRequest = new VoltageOut(0);
-  private final DutyCycleOut dutyCycleRequest = new DutyCycleOut(0);
+  private final MotionMagicVelocityVoltage voltageRequest =
+      new MotionMagicVelocityVoltage(0).withSlot(0);
+  private final MotionMagicVelocityTorqueCurrentFOC torqueCurrentRequest =
+      new MotionMagicVelocityTorqueCurrentFOC(0).withSlot(1);
 
-  private double lastKp = 0.0;
-  private double lastKd = 0.0;
-  private double lastKs = 0.0;
-  private double lastKv = 0.0;
+  private double lastVoltageKP = 0.0;
+  private double lastVoltageKD = 0.0;
+  private double lastVoltageKS = 0.0;
+  private double lastVoltageKV = 0.0;
+  private double lastTorqueCurrentKP = 0.0;
+  private double lastTorqueCurrentKD = 0.0;
+  private double lastTorqueCurrentKS = 0.0;
+  private double lastTorqueCurrentKV = 0.0;
 
   public FlywheelIOTalonFX() {
     talon = new TalonFX(leaderId);
     talonFollower = new TalonFX(followerId);
 
     var config = new TalonFXConfiguration();
-    config.Slot1.kS = 0.24;
-    config.Slot1.kP = 0.3;
-    config.Slot1.kV = 0.1225;
     config.MotionMagic.MotionMagicAcceleration = 500.0;
     config.MotionMagic.MotionMagicJerk = 0.0;
     config.MotorOutput.Inverted = InvertedValue.Clockwise_Positive;
@@ -72,72 +76,93 @@ public class FlywheelIOTalonFX implements FlywheelIO {
     velocity = talon.getVelocity();
     appliedVoltage = talon.getMotorVoltage();
     supplyCurrent = talon.getSupplyCurrent();
+    supplyCurrentFollower = talonFollower.getSupplyCurrent();
     torqueCurrent = talon.getTorqueCurrent();
     temp = talon.getDeviceTemp();
+    tempFollower = talonFollower.getDeviceTemp();
 
     PhoenixUtil.tryUntilOk(
         5,
         () ->
             BaseStatusSignal.setUpdateFrequencyForAll(
-                50.0, position, velocity, appliedVoltage, supplyCurrent, torqueCurrent, temp));
+                50.0,
+                position,
+                velocity,
+                appliedVoltage,
+                supplyCurrent,
+                supplyCurrentFollower,
+                torqueCurrent,
+                temp,
+                tempFollower));
     PhoenixUtil.tryUntilOk(5, () -> talon.optimizeBusUtilization());
     PhoenixUtil.tryUntilOk(5, () -> talonFollower.optimizeBusUtilization());
-  }
-
-  @Override
-  public void setBrakeMode(boolean enableBrake) {
-    talon.setNeutralMode(enableBrake ? NeutralModeValue.Brake : NeutralModeValue.Coast);
-    talonFollower.setNeutralMode(enableBrake ? NeutralModeValue.Brake : NeutralModeValue.Coast);
   }
 
   @Override
   public void updateInputs(FlywheelIOInputs inputs) {
     BaseStatusSignal.refreshAll(
         position, velocity, appliedVoltage, supplyCurrent, torqueCurrent, temp);
-    inputs.connected =
+    BaseStatusSignal.refreshAll(supplyCurrentFollower, tempFollower);
+    inputs.connectedMaster =
         BaseStatusSignal.isAllGood(
             position, velocity, appliedVoltage, supplyCurrent, torqueCurrent, temp);
-    inputs.positionRotations = position.getValue().in(Rotations);
-    inputs.velocityRps = velocity.getValue().in(RotationsPerSecond);
+    inputs.connectedFollower = BaseStatusSignal.isAllGood(supplyCurrentFollower, tempFollower);
+    inputs.positionRads = position.getValue().in(Radians);
+    inputs.velocityRadsPerSec = velocity.getValue().in(RadiansPerSecond);
     inputs.appliedVoltage = appliedVoltage.getValue().in(Volts);
-    inputs.supplyCurrentAmps = supplyCurrent.getValue().in(Amps);
+    inputs.supplyCurrentMasterAmps = supplyCurrent.getValue().in(Amps);
+    inputs.supplyCurrentFollowerAmps = supplyCurrentFollower.getValue().in(Amps);
     inputs.torqueCurrentAmps = torqueCurrent.getValue().in(Amps);
-    inputs.tempCelsius = temp.getValue().in(Celsius);
+    inputs.tempMasterCelsius = temp.getValue().in(Celsius);
+    inputs.tempFollowerCelsius = tempFollower.getValue().in(Celsius);
   }
 
   @Override
   public void applyOutputs(FlywheelIOOutputs outputs) {
-    // Update PID gains if any have changed
-    if (outputs.kP != lastKp
-        || outputs.kD != lastKd
-        || outputs.kS != lastKs
-        || outputs.kV != lastKv) {
-      var slot1 = new Slot1Configs();
-      slot1.kP = outputs.kP;
-      slot1.kD = outputs.kD;
-      slot1.kS = outputs.kS;
-      slot1.kV = outputs.kV;
-      PhoenixUtil.tryUntilOk(5, () -> talon.getConfigurator().apply(slot1));
-      lastKp = outputs.kP;
-      lastKd = outputs.kD;
-      lastKs = outputs.kS;
-      lastKv = outputs.kV;
+    if (outputs.voltageKP != lastVoltageKP
+        || outputs.voltageKD != lastVoltageKD
+        || outputs.voltageKS != lastVoltageKS
+        || outputs.voltageKV != lastVoltageKV) {
+      var slot0 = new Slot0Configs();
+      slot0.kP = outputs.voltageKP;
+      slot0.kD = outputs.voltageKD;
+      slot0.kS = outputs.voltageKS;
+      slot0.kV = outputs.voltageKV;
+      PhoenixUtil.tryUntilOk(5, () -> talon.getConfigurator().apply(slot0));
+      lastVoltageKP = outputs.voltageKP;
+      lastVoltageKD = outputs.voltageKD;
+      lastVoltageKS = outputs.voltageKS;
+      lastVoltageKV = outputs.voltageKV;
     }
 
-    if (outputs.controlMode == FlywheelIOOutputs.ControlMode.VOLTAGE) {
-      talon.setControl(voltageRequest.withOutput(outputs.appliedVolts));
-    } else if (outputs.controlMode == FlywheelIOOutputs.ControlMode.DUTY_CYCLE_BANG_BANG) {
-      double currentSpeed = velocity.getValue().in(RotationsPerSecond);
-      if (currentSpeed < outputs.velocityRps) {
-        talon.setControl(dutyCycleRequest.withOutput(1.0));
-      } else {
-        talon.setControl(dutyCycleRequest.withOutput(0.0));
-      }
-    } else {
-      talon.setControl(
-          request
-              .withVelocity(RotationsPerSecond.of(outputs.velocityRps))
-              .withFeedForward(outputs.feedForward));
+    if (outputs.torqueCurrentKP != lastTorqueCurrentKP
+        || outputs.torqueCurrentKD != lastTorqueCurrentKD
+        || outputs.torqueCurrentKS != lastTorqueCurrentKS
+        || outputs.torqueCurrentKV != lastTorqueCurrentKV) {
+      var slot1 = new Slot1Configs();
+      slot1.kP = outputs.torqueCurrentKP;
+      slot1.kD = outputs.torqueCurrentKD;
+      slot1.kS = outputs.torqueCurrentKS;
+      slot1.kV = outputs.torqueCurrentKV;
+      PhoenixUtil.tryUntilOk(5, () -> talon.getConfigurator().apply(slot1));
+      lastTorqueCurrentKP = outputs.torqueCurrentKP;
+      lastTorqueCurrentKD = outputs.torqueCurrentKD;
+      lastTorqueCurrentKS = outputs.torqueCurrentKS;
+      lastTorqueCurrentKV = outputs.torqueCurrentKV;
+    }
+
+    switch (outputs.mode) {
+      case VELOCITY_VOLTAGE ->
+          talon.setControl(
+              voltageRequest
+                  .withVelocity(RadiansPerSecond.of(outputs.velocityRadsPerSec))
+                  .withFeedForward(outputs.feedforward));
+      case VELOCITY_TORQUE_CURRENT ->
+          talon.setControl(
+              torqueCurrentRequest
+                  .withVelocity(RadiansPerSecond.of(outputs.velocityRadsPerSec))
+                  .withFeedForward(outputs.feedforward));
+      default -> talon.setControl(voltageRequest.withVelocity(0).withFeedForward(0));
     }
   }
 }

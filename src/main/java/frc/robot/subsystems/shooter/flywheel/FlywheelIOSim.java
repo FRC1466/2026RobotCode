@@ -7,7 +7,6 @@ import edu.wpi.first.math.MathUtil;
 import edu.wpi.first.math.controller.PIDController;
 import edu.wpi.first.math.system.plant.DCMotor;
 import edu.wpi.first.math.system.plant.LinearSystemId;
-import edu.wpi.first.math.util.Units;
 import edu.wpi.first.wpilibj.simulation.DCMotorSim;
 import frc.robot.Constants;
 
@@ -19,8 +18,8 @@ public class FlywheelIOSim implements FlywheelIO {
   private PIDController controller = new PIDController(0, 0, 0, Constants.loopPeriodSecs);
   private double appliedVolts = 0.0;
   private boolean closedLoop = false;
-  private double setpointRps = 0.0;
-  private double feedForward = 0.0;
+  private double setpointRadsPerSec = 0.0;
+  private double feedforward = 0.0;
 
   public FlywheelIOSim() {}
 
@@ -28,9 +27,7 @@ public class FlywheelIOSim implements FlywheelIO {
   public void updateInputs(FlywheelIOInputs inputs) {
     if (closedLoop) {
       appliedVolts =
-          controller.calculate(
-                  Units.radiansToRotations(sim.getAngularVelocityRadPerSec()), setpointRps)
-              + feedForward;
+          controller.calculate(sim.getAngularVelocityRadPerSec(), setpointRadsPerSec) + feedforward;
     }
 
     appliedVolts = MathUtil.clamp(appliedVolts, -12.0, 12.0);
@@ -39,37 +36,30 @@ public class FlywheelIOSim implements FlywheelIO {
     sim.setInputVoltage(appliedVolts);
     sim.update(Constants.loopPeriodSecs);
 
-    inputs.positionRotations = Units.radiansToRotations(sim.getAngularPositionRad());
-    inputs.velocityRps = Units.radiansToRotations(sim.getAngularVelocityRadPerSec());
+    inputs.connectedMaster = true;
+    inputs.connectedFollower = true;
+    inputs.positionRads = sim.getAngularPositionRad();
+    inputs.velocityRadsPerSec = sim.getAngularVelocityRadPerSec();
     inputs.appliedVoltage = appliedVolts;
-    inputs.supplyCurrentAmps = sim.getCurrentDrawAmps();
+    inputs.supplyCurrentMasterAmps = sim.getCurrentDrawAmps();
+    inputs.supplyCurrentFollowerAmps = 0.0;
     inputs.torqueCurrentAmps = sim.getCurrentDrawAmps();
-    inputs.tempCelsius = 0.0;
-    inputs.connected = true;
+    inputs.tempMasterCelsius = 0.0;
+    inputs.tempFollowerCelsius = 0.0;
   }
 
   @Override
   public void applyOutputs(FlywheelIOOutputs outputs) {
-    if (outputs.controlMode == FlywheelIOOutputs.ControlMode.VOLTAGE) {
-      closedLoop = false;
-      appliedVolts = outputs.appliedVolts;
-    } else if (outputs.controlMode == FlywheelIOOutputs.ControlMode.DUTY_CYCLE_BANG_BANG) {
-      closedLoop = false;
-      if (Units.radiansToRotations(sim.getAngularVelocityRadPerSec()) < outputs.velocityRps) {
-        appliedVolts = 12.0;
-      } else {
-        appliedVolts = 0.0;
-      }
-    } else {
+    if (outputs.mode == FlywheelIOOutputMode.VELOCITY_VOLTAGE
+        || outputs.mode == FlywheelIOOutputMode.VELOCITY_TORQUE_CURRENT) {
       closedLoop = true;
+      setpointRadsPerSec = outputs.velocityRadsPerSec;
+      feedforward = outputs.feedforward;
+      controller.setP(outputs.voltageKP);
+      controller.setD(outputs.voltageKD);
+    } else {
+      closedLoop = false;
+      appliedVolts = 0.0;
     }
-    setpointRps = outputs.velocityRps;
-    feedForward =
-        outputs.feedForward + (outputs.kS * Math.signum(setpointRps)) + (outputs.kV * setpointRps);
-    controller.setP(outputs.kP);
-    controller.setD(outputs.kD);
   }
-
-  @Override
-  public void setBrakeMode(boolean enableBrake) {}
 }

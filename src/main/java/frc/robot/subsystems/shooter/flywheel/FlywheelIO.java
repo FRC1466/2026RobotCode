@@ -8,35 +8,42 @@ import org.littletonrobotics.junction.AutoLog;
 public interface FlywheelIO {
   @AutoLog
   class FlywheelIOInputs {
-    public double positionRotations;
-    public double velocityRps;
+    public boolean connectedMaster;
+    public boolean connectedFollower;
+    public double supplyCurrentMasterAmps;
+    public double supplyCurrentFollowerAmps;
+    public double tempMasterCelsius;
+    public double tempFollowerCelsius;
+
+    public double positionRads;
+    public double velocityRadsPerSec;
     public double appliedVoltage;
-    public double supplyCurrentAmps;
     public double torqueCurrentAmps;
-    public double tempCelsius;
-    public boolean connected;
+  }
+
+  enum FlywheelIOOutputMode {
+    COAST,
+    VELOCITY_VOLTAGE,
+    VELOCITY_TORQUE_CURRENT
   }
 
   class FlywheelIOOutputs {
-    public enum ControlMode {
-      VELOCITY,
-      VOLTAGE,
-      DUTY_CYCLE_BANG_BANG
-    }
+    public FlywheelIOOutputMode mode = FlywheelIOOutputMode.COAST;
+    public double velocityRadsPerSec = 0.0;
+    public double feedforward = 0.0;
 
-    public ControlMode controlMode = ControlMode.VELOCITY;
-    public double velocityRps = 0.0;
-    public double feedForward = 0.0;
-    public double appliedVolts = 0.0;
-    public double kP = 0.0;
-    public double kD = 0.0;
-    public double kS = 0.0;
-    public double kV = 0.0;
+    public double voltageKP;
+    public double voltageKD;
+    public double voltageKS;
+    public double voltageKV;
+
+    public double torqueCurrentKP;
+    public double torqueCurrentKD;
+    public double torqueCurrentKS;
+    public double torqueCurrentKV;
   }
 
   default void updateInputs(FlywheelIOInputs inputs) {}
 
   default void applyOutputs(FlywheelIOOutputs outputs) {}
-
-  default void setBrakeMode(boolean enableBrake) {}
 }

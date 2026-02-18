@@ -3,215 +3,166 @@
 
 package frc.robot.subsystems.shooter.flywheel;
 
-import static edu.wpi.first.units.Units.Second;
-import static edu.wpi.first.units.Units.Volts;
-
-import com.ctre.phoenix6.SignalLogger;
 import edu.wpi.first.math.filter.Debouncer;
 import edu.wpi.first.wpilibj.Alert;
-import edu.wpi.first.wpilibj.DriverStation;
 import edu.wpi.first.wpilibj2.command.Command;
-import edu.wpi.first.wpilibj2.command.sysid.SysIdRoutine;
 import frc.robot.Constants;
 import frc.robot.Robot;
 import frc.robot.subsystems.shooter.ShotCalculator;
+import frc.robot.subsystems.shooter.flywheel.FlywheelIO.FlywheelIOOutputMode;
 import frc.robot.subsystems.shooter.flywheel.FlywheelIO.FlywheelIOOutputs;
 import frc.robot.util.FullSubsystem;
+import frc.robot.util.LoggedTracer;
 import frc.robot.util.LoggedTunableNumber;
-import java.util.function.BooleanSupplier;
 import java.util.function.DoubleSupplier;
 import lombok.Getter;
 import lombok.Setter;
+import lombok.experimental.Accessors;
+import org.littletonrobotics.junction.AutoLogOutput;
 import org.littletonrobotics.junction.Logger;
 
 public class Flywheel extends FullSubsystem {
+  public enum ControlMode {
+    VOLTAGE,
+    TORQUE_CURRENT
+  }
+
   private final FlywheelIO io;
   private final FlywheelIOInputsAutoLogged inputs = new FlywheelIOInputsAutoLogged();
   private final FlywheelIOOutputs outputs = new FlywheelIOOutputs();
 
   private final Debouncer motorConnectedDebouncer =
       new Debouncer(0.5, Debouncer.DebounceType.kFalling);
+  private final Debouncer motorFollowerConnectedDebouncer =
+      new Debouncer(0.5, Debouncer.DebounceType.kFalling);
   private final Alert disconnected;
-  private final SysIdRoutine sysId;
+  private final Alert followerDisconnected;
 
-  /**
-   * If true, force coast. Default to coast for safety and to reduce drag when the robot is
-   * disabled.
-   */
-  @Setter private BooleanSupplier coastOverride = () -> true;
+  private static final LoggedTunableNumber voltageKP =
+      new LoggedTunableNumber("Flywheel/Voltage/kP");
+  private static final LoggedTunableNumber voltageKD =
+      new LoggedTunableNumber("Flywheel/Voltage/kD");
+  private static final LoggedTunableNumber voltageKS =
+      new LoggedTunableNumber("Flywheel/Voltage/kS");
+  private static final LoggedTunableNumber voltageKV =
+      new LoggedTunableNumber("Flywheel/Voltage/kV");
 
-  @Getter @Setter private boolean useInternalBangBang = true;
-
-  private Debouncer atGoalDebouncer;
-  private Debouncer flywheelToleranceDebouncer;
-
-  private boolean wasWithinTolerance = false;
-  private long shotCount = 0;
-  private boolean atGoal = false;
-  private Boolean lastBrakeMode = null;
-
-  private static final LoggedTunableNumber flywheelTolerance =
-      new LoggedTunableNumber("Flywheel/Tolerance", 5);
-  private static final LoggedTunableNumber flywheelToleranceDebounce =
-      new LoggedTunableNumber("Flywheel/ToleranceDebounce", 0.025);
-  private static final LoggedTunableNumber atGoalDebounce =
-      new LoggedTunableNumber("Flywheel/AtGoalDebounce", 0.2);
-
-  public static final LoggedTunableNumber kS = new LoggedTunableNumber("Flywheel/kS");
-  public static final LoggedTunableNumber kV = new LoggedTunableNumber("Flywheel/kV");
-  public static final LoggedTunableNumber kA = new LoggedTunableNumber("Flywheel/kA");
-  public static final LoggedTunableNumber kP = new LoggedTunableNumber("Flywheel/kP");
-  public static final LoggedTunableNumber kD = new LoggedTunableNumber("Flywheel/kD");
+  private static final LoggedTunableNumber torqueCurrentKP =
+      new LoggedTunableNumber("Flywheel/TorqueCurrent/kP");
+  private static final LoggedTunableNumber torqueCurrentKD =
+      new LoggedTunableNumber("Flywheel/TorqueCurrent/kD");
+  private static final LoggedTunableNumber torqueCurrentKS =
+      new LoggedTunableNumber("Flywheel/TorqueCurrent/kS");
+  private static final LoggedTunableNumber torqueCurrentKV =
+      new LoggedTunableNumber("Flywheel/TorqueCurrent/kV");
 
   static {
     switch (Constants.getMode()) {
       case REAL, REPLAY -> {
-        kS.initDefault(0.23013);
-        kV.initDefault(0.12021);
-        kA.initDefault(0.0082275);
-        kP.initDefault(0.1);
-        kD.initDefault(0.0);
+        voltageKP.initDefault(0.1);
+        voltageKD.initDefault(0.0);
+        voltageKS.initDefault(0.23013);
+        voltageKV.initDefault(0.12021);
+
+        torqueCurrentKP.initDefault(0.1);
+        torqueCurrentKD.initDefault(0.0);
+        torqueCurrentKS.initDefault(0.0);
+        torqueCurrentKV.initDefault(0.0);
       }
       case SIM -> {
-        kS.initDefault(0.0);
-        kV.initDefault(0.0);
-        kP.initDefault(12.0);
-        kD.initDefault(0.0);
+        voltageKP.initDefault(0.1);
+        voltageKD.initDefault(0.0);
+        voltageKS.initDefault(0.23013);
+        voltageKV.initDefault(0.12021);
       }
     }
   }
+
+  @Getter
+  @Setter
+  @AutoLogOutput(key = "Flywheel/ControlMode")
+  private ControlMode controlMode = ControlMode.VOLTAGE;
+
+  @Getter
+  @Accessors(fluent = true)
+  @AutoLogOutput(key = "Flywheel/AtGoal")
+  private boolean atGoal = false;
 
   public Flywheel(FlywheelIO io) {
     this.io = io;
 
     disconnected = new Alert("Flywheel motor disconnected!", Alert.AlertType.kWarning);
-
-    // Configure SysId with slower ramp rates for flywheel (default is 1 V/s quasistatic, 7 V/s
-    // dynamic)
-    sysId =
-        new SysIdRoutine(
-            new SysIdRoutine.Config(
-                Volts.of(0.5).per(Second), // Slower ramp rate: 0.5 V/s for quasistatic
-                Volts.of(4), // Lower step voltage: 4V for dynamic tests
-                Second.of(10), // 10 second timeout per test
-                (state) -> SignalLogger.writeString("SysIdTestState", state.toString())),
-            new SysIdRoutine.Mechanism((voltage) -> runVolts(voltage.in(Volts)), null, this));
-
-    atGoalDebouncer = new Debouncer(atGoalDebounce.get(), Debouncer.DebounceType.kFalling);
-    flywheelToleranceDebouncer =
-        new Debouncer(flywheelToleranceDebounce.get(), Debouncer.DebounceType.kFalling);
-
-    // Initialize PID values
-    outputs.kP = kP.get();
-    outputs.kD = kD.get();
-    outputs.kS = kS.get();
-    outputs.kV = kV.get();
-  }
-
-  public boolean isAtGoal() {
-    return atGoal;
+    followerDisconnected =
+        new Alert("Flywheel follower motor disconnected!", Alert.AlertType.kWarning);
   }
 
   public void periodic() {
     io.updateInputs(inputs);
     Logger.processInputs("Flywheel", inputs);
 
-    if (flywheelToleranceDebounce.hasChanged(hashCode())) {
-      flywheelToleranceDebouncer =
-          new Debouncer(flywheelToleranceDebounce.get(), Debouncer.DebounceType.kFalling);
-    }
-    if (atGoalDebounce.hasChanged(hashCode())) {
-      atGoalDebouncer = new Debouncer(atGoalDebounce.get(), Debouncer.DebounceType.kFalling);
-    }
+    outputs.voltageKP = voltageKP.get();
+    outputs.voltageKD = voltageKD.get();
+    outputs.voltageKS = voltageKS.get();
+    outputs.voltageKV = voltageKV.get();
 
-    if (kP.hasChanged(hashCode())
-        || kD.hasChanged(hashCode())
-        || kS.hasChanged(hashCode())
-        || kV.hasChanged(hashCode())) {
-      outputs.kP = kP.get();
-      outputs.kD = kD.get();
-      outputs.kS = kS.get();
-      outputs.kV = kV.get();
-    }
-
-    if (DriverStation.isDisabled()) {
-      stop();
-    }
-
-    // Brake/coast is configured separately from the control mode.
-    boolean shouldBrake = !(DriverStation.isDisabled() || coastOverride.getAsBoolean());
-    if (lastBrakeMode == null || lastBrakeMode != shouldBrake) {
-      io.setBrakeMode(shouldBrake);
-      lastBrakeMode = shouldBrake;
-    }
+    outputs.torqueCurrentKP = torqueCurrentKP.get();
+    outputs.torqueCurrentKD = torqueCurrentKD.get();
+    outputs.torqueCurrentKS = torqueCurrentKS.get();
+    outputs.torqueCurrentKV = torqueCurrentKV.get();
 
     disconnected.set(
-        Robot.showHardwareAlerts() && !motorConnectedDebouncer.calculate(inputs.connected));
+        Robot.showHardwareAlerts() && !motorConnectedDebouncer.calculate(inputs.connectedMaster));
+    followerDisconnected.set(
+        Robot.showHardwareAlerts()
+            && !motorFollowerConnectedDebouncer.calculate(inputs.connectedFollower));
 
-    Logger.recordOutput("Flywheel/AtGoal", atGoal);
-    Logger.recordOutput("Flywheel/ShotCount", shotCount);
-    Logger.recordOutput("Flywheel/ControlMode", outputs.controlMode);
-    Logger.recordOutput("Flywheel/Setpoint", outputs.velocityRps);
-    Logger.recordOutput("Flywheel/CurrentVelocity", inputs.velocityRps);
+    LoggedTracer.record("Flywheel/Periodic");
   }
 
   @Override
   public void periodicAfterScheduler() {
+    Logger.recordOutput("Flywheel/Mode", outputs.mode);
     io.applyOutputs(outputs);
+
+    LoggedTracer.record("Flywheel/AfterScheduler");
   }
 
   /** Run closed loop at the specified velocity. */
-  public void runVelocity(double velocityRps) {
-    outputs.velocityRps = velocityRps;
-    outputs.feedForward = 0.0;
-
-    // Calculate at-goal / shot-counting
-    boolean inTolerance = Math.abs(inputs.velocityRps - velocityRps) <= flywheelTolerance.get();
-
-    // De-bounce
-    boolean isWithinTolerance = flywheelToleranceDebouncer.calculate(inTolerance);
-    atGoal = atGoalDebouncer.calculate(inTolerance);
-
-    // Shot counting (falling edge of isWithinTolerance/inTolerance effectively)
-    if (!isWithinTolerance && wasWithinTolerance) {
-      shotCount++;
-    }
-    wasWithinTolerance = isWithinTolerance;
-
-    // Control Mode Selection
-    if (useInternalBangBang) {
-      if (isWithinTolerance) {
-        // When within tolerance (stable), use Velocity control to hold speed smoothly
-        outputs.controlMode = FlywheelIO.FlywheelIOOutputs.ControlMode.VELOCITY;
-      } else {
-        // When outside tolerance (spin up or recovery), use aggressive Bang-Bang
-        outputs.controlMode = FlywheelIO.FlywheelIOOutputs.ControlMode.DUTY_CYCLE_BANG_BANG;
+  public void runVelocity(double velocityRadsPerSec) {
+    double kS;
+    double kV;
+    switch (controlMode) {
+      case VOLTAGE -> {
+        outputs.mode = FlywheelIOOutputMode.VELOCITY_VOLTAGE;
+        kS = voltageKS.get();
+        kV = voltageKV.get();
       }
-    } else {
-      outputs.controlMode = FlywheelIO.FlywheelIOOutputs.ControlMode.VELOCITY;
+      case TORQUE_CURRENT -> {
+        outputs.mode = FlywheelIOOutputMode.VELOCITY_TORQUE_CURRENT;
+        kS = torqueCurrentKS.get();
+        kV = torqueCurrentKV.get();
+      }
+      default -> {
+        outputs.mode = FlywheelIOOutputMode.VELOCITY_VOLTAGE;
+        kS = voltageKS.get();
+        kV = voltageKV.get();
+      }
     }
-
-    // Log flywheel setpoint
-    Logger.recordOutput("Flywheel/Setpoint", outputs.velocityRps);
+    outputs.velocityRadsPerSec = velocityRadsPerSec;
+    outputs.feedforward = Math.signum(velocityRadsPerSec) * kS + velocityRadsPerSec * kV;
+    Logger.recordOutput("Flywheel/Setpoint", velocityRadsPerSec);
   }
 
   /** Stops the flywheel. */
   public void stop() {
-    outputs.controlMode = FlywheelIO.FlywheelIOOutputs.ControlMode.VOLTAGE;
-    outputs.appliedVolts = 0.0;
-    outputs.velocityRps = 0.0;
+    outputs.mode = FlywheelIOOutputMode.COAST;
+    outputs.velocityRadsPerSec = 0.0;
     atGoal = false;
   }
 
-  /** Run open loop at the specified voltage. */
-  public void runVolts(double volts) {
-    outputs.controlMode = FlywheelIO.FlywheelIOOutputs.ControlMode.VOLTAGE;
-    outputs.appliedVolts = volts;
-  }
-
-  /** Returns the current velocity in RPS. */
+  /** Returns the current velocity in RPM. */
   public double getVelocity() {
-    return inputs.velocityRps;
+    return inputs.velocityRadsPerSec;
   }
 
   public Command runTrackTargetCommand() {
@@ -226,13 +177,5 @@ public class Flywheel extends FullSubsystem {
 
   public Command stopCommand() {
     return runOnce(this::stop);
-  }
-
-  public Command runSysIdQuasistatic(SysIdRoutine.Direction direction) {
-    return sysId.quasistatic(direction);
-  }
-
-  public Command runSysIdDynamic(SysIdRoutine.Direction direction) {
-    return sysId.dynamic(direction);
   }
 }

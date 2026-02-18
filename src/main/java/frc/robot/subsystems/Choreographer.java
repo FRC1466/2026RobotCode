@@ -107,10 +107,10 @@ public class Choreographer extends SubsystemBase {
       return;
     }
 
-    flywheel.runVelocity(cachedShotParams.flywheelSpeed());
-    hood.setGoalAngleDeg(Units.radiansToDegrees(cachedShotParams.hoodAngle()));
+    flywheel.runTrackTargetCommand();
+    hood.runTrackTargetCommand();
 
-    boolean flywheelReady = flywheel.isAtGoal();
+    boolean flywheelReady = flywheel.atGoal();
     boolean hoodReady = hood.isAtGoal();
     boolean driveAligned = isDriveAligned();
 
@@ -144,7 +144,7 @@ public class Choreographer extends SubsystemBase {
   private boolean isDriveAligned() {
     if (cachedShotParams == null || !cachedShotParams.isValid()) return false;
     double headingErrorRad =
-        Math.abs(drive.getRotation().minus(cachedShotParams.goalHeading()).getRadians());
+        Math.abs(drive.getRotation().minus(cachedShotParams.driveAngle()).getRadians());
     return headingErrorRad < Units.degreesToRadians(driveAlignedToleranceDeg.get())
         && Math.abs(drive.getChassisSpeeds().omegaRadiansPerSecond)
             < driveAlignedOmegaTolerance.get();
@@ -156,7 +156,7 @@ public class Choreographer extends SubsystemBase {
 
   /** Returns target heading for drive to track, or current heading if no valid shot. */
   public Rotation2d getTargetHeading() {
-    return hasShotParams() ? cachedShotParams.goalHeading() : drive.getRotation();
+    return hasShotParams() ? cachedShotParams.driveAngle() : drive.getRotation();
   }
 
   public Command setGoalCommand(Goal goal) {
@@ -169,14 +169,13 @@ public class Choreographer extends SubsystemBase {
   }
 
   public void setCoastOverride(BooleanSupplier shouldCoast) {
-    flywheel.setCoastOverride(shouldCoast);
     hood.setCoastOverride(shouldCoast);
     spindexer.setCoastOverride(shouldCoast);
     kicker.setCoastOverride(shouldCoast);
   }
 
   private void logOutputs() {
-    Logger.recordOutput("Choreographer/FlywheelReady", flywheel.isAtGoal());
+    Logger.recordOutput("Choreographer/FlywheelReady", flywheel.atGoal());
     Logger.recordOutput("Choreographer/HoodReady", hood.isAtGoal());
     Logger.recordOutput("Choreographer/DriveAligned", isDriveAligned());
     Logger.recordOutput("Choreographer/SpindexerRunning", spindexer.isRunning());
