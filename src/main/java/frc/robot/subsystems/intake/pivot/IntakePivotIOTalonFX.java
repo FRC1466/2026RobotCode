@@ -1,7 +1,7 @@
 // Copyright (c) 2025-2026 Webb Robotics
 // http://github.com/FRC1466
 
-package frc.robot.subsystems.shooter.hood;
+package frc.robot.subsystems.intake.pivot;
 
 import static edu.wpi.first.units.Units.*;
 
@@ -18,7 +18,10 @@ import com.ctre.phoenix6.signals.NeutralModeValue;
 import edu.wpi.first.units.measure.*;
 import frc.robot.util.PhoenixUtil;
 
-public class HoodIOTalonFX implements HoodIO {
+public class IntakePivotIOTalonFX implements IntakePivotIO {
+  // TODO: Move CAN ID into constants.
+  private static final int motorId = 21;
+
   private final TalonFX talon;
   private final StatusSignal<Angle> position;
   private final StatusSignal<AngularVelocity> velocity;
@@ -28,42 +31,29 @@ public class HoodIOTalonFX implements HoodIO {
   private final StatusSignal<Temperature> temp;
 
   private final MotionMagicVoltage request = new MotionMagicVoltage(0).withSlot(0);
+  private final MotionMagicConfigs motionMagicConfigs =
+      new MotionMagicConfigs().withMotionMagicAcceleration(120).withMotionMagicCruiseVelocity(120);
   private final VoltageOut voltageRequest = new VoltageOut(0);
 
   private double lastKp = 0.0;
   private double lastKd = 0.0;
-  private double lastKs = 0.0;
-  private double lastKv = 0.0;
-  private double lastCruiseVelocity = 0.0;
-  private double lastAcceleration = 0.0;
 
-  public HoodIOTalonFX() {
-    talon = new TalonFX(42);
+  public IntakePivotIOTalonFX() {
+    talon = new TalonFX(motorId);
 
     var config = new TalonFXConfiguration();
     config.CurrentLimits.SupplyCurrentLimit = 40.0;
     config.CurrentLimits.SupplyCurrentLimitEnable = true;
-    config.MotorOutput.Inverted = InvertedValue.Clockwise_Positive;
+    config.MotorOutput.Inverted = InvertedValue.CounterClockwise_Positive;
     config.MotorOutput.NeutralMode = NeutralModeValue.Brake;
 
-    // Configured for 8:1 reduction first stage, then 10:190 output stage
-    // Total reduction: 8 * (190 / 10) = 152
-    config.Feedback.SensorToMechanismRatio = 152.0;
+    // TODO: Set correct gear ratio for intake pivot.
+    config.Feedback.SensorToMechanismRatio = 1.0;
 
     config.Slot0.kP = 0.0;
     config.Slot0.kD = 0.0;
-    config.Slot0.kS = 0.0;
-    config.Slot0.kV = 0.0;
-    config.Slot0.kA = 0.0;
 
-    // Motion Magic profile constraints (in mechanism rotations per second)
-    config.MotionMagic.MotionMagicCruiseVelocity = 2.0;
-    config.MotionMagic.MotionMagicAcceleration = 4.0;
-    config.MotionMagic.MotionMagicJerk = 0.0;
-
-    // Configured for Motion Magic
-    config.MotionMagic.MotionMagicAcceleration = 120;
-    config.MotionMagic.MotionMagicCruiseVelocity = 120;
+    config.MotionMagic = motionMagicConfigs;
 
     PhoenixUtil.tryUntilOk(5, () -> talon.getConfigurator().apply(config));
 
@@ -80,12 +70,10 @@ public class HoodIOTalonFX implements HoodIO {
             BaseStatusSignal.setUpdateFrequencyForAll(
                 50.0, position, velocity, appliedVoltage, supplyCurrent, torqueCurrent, temp));
     PhoenixUtil.tryUntilOk(5, () -> talon.optimizeBusUtilization());
-
-    PhoenixUtil.tryUntilOk(5, () -> talon.setPosition(0.0));
   }
 
   @Override
-  public void updateInputs(HoodIOInputs inputs) {
+  public void updateInputs(IntakePivotIOInputs inputs) {
     BaseStatusSignal.refreshAll(
         position, velocity, appliedVoltage, supplyCurrent, torqueCurrent, temp);
     inputs.motorConnected =
@@ -105,38 +93,20 @@ public class HoodIOTalonFX implements HoodIO {
   }
 
   @Override
-  public void applyOutputs(HoodIOOutputs outputs) {
-    if (outputs.mode == HoodIOOutputMode.OPEN_LOOP) {
+  public void applyOutputs(IntakePivotIOOutputs outputs) {
+    if (outputs.mode == IntakePivotIOOutputMode.OPEN_LOOP) {
       talon.setControl(voltageRequest.withOutput(outputs.volts));
-    } else if (outputs.mode == HoodIOOutputMode.CLOSED_LOOP) {
-      if (outputs.kP != lastKp
-          || outputs.kD != lastKd
-          || outputs.kS != lastKs
-          || outputs.kV != lastKv) {
+    } else if (outputs.mode == IntakePivotIOOutputMode.CLOSED_LOOP) {
+      if (outputs.kP != lastKp || outputs.kD != lastKd) {
         var slot0 = new Slot0Configs();
         slot0.kP = outputs.kP;
         slot0.kD = outputs.kD;
-        slot0.kS = outputs.kS;
-        slot0.kV = outputs.kV;
 
         PhoenixUtil.tryUntilOk(5, () -> talon.getConfigurator().apply(slot0));
         lastKp = outputs.kP;
         lastKd = outputs.kD;
-        lastKs = outputs.kS;
-        lastKv = outputs.kV;
       }
-      if (outputs.cruiseVelocity != lastCruiseVelocity
-          || outputs.acceleration != lastAcceleration) {
-        var mmConfigs = new MotionMagicConfigs();
-        mmConfigs.MotionMagicCruiseVelocity = outputs.cruiseVelocity;
-        mmConfigs.MotionMagicAcceleration = outputs.acceleration;
-
-        PhoenixUtil.tryUntilOk(5, () -> talon.getConfigurator().apply(mmConfigs));
-        lastCruiseVelocity = outputs.cruiseVelocity;
-        lastAcceleration = outputs.acceleration;
-      }
-
-      talon.setControl(request.withPosition(Radians.of(outputs.positionRad)));
+      talon.setControl(request.withPosition(Rotations.of(outputs.positionRad / (2 * Math.PI))));
     }
   }
 }

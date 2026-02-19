@@ -22,8 +22,8 @@ import frc.robot.util.PhoenixUtil;
 
 public class FlywheelIOTalonFX implements FlywheelIO {
   // TODO: Move CAN IDs into constants.
-  private static final int leaderId = 18;
-  private static final int followerId = 19;
+  private static final int leaderId = 40;
+  private static final int followerId = 41;
 
   private final TalonFX talon;
   private final TalonFX talonFollower;

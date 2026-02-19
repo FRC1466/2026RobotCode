@@ -1,7 +1,7 @@
 // Copyright (c) 2025-2026 Webb Robotics
 // http://github.com/FRC1466
 
-package frc.robot.subsystems.spindexer;
+package frc.robot.subsystems.intake.rollers;
 
 import static edu.wpi.first.units.Units.*;
 
@@ -15,9 +15,9 @@ import com.ctre.phoenix6.signals.NeutralModeValue;
 import edu.wpi.first.units.measure.*;
 import frc.robot.util.PhoenixUtil;
 
-public class SpindexerIOTalonFX implements SpindexerIO {
+public class IntakeRollersIOTalonFX implements IntakeRollersIO {
   // TODO: Move CAN ID into constants.
-  private static final int motorId = 30;
+  private static final int motorId = 20;
 
   private final TalonFX talon;
   private final StatusSignal<AngularVelocity> velocity;
@@ -28,11 +28,11 @@ public class SpindexerIOTalonFX implements SpindexerIO {
 
   private final VoltageOut voltageRequest = new VoltageOut(0);
 
-  public SpindexerIOTalonFX() {
+  public IntakeRollersIOTalonFX() {
     talon = new TalonFX(motorId);
 
     var config = new TalonFXConfiguration();
-    config.MotorOutput.Inverted = InvertedValue.CounterClockwise_Positive;
+    config.MotorOutput.Inverted = InvertedValue.Clockwise_Positive;
     config.MotorOutput.NeutralMode = NeutralModeValue.Brake;
     config.CurrentLimits.SupplyCurrentLimitEnable = true;
     config.CurrentLimits.SupplyCurrentLimit = 40.0;
@@ -59,7 +59,7 @@ public class SpindexerIOTalonFX implements SpindexerIO {
   }
 
   @Override
-  public void updateInputs(SpindexerIOInputs inputs) {
+  public void updateInputs(IntakeRollersIOInputs inputs) {
     BaseStatusSignal.refreshAll(velocity, appliedVoltage, supplyCurrent, torqueCurrent, temp);
     inputs.connected =
         BaseStatusSignal.isAllGood(velocity, appliedVoltage, supplyCurrent, torqueCurrent, temp);
@@ -71,7 +71,7 @@ public class SpindexerIOTalonFX implements SpindexerIO {
   }
 
   @Override
-  public void applyOutputs(SpindexerIOOutputs outputs) {
+  public void applyOutputs(IntakeRollersIOOutputs outputs) {
     talon.setControl(voltageRequest.withOutput(outputs.appliedVolts));
   }
 }

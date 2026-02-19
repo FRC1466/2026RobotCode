@@ -27,6 +27,12 @@ import frc.robot.subsystems.drive.ModuleIO;
 import frc.robot.subsystems.drive.ModuleIOSim;
 import frc.robot.subsystems.drive.ModuleIOTalonFX;
 import frc.robot.subsystems.intake.Intake;
+import frc.robot.subsystems.intake.pivot.IntakePivotIO;
+import frc.robot.subsystems.intake.pivot.IntakePivotIOSim;
+import frc.robot.subsystems.intake.pivot.IntakePivotIOTalonFX;
+import frc.robot.subsystems.intake.rollers.IntakeRollersIO;
+import frc.robot.subsystems.intake.rollers.IntakeRollersIOSim;
+import frc.robot.subsystems.intake.rollers.IntakeRollersIOTalonFX;
 import frc.robot.subsystems.kicker.Kicker;
 import frc.robot.subsystems.kicker.KickerIO;
 import frc.robot.subsystems.kicker.KickerIOSim;
@@ -51,6 +57,7 @@ import frc.robot.util.HubShiftUtil;
 import frc.robot.util.TriggerUtil;
 import java.util.function.DoubleSupplier;
 import lombok.experimental.ExtensionMethod;
+import org.littletonrobotics.junction.Logger;
 import org.littletonrobotics.junction.networktables.LoggedDashboardChooser;
 
 /**
@@ -114,7 +121,7 @@ public class RobotContainer {
               new ModuleIOTalonFX(TunerConstants.BackRight));*/
           flywheel = new Flywheel(new FlywheelIOTalonFX());
           hood = new Hood(new HoodIOTalonFX());
-          intake = new Intake();
+          intake = new Intake(new IntakePivotIOTalonFX(), new IntakeRollersIOTalonFX());
           break;
         }
         case SIMBOT -> {
@@ -129,6 +136,7 @@ public class RobotContainer {
           hood = new Hood(new HoodIOSim());
           spindexer = new Spindexer(new SpindexerIOSim());
           kicker = new Kicker(new KickerIOSim());
+          intake = new Intake(new IntakePivotIOSim(), new IntakeRollersIOSim());
           break;
         }
       }
@@ -158,6 +166,9 @@ public class RobotContainer {
     }
     if (kicker == null) {
       kicker = new Kicker(new KickerIO() {});
+    }
+    if (intake == null) {
+      intake = new Intake(new IntakePivotIO() {}, new IntakeRollersIO() {});
     }
 
     // Instantiate Choreographer
@@ -221,10 +232,8 @@ public class RobotContainer {
         .whileTrue(
             Commands.run(
                     () -> {
-                      org.littletonrobotics.junction.Logger.recordOutput(
-                          "Debug/FlywheelTargetSpeed", targetSpeed[0]);
-                      org.littletonrobotics.junction.Logger.recordOutput(
-                          "Debug/HoodTargetAngle", targetHoodAngle[0]);
+                      Logger.recordOutput("Debug/FlywheelTargetSpeed", targetSpeed[0]);
+                      Logger.recordOutput("Debug/HoodTargetAngle", targetHoodAngle[0]);
                     })
                 .withName("TuningLogger"));
 
@@ -288,8 +297,7 @@ public class RobotContainer {
     // Y Button: Move hood to target angle (hold)
     controller
         .y()
-        .whileTrue(
-            hood.runFixedCommand(() -> targetHoodAngle[0]).withName("HoodToTargetAngle"));
+        .whileTrue(hood.runFixedCommand(() -> targetHoodAngle[0]).withName("HoodToTargetAngle"));
 
     // --- Intake Controls ---
 
@@ -297,16 +305,14 @@ public class RobotContainer {
     controller
         .a()
         .and(controller.a().doublePress().negate())
-        .whileTrue(
-            Commands.run(() -> intake.setVoltage(6.0), intake).withName("Intake 6V"))
+        .whileTrue(Commands.run(() -> intake.setVoltage(6.0), intake).withName("Intake 6V"))
         .onFalse(Commands.runOnce(() -> intake.stop(), intake).withName("Intake off"));
 
     // A Button (double press): Intake at full voltage (hold)
     controller
         .a()
         .doublePress()
-        .whileTrue(
-            Commands.run(() -> intake.setVoltage(12.0), intake).withName("Intake 12V"))
+        .whileTrue(Commands.run(() -> intake.setVoltage(12.0), intake).withName("Intake 12V"))
         .onFalse(Commands.runOnce(() -> intake.stop(), intake).withName("Intake off"));
 
     // --- Utility Controls ---
