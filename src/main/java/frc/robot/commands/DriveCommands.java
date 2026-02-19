@@ -219,25 +219,28 @@ public class DriveCommands {
 
           // Calculate max linear velocity magnitude based on the max polar velocity around the hub
           double maxLinearVelocityMagnitude = Double.POSITIVE_INFINITY;
-          double robotAngle =
-              Math.abs(
-                  AllianceFlipUtil.apply(FieldConstants.Hub.topCenterPoint.toTranslation2d())
-                      .minus(RobotState.getInstance().getEstimatedPose().getTranslation())
-                      .getAngle()
-                      .minus(fieldRelativeLinearVelocity.getAngle())
-                      .getRadians());
-          double robotHubDistance = parameters.distanceNoLookahead();
-          double hubAngle =
-              LAUNCH_MAX_POLAR_VEL.get()
-                  * ShotCalculator.getInstance().getNaiveTOF(robotHubDistance);
-          double lookaheadAngle = Math.PI - robotAngle - hubAngle;
+          if (!parameters.passing()) {
+            double robotAngle =
+                Math.abs(
+                    AllianceFlipUtil.apply(FieldConstants.Hub.topCenterPoint.toTranslation2d())
+                        .minus(RobotState.getInstance().getEstimatedPose().getTranslation())
+                        .getAngle()
+                        .minus(fieldRelativeLinearVelocity.getAngle())
+                        .getRadians());
+            double robotHubDistance = parameters.distanceNoLookahead();
+            double hubAngle =
+                LAUNCH_MAX_POLAR_VEL.get()
+                    * ShotCalculator.getInstance().getNaiveTOF(robotHubDistance);
+            double lookaheadAngle = Math.PI - robotAngle - hubAngle;
 
-          // Calculate limit if triangle is valid (otherwise no limit)
-          if (lookaheadAngle > 0) {
-            double robotLookaheadDistance =
-                robotHubDistance * Math.sin(hubAngle) / Math.sin(lookaheadAngle);
-            maxLinearVelocityMagnitude =
-                robotLookaheadDistance / ShotCalculator.getInstance().getNaiveTOF(robotHubDistance);
+            // Calculate limit if triangle is valid (otherwise no limit)
+            if (lookaheadAngle > 0) {
+              double robotLookaheadDistance =
+                  robotHubDistance * Math.sin(hubAngle) / Math.sin(lookaheadAngle);
+              maxLinearVelocityMagnitude =
+                  robotLookaheadDistance
+                      / ShotCalculator.getInstance().getNaiveTOF(robotHubDistance);
+            }
           }
 
           // Apply limit to velocity

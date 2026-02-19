@@ -7,7 +7,9 @@ import edu.wpi.first.math.geometry.Rotation2d;
 import edu.wpi.first.math.util.Units;
 import edu.wpi.first.wpilibj2.command.Command;
 import edu.wpi.first.wpilibj2.command.SubsystemBase;
+import frc.robot.commands.DriveCommands;
 import frc.robot.subsystems.drive.Drive;
+import frc.robot.subsystems.intake.Intake;
 import frc.robot.subsystems.kicker.Kicker;
 import frc.robot.subsystems.shooter.ShotCalculator;
 import frc.robot.subsystems.shooter.ShotCalculator.ShootingParameters;
@@ -22,7 +24,6 @@ import org.littletonrobotics.junction.Logger;
 
 public class Choreographer extends SubsystemBase {
 
-  /** High-level operator intention. */
   public enum Goal {
     IDLE,
     INTAKE,
@@ -31,7 +32,6 @@ public class Choreographer extends SubsystemBase {
     CLIMB_RETRACT
   }
 
-  /** Observed robot state derived from sensor feedback. */
   public enum State {
     IDLE,
     INTAKING,
@@ -60,16 +60,23 @@ public class Choreographer extends SubsystemBase {
   private final Hood hood;
   private final Spindexer spindexer;
   private final Kicker kicker;
+  private final Intake intake;
 
   private ShootingParameters cachedShotParams = null;
 
   public Choreographer(
-      Drive drive, Flywheel flywheel, Hood hood, Spindexer spindexer, Kicker kicker) {
+      Drive drive,
+      Flywheel flywheel,
+      Hood hood,
+      Spindexer spindexer,
+      Kicker kicker,
+      Intake intake) {
     this.drive = drive;
     this.flywheel = flywheel;
     this.hood = hood;
     this.spindexer = spindexer;
     this.kicker = kicker;
+    this.intake = intake;
   }
 
   @Override
@@ -97,10 +104,17 @@ public class Choreographer extends SubsystemBase {
     hood.stow();
     spindexer.stop();
     kicker.stop();
+
+    intake.deploy();
+    intake.run();
+
     currentState = State.INTAKING;
   }
 
   private void handleScoreHub() {
+    intake.stow();
+    intake.stop();
+
     if (cachedShotParams == null || !cachedShotParams.isValid()) {
       stopAll();
       currentState = State.SPINNING_UP;
@@ -112,7 +126,7 @@ public class Choreographer extends SubsystemBase {
 
     boolean flywheelReady = flywheel.atGoal();
     boolean hoodReady = hood.isAtGoal();
-    boolean driveAligned = isDriveAligned();
+    boolean driveAligned = DriveCommands.atLaunchGoal();
 
     if (flywheelReady && hoodReady && driveAligned) {
       spindexer.run();
@@ -139,22 +153,14 @@ public class Choreographer extends SubsystemBase {
     hood.stow();
     spindexer.stop();
     kicker.stop();
-  }
-
-  private boolean isDriveAligned() {
-    if (cachedShotParams == null || !cachedShotParams.isValid()) return false;
-    double headingErrorRad =
-        Math.abs(drive.getRotation().minus(cachedShotParams.driveAngle()).getRadians());
-    return headingErrorRad < Units.degreesToRadians(driveAlignedToleranceDeg.get())
-        && Math.abs(drive.getChassisSpeeds().omegaRadiansPerSecond)
-            < driveAlignedOmegaTolerance.get();
+    intake.stow();
+    intake.stop();
   }
 
   private boolean hasShotParams() {
     return cachedShotParams != null && cachedShotParams.isValid();
   }
 
-  /** Returns target heading for drive to track, or current heading if no valid shot. */
   public Rotation2d getTargetHeading() {
     return hasShotParams() ? cachedShotParams.driveAngle() : drive.getRotation();
   }
@@ -172,15 +178,19 @@ public class Choreographer extends SubsystemBase {
     hood.setCoastOverride(shouldCoast);
     spindexer.setCoastOverride(shouldCoast);
     kicker.setCoastOverride(shouldCoast);
+    intake.setPivotCoastOverride(shouldCoast);
+    intake.setRollersCoastOverride(shouldCoast);
   }
 
   private void logOutputs() {
     Logger.recordOutput("Choreographer/FlywheelReady", flywheel.atGoal());
     Logger.recordOutput("Choreographer/HoodReady", hood.isAtGoal());
-    Logger.recordOutput("Choreographer/DriveAligned", isDriveAligned());
+    Logger.recordOutput("Choreographer/DriveAligned", DriveCommands.atLaunchGoal());
     Logger.recordOutput("Choreographer/SpindexerRunning", spindexer.isRunning());
     Logger.recordOutput("Choreographer/SpindexerStalled", spindexer.isStalled());
     Logger.recordOutput("Choreographer/KickerRunning", kicker.isRunning());
+    Logger.recordOutput("Choreographer/IntakeRunning", intake.isRunning());
     Logger.recordOutput("Choreographer/HasShotParams", hasShotParams());
+    Logger.recordOutput("Choreographer/Passing", hasShotParams() && cachedShotParams.passing());
   }
 }

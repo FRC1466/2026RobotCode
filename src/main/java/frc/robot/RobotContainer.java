@@ -172,7 +172,7 @@ public class RobotContainer {
     }
 
     // Instantiate Choreographer
-    // choreographer = new Choreographer(drive, flywheel, hood, spindexer, kicker);
+    // choreographer = new Choreographer(drive, flywheel, hood, spindexer, kicker, intake);
 
     // LoggedNetworkBoolean coastOverride =
     //     new LoggedNetworkBoolean("Choreographer/CoastOverride", false);
@@ -301,21 +301,18 @@ public class RobotContainer {
 
     // --- Intake Controls ---
 
-    // A Button (single press): Intake at set voltage (hold)
-    controller
-        .a()
-        .and(controller.a().doublePress().negate())
-        .whileTrue(Commands.run(() -> intake.setVoltage(6.0), intake).withName("Intake 6V"))
-        .onFalse(Commands.runOnce(() -> intake.stop(), intake).withName("Intake off"));
-
-    // A Button (double press): Intake at full voltage (hold)
-    controller
-        .a()
-        .doublePress()
-        .whileTrue(Commands.run(() -> intake.setVoltage(12.0), intake).withName("Intake 12V"))
-        .onFalse(Commands.runOnce(() -> intake.stop(), intake).withName("Intake off"));
+    // A Button (single press): Deploy pivot and run rollers (hold)
+    controller.a().whileTrue(intake.intakeCommand());
 
     // --- Utility Controls ---
+
+    // Right Bumper: Auto-aim at hub while driving (hold)
+    controller
+        .rightBumper()
+        .and(controller.leftBumper().negate())
+        .whileTrue(
+            DriveCommands.joystickDriveWhileLaunching(drive, leftY, leftX)
+                .withName("DriveWhileLaunching"));
 
     // B Button: Stop all shooter subsystems (flywheel + hood)
     controller
