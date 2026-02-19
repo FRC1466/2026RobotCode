@@ -4,7 +4,6 @@
 package frc.robot.subsystems;
 
 import edu.wpi.first.math.geometry.Rotation2d;
-import edu.wpi.first.math.util.Units;
 import edu.wpi.first.wpilibj2.command.Command;
 import edu.wpi.first.wpilibj2.command.SubsystemBase;
 import frc.robot.commands.DriveCommands;
@@ -16,7 +15,6 @@ import frc.robot.subsystems.shooter.ShotCalculator.ShootingParameters;
 import frc.robot.subsystems.shooter.flywheel.Flywheel;
 import frc.robot.subsystems.shooter.hood.Hood;
 import frc.robot.subsystems.spindexer.Spindexer;
-import frc.robot.util.LoggedTunableNumber;
 import java.util.function.BooleanSupplier;
 import lombok.Getter;
 import org.littletonrobotics.junction.AutoLogOutput;
@@ -41,11 +39,6 @@ public class Choreographer extends SubsystemBase {
     CLIMB_EXTENDING,
     CLIMB_RETRACTING
   }
-
-  private static final LoggedTunableNumber driveAlignedToleranceDeg =
-      new LoggedTunableNumber("Choreographer/DriveAlignedToleranceDeg", 3.0);
-  private static final LoggedTunableNumber driveAlignedOmegaTolerance =
-      new LoggedTunableNumber("Choreographer/DriveAlignedOmegaTolerance", 0.5);
 
   @Getter
   @AutoLogOutput(key = "Choreographer/Goal")

@@ -48,13 +48,13 @@ public class DriveCommands {
   private static final double WHEEL_RADIUS_RAMP_RATE = 0.05; // Rad/Sec^2
 
   private static final LoggedTunableNumber LAUNCH_KP =
-      new LoggedTunableNumber("DriveCommands/Launching/kP", 8.0);
+      new LoggedTunableNumber("DriveCommands/Launching/kP", 4.0);
   private static final LoggedTunableNumber LAUNCH_KD =
-      new LoggedTunableNumber("DriveCommands/Launching/kD", 0.5);
+      new LoggedTunableNumber("DriveCommands/Launching/kD", 0.2);
   private static final LoggedTunableNumber LAUNCH_TOLERANCE_DEG =
       new LoggedTunableNumber("DriveCommands/Launching/ToleranceDeg", 10.0);
   private static final LoggedTunableNumber LAUNCH_MAX_POLAR_VEL =
-      new LoggedTunableNumber("DriveCommands/Launching/MaxPolarVelocityRadPerSec", 0.25);
+      new LoggedTunableNumber("DriveCommands/Launching/MaxPolarVelocityRadPerSec", 0.5);
 
   private DriveCommands() {}
 
