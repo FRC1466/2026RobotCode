@@ -23,9 +23,9 @@ import org.littletonrobotics.junction.Logger;
 
 public class IntakePivot extends FullSubsystem {
   private static final double stowAngleDeg = 0.1;
-  private static final double deployAngleDeg = 110.0;
+  private static final double deployAngleDeg = 105.0;
   private static final double minAngleDeg = 0.0;
-  private static final double maxAngleDeg = 120.0;
+  private static final double maxAngleDeg = 110.0;
 
   private static final LoggedTunableNumber kP = new LoggedTunableNumber("IntakePivot/kP");
   private static final LoggedTunableNumber kD = new LoggedTunableNumber("IntakePivot/kD");
