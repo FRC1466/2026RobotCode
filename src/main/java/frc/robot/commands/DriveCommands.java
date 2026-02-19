@@ -18,6 +18,7 @@ import edu.wpi.first.wpilibj.DriverStation.Alliance;
 import edu.wpi.first.wpilibj.Timer;
 import edu.wpi.first.wpilibj2.command.Command;
 import edu.wpi.first.wpilibj2.command.Commands;
+import frc.robot.Constants;
 import frc.robot.FieldConstants;
 import frc.robot.RobotState;
 import frc.robot.subsystems.drive.Drive;
@@ -56,6 +57,20 @@ public class DriveCommands {
   private static final LoggedTunableNumber LAUNCH_MAX_POLAR_VEL =
       new LoggedTunableNumber("DriveCommands/Launching/MaxPolarVelocityRadPerSec", 0.5);
 
+  // Trench auto-alignment constants
+  // X-axis lookahead: how far (in meters) in front of the trench opening to begin engaging
+  private static final LoggedTunableNumber TRENCH_APPROACH_X_MARGIN =
+      new LoggedTunableNumber("DriveCommands/Trench/ApproachXMarginMeters", 1.5);
+  // Y PID for centering the robot through the trench opening
+  private static final LoggedTunableNumber TRENCH_Y_KP =
+      new LoggedTunableNumber("DriveCommands/Trench/YKP", 4.0);
+  private static final LoggedTunableNumber TRENCH_Y_KD =
+      new LoggedTunableNumber("DriveCommands/Trench/YKD", 0.2);
+  // Angle PID (reuses ANGLE_* tunable numbers above for the snap controller)
+  // Max Y correction speed as a fraction of max linear speed
+  private static final LoggedTunableNumber TRENCH_MAX_Y_CORRECTION =
+      new LoggedTunableNumber("DriveCommands/Trench/MaxYCorrectionFraction", 0.6);
+
   private DriveCommands() {}
 
   private static Translation2d getLinearVelocityFromJoysticks(double x, double y) {
@@ -73,42 +88,184 @@ public class DriveCommands {
   }
 
   /**
+   * Returns the nearest cardinal angle (0, 90, 180, 270 degrees) to the given rotation, expressed
+   * in the same frame.
+   */
+  private static Rotation2d nearestCardinal(Rotation2d rotation) {
+    double deg = rotation.getDegrees();
+    // Round to nearest multiple of 90
+    double snapped = Math.round(deg / 90.0) * 90.0;
+    return Rotation2d.fromDegrees(snapped);
+  }
+
+  /**
+   * Returns the target Y coordinate (in blue-origin field coordinates) to center the robot through
+   * the trench it is approaching, or {@code Double.NaN} if not approaching either trench.
+   *
+   * <p>The robot is considered to be approaching a trench when:
+   *
+   * <ul>
+   *   <li>Its field-relative Y (blue-origin) places it within the lateral span of either the right
+   *       or left trench open region, AND
+   *   <li>Its X is within {@code TRENCH_APPROACH_X_MARGIN} meters of the trench's hub-side mouth.
+   * </ul>
+   */
+  private static double getTrenchTargetY(Pose2d pose) {
+    // All trench geometry is defined in blue-origin coordinates; flip if red.
+    double robotX = AllianceFlipUtil.applyX(pose.getX());
+    double robotY = AllianceFlipUtil.applyY(pose.getY());
+
+    double hubX = FieldConstants.LinesVertical.hubCenter;
+    double approachMargin = TRENCH_APPROACH_X_MARGIN.get();
+
+    // Right trench: low Y (Y between rightTrenchOpenEnd=0 and rightBumpStart)
+    double rightTrenchYMin = FieldConstants.LinesHorizontal.rightTrenchOpenEnd;
+    double rightTrenchYMax = FieldConstants.LinesHorizontal.rightBumpStart;
+    double rightTrenchCenterY = FieldConstants.RightTrench.openingWidth / 2.0;
+    boolean inRightTrenchY = robotY >= rightTrenchYMin && robotY <= rightTrenchYMax;
+    boolean nearRightTrenchX = robotX >= hubX - approachMargin && robotX <= hubX + approachMargin;
+
+    if (inRightTrenchY && nearRightTrenchX) {
+      return AllianceFlipUtil.applyY(rightTrenchCenterY);
+    }
+
+    // Left trench: high Y (Y between leftBumpStart and fieldWidth)
+    double leftTrenchYMin = FieldConstants.LinesHorizontal.leftBumpStart;
+    double leftTrenchYMax = FieldConstants.LinesHorizontal.leftTrenchOpenStart;
+    double leftTrenchCenterY =
+        FieldConstants.fieldWidth - FieldConstants.LeftTrench.openingWidth / 2.0;
+    boolean inLeftTrenchY = robotY >= leftTrenchYMin && robotY <= leftTrenchYMax;
+    boolean nearLeftTrenchX = robotX >= hubX - approachMargin && robotX <= hubX + approachMargin;
+
+    if (inLeftTrenchY && nearLeftTrenchX) {
+      return AllianceFlipUtil.applyY(leftTrenchCenterY);
+    }
+
+    return Double.NaN;
+  }
+
+  /**
    * Field relative drive command using two joysticks (controlling linear and angular velocities).
+   *
+   * <p>When the robot is approaching a trench opening (right or left, alliance-relative), this
+   * command automatically:
+   *
+   * <ul>
+   *   <li>Snaps the heading to the nearest cardinal angle (0°, 90°, 180°, 270°) via PID, and
+   *   <li>Controls field-relative Y to center through the trench opening via PD feedback,
+   * </ul>
+   *
+   * while leaving the driver's X input (forward/back through the trench) unmodified.
    */
   public static Command joystickDrive(
       Drive drive,
       DoubleSupplier xSupplier,
       DoubleSupplier ySupplier,
       DoubleSupplier omegaSupplier) {
+
+    // Angle snap controller (reuses ANGLE tunable numbers)
+    ProfiledPIDController trenchAngleController =
+        new ProfiledPIDController(
+            ANGLE_KP.get(),
+            0.0,
+            ANGLE_KD.get(),
+            new TrapezoidProfile.Constraints(
+                ANGLE_MAX_VELOCITY.get(), ANGLE_MAX_ACCELERATION.get()));
+    trenchAngleController.enableContinuousInput(-Math.PI, Math.PI);
+
+    // PD state for the trench Y controller
+    final double[] trenchYErrorPrev = {0.0};
+
     return Commands.run(
-        () -> {
-          // Get linear velocity
-          Translation2d linearVelocity =
-              getLinearVelocityFromJoysticks(xSupplier.getAsDouble(), ySupplier.getAsDouble());
+            () -> {
+              // Update trench angle controller gains if tuned
+              if (ANGLE_KP.hasChanged(ANGLE_KP.hashCode())
+                  || ANGLE_KD.hasChanged(ANGLE_KD.hashCode())
+                  || ANGLE_MAX_VELOCITY.hasChanged(ANGLE_MAX_VELOCITY.hashCode())
+                  || ANGLE_MAX_ACCELERATION.hasChanged(ANGLE_MAX_ACCELERATION.hashCode())) {
+                trenchAngleController.setP(ANGLE_KP.get());
+                trenchAngleController.setD(ANGLE_KD.get());
+                trenchAngleController.setConstraints(
+                    new TrapezoidProfile.Constraints(
+                        ANGLE_MAX_VELOCITY.get(), ANGLE_MAX_ACCELERATION.get()));
+              }
 
-          // Apply rotation deadband
-          double omega = MathUtil.applyDeadband(omegaSupplier.getAsDouble(), DEADBAND);
+              // Get linear velocity from joysticks
+              Translation2d linearVelocity =
+                  getLinearVelocityFromJoysticks(xSupplier.getAsDouble(), ySupplier.getAsDouble());
 
-          // Square rotation value for more precise control
-          omega = Math.copySign(omega * omega, omega);
+              // Apply rotation deadband and squaring
+              double omega = MathUtil.applyDeadband(omegaSupplier.getAsDouble(), DEADBAND);
+              omega = Math.copySign(omega * omega, omega);
 
-          // Convert to field relative speeds & send command
-          ChassisSpeeds speeds =
-              new ChassisSpeeds(
-                  linearVelocity.getX() * drive.getMaxLinearSpeedMetersPerSec(),
-                  linearVelocity.getY() * drive.getMaxLinearSpeedMetersPerSec(),
-                  omega * drive.getMaxAngularSpeedRadPerSec());
-          boolean isFlipped =
-              DriverStation.getAlliance().isPresent()
-                  && DriverStation.getAlliance().get() == Alliance.Red;
-          drive.runVelocity(
-              ChassisSpeeds.fromFieldRelativeSpeeds(
-                  speeds,
-                  isFlipped
-                      ? drive.getRotation().plus(new Rotation2d(Math.PI))
-                      : drive.getRotation()));
-        },
-        drive);
+              // Check whether the robot is approaching a trench
+              Pose2d currentPose = RobotState.getInstance().getEstimatedPose();
+              double trenchTargetY = getTrenchTargetY(currentPose);
+              boolean inTrenchMode = !Double.isNaN(trenchTargetY);
+
+              if (inTrenchMode) {
+                // --- Heading: snap to nearest cardinal via profiled PID ---
+                Rotation2d snapTarget = nearestCardinal(currentPose.getRotation());
+                omega =
+                    trenchAngleController.calculate(
+                        currentPose.getRotation().getRadians(), snapTarget.getRadians());
+
+                // --- Y: PD controller toward trench center; X remains driver-controlled ---
+                double yError = trenchTargetY - currentPose.getY();
+                double yErrorDot = (yError - trenchYErrorPrev[0]) / Constants.loopPeriodSecs;
+                trenchYErrorPrev[0] = yError;
+                double yCorrection = TRENCH_Y_KP.get() * yError + TRENCH_Y_KD.get() * yErrorDot;
+                double maxYCorr =
+                    TRENCH_MAX_Y_CORRECTION.get() * drive.getMaxLinearSpeedMetersPerSec();
+                yCorrection = MathUtil.clamp(yCorrection, -maxYCorr, maxYCorr);
+
+                // Replace the joystick Y fraction with the PD output (already in m/s)
+                double xSpeed = linearVelocity.getX() * drive.getMaxLinearSpeedMetersPerSec();
+
+                Logger.recordOutput("DriveCommands/Trench/Active", true);
+                Logger.recordOutput("DriveCommands/Trench/SnapTargetDeg", snapTarget.getDegrees());
+                Logger.recordOutput("DriveCommands/Trench/YError", yError);
+                Logger.recordOutput("DriveCommands/Trench/YCorrection", yCorrection);
+
+                boolean isFlipped =
+                    DriverStation.getAlliance().isPresent()
+                        && DriverStation.getAlliance().get() == Alliance.Red;
+                drive.runVelocity(
+                    ChassisSpeeds.fromFieldRelativeSpeeds(
+                        xSpeed,
+                        yCorrection,
+                        omega,
+                        isFlipped
+                            ? drive.getRotation().plus(new Rotation2d(Math.PI))
+                            : drive.getRotation()));
+              } else {
+                // --- Normal drive ---
+                trenchYErrorPrev[0] = 0.0;
+                trenchAngleController.reset(currentPose.getRotation().getRadians());
+
+                Logger.recordOutput("DriveCommands/Trench/Active", false);
+
+                ChassisSpeeds speeds =
+                    new ChassisSpeeds(
+                        linearVelocity.getX() * drive.getMaxLinearSpeedMetersPerSec(),
+                        linearVelocity.getY() * drive.getMaxLinearSpeedMetersPerSec(),
+                        omega * drive.getMaxAngularSpeedRadPerSec());
+                boolean isFlipped =
+                    DriverStation.getAlliance().isPresent()
+                        && DriverStation.getAlliance().get() == Alliance.Red;
+                drive.runVelocity(
+                    ChassisSpeeds.fromFieldRelativeSpeeds(
+                        speeds,
+                        isFlipped
+                            ? drive.getRotation().plus(new Rotation2d(Math.PI))
+                            : drive.getRotation()));
+              }
+            },
+            drive)
+        .beforeStarting(
+            () ->
+                trenchAngleController.reset(
+                    RobotState.getInstance().getEstimatedPose().getRotation().getRadians()));
   }
 
   /**
