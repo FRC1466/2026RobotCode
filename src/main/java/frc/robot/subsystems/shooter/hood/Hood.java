@@ -5,9 +5,12 @@ package frc.robot.subsystems.shooter.hood;
 
 import edu.wpi.first.math.MathUtil;
 import edu.wpi.first.math.filter.Debouncer;
+import edu.wpi.first.math.geometry.Pose3d;
 import edu.wpi.first.math.util.Units;
 import edu.wpi.first.wpilibj.Alert;
 import edu.wpi.first.wpilibj.DriverStation;
+import edu.wpi.first.wpilibj.util.Color;
+import edu.wpi.first.wpilibj.util.Color8Bit;
 import edu.wpi.first.wpilibj2.command.Command;
 import frc.robot.Constants;
 import frc.robot.Robot;
@@ -22,6 +25,9 @@ import java.util.function.DoubleSupplier;
 import lombok.Setter;
 import org.littletonrobotics.junction.AutoLogOutput;
 import org.littletonrobotics.junction.Logger;
+import org.littletonrobotics.junction.mechanism.LoggedMechanism2d;
+import org.littletonrobotics.junction.mechanism.LoggedMechanismLigament2d;
+import org.littletonrobotics.junction.mechanism.LoggedMechanismRoot2d;
 
 public class Hood extends FullSubsystem {
   private static final double minAngleDeg = 0.1;
@@ -64,6 +70,15 @@ public class Hood extends FullSubsystem {
   private final HoodIOInputsAutoLogged inputs = new HoodIOInputsAutoLogged();
   private final HoodIOOutputs outputs = new HoodIOOutputs();
 
+  // Mechanism2d visualization
+  private final LoggedMechanism2d mechanism = new LoggedMechanism2d(1.0, 1.0);
+  private final LoggedMechanismRoot2d root = mechanism.getRoot("Hood", 0.5, 0.2);
+  private final LoggedMechanismLigament2d hoodLigament =
+      root.append(new LoggedMechanismLigament2d("Hood", 0.4, 0.0, 6, new Color8Bit(Color.kOrange)));
+  private final LoggedMechanismLigament2d goalLigament =
+      root.append(
+          new LoggedMechanismLigament2d("HoodGoal", 0.4, 0.0, 2, new Color8Bit(Color.kGray)));
+
   // Connected debouncer
   private final Debouncer motorConnectedDebouncer =
       new Debouncer(0.5, Debouncer.DebounceType.kFalling);
@@ -103,6 +118,12 @@ public class Hood extends FullSubsystem {
     outputs.kS = kS.get();
     outputs.cruiseVelocity = cruiseVelocity.get();
     outputs.acceleration = acceleration.get();
+
+    // Update mechanism visualization
+    hoodLigament.setAngle(getMeasuredAngleDeg());
+    goalLigament.setAngle(goalAngleDeg);
+    Logger.recordOutput("Hood/Mechanism2d", mechanism);
+    Logger.recordOutput("Hood/Mechanism3d", mechanism.generate3dMechanism().toArray(new Pose3d[0]));
 
     // Record cycle time
     LoggedTracer.record("Hood");

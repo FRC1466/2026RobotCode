@@ -5,9 +5,12 @@ package frc.robot.subsystems.intake;
 
 import edu.wpi.first.math.MathUtil;
 import edu.wpi.first.math.filter.Debouncer;
+import edu.wpi.first.math.geometry.Pose3d;
 import edu.wpi.first.math.util.Units;
 import edu.wpi.first.wpilibj.Alert;
 import edu.wpi.first.wpilibj.DriverStation;
+import edu.wpi.first.wpilibj.util.Color;
+import edu.wpi.first.wpilibj.util.Color8Bit;
 import edu.wpi.first.wpilibj2.command.Command;
 import frc.robot.Constants;
 import frc.robot.Robot;
@@ -25,6 +28,9 @@ import lombok.Getter;
 import lombok.Setter;
 import org.littletonrobotics.junction.AutoLogOutput;
 import org.littletonrobotics.junction.Logger;
+import org.littletonrobotics.junction.mechanism.LoggedMechanism2d;
+import org.littletonrobotics.junction.mechanism.LoggedMechanismLigament2d;
+import org.littletonrobotics.junction.mechanism.LoggedMechanismRoot2d;
 
 public class Intake extends FullSubsystem {
   private static final double stowAngleDeg = 0.1;
@@ -62,6 +68,44 @@ public class Intake extends FullSubsystem {
   private final IntakeRollersIOInputsAutoLogged rollersInputs =
       new IntakeRollersIOInputsAutoLogged();
   private final IntakeRollersIOOutputs rollersOutputs = new IntakeRollersIOOutputs();
+
+  // Mechanism2d visualization (4-bar linkage)
+  // Ground link is the horizontal distance between the two frame pivots on the robot edge.
+  // Crank (driven link) and rocker (follower link) rotate; coupler keeps rollers level.
+  // At 0° motor angle the intake is stowed (pointing up); at deployAngleDeg it is deployed
+  // (swung outward/down past the frame perimeter).
+  private static final double groundLinkLength = 0.15; // m, offset between frame pivots
+  private static final double crankLength = 0.35; // m, driven arm
+  private static final double couplerLength = 0.15; // m, bar connecting crank tip to rocker tip
+  private static final double rockerLength = 0.35; // m, follower arm
+
+  private final LoggedMechanism2d mechanism = new LoggedMechanism2d(1.2, 1.2);
+  // Pivots are near the front edge of the robot (high x).
+  // Crank root is to the left of rocker root (ground link is horizontal).
+  private final LoggedMechanismRoot2d crankRoot =
+      mechanism.getRoot("CrankPivot", 0.9 - groundLinkLength, 0.2);
+  private final LoggedMechanismLigament2d crankLigament =
+      crankRoot.append(
+          new LoggedMechanismLigament2d("Crank", crankLength, 90.0, 6, new Color8Bit(Color.kCyan)));
+  private final LoggedMechanismLigament2d couplerLigament =
+      crankLigament.append(
+          new LoggedMechanismLigament2d(
+              "Coupler", couplerLength, 0.0, 4, new Color8Bit(Color.kGreen)));
+  // Rocker root is to the right of crank root
+  private final LoggedMechanismRoot2d rockerRoot = mechanism.getRoot("RockerPivot", 0.9, 0.2);
+  private final LoggedMechanismLigament2d rockerLigament =
+      rockerRoot.append(
+          new LoggedMechanismLigament2d(
+              "Rocker", rockerLength, 90.0, 6, new Color8Bit(Color.kCyan)));
+  // Goal overlay (thin lines)
+  private final LoggedMechanismLigament2d crankGoalLigament =
+      crankRoot.append(
+          new LoggedMechanismLigament2d(
+              "CrankGoal", crankLength, 90.0, 2, new Color8Bit(Color.kGray)));
+  private final LoggedMechanismLigament2d rockerGoalLigament =
+      rockerRoot.append(
+          new LoggedMechanismLigament2d(
+              "RockerGoal", rockerLength, 90.0, 2, new Color8Bit(Color.kGray)));
 
   private final Debouncer pivotMotorConnectedDebouncer =
       new Debouncer(0.5, Debouncer.DebounceType.kFalling);
@@ -126,6 +170,13 @@ public class Intake extends FullSubsystem {
 
     pivotOutputs.kP = kP.get();
     pivotOutputs.kD = kD.get();
+
+    // Update 4-bar mechanism visualization
+    updateMechanism(getMeasuredAngleDeg(), crankLigament, rockerLigament, couplerLigament);
+    updateMechanism(goalAngleDeg, crankGoalLigament, rockerGoalLigament, null);
+    Logger.recordOutput("Intake/Mechanism2d", mechanism);
+    Logger.recordOutput(
+        "Intake/Mechanism3d", mechanism.generate3dMechanism().toArray(new Pose3d[0]));
 
     Logger.recordOutput("IntakeRollers/Running", running);
     Logger.recordOutput("IntakeRollers/AppliedVolts", rollersOutputs.appliedVolts);
@@ -249,5 +300,48 @@ public class Intake extends FullSubsystem {
               stop();
             })
         .withName("Intake.stowAndStop");
+  }
+
+  /**
+   * Updates the 4-bar mechanism ligaments for a given motor angle.
+   *
+   * <p>The intake uses a parallelogram 4-bar linkage (crank == rocker length, ground == coupler
+   * length). In a parallelogram, the rocker always mirrors the crank angle, keeping the coupler
+   * (and the roller assembly attached to it) at a constant orientation.
+   *
+   * <p>Layout (side view, looking at the robot from the right):
+   *
+   * <ul>
+   *   <li>Ground link (fixed, horizontal): from crank root (B, left) to rocker root (A, right).
+   *   <li>Crank (driven): from B, length {@code crankLength}.
+   *   <li>Rocker (follower): from A, length {@code rockerLength}, always parallel to crank.
+   *   <li>Coupler: from crank tip (C) to rocker tip (D), always parallel to ground.
+   * </ul>
+   *
+   * <p>Motor angle convention: 0° = stowed (arms straight up), increasing = clockwise rotation
+   * (deploying outward). Display angle = {@code 90° − motorAngle}.
+   */
+  private void updateMechanism(
+      double motorAngleDeg,
+      LoggedMechanismLigament2d crank,
+      LoggedMechanismLigament2d rocker,
+      LoggedMechanismLigament2d coupler) {
+    // Convert motor angle to Mechanism2d display angle (CCW from +X)
+    // 0° motor = straight up = 90° display; increasing motor = CW = decreasing display
+    double displayDeg = 90.0 - motorAngleDeg;
+
+    // Parallelogram: rocker angle == crank angle
+    crank.setAngle(displayDeg);
+    rocker.setAngle(displayDeg);
+
+    if (coupler != null) {
+      // The coupler must close the loop from crank tip back to rocker tip.
+      // In a parallelogram the coupler is always parallel to the ground link.
+      // The ground link direction (B→A) in display coords is 0° (pointing right).
+      // Coupler goes C→D which is the same direction as B→A (i.e. rightward).
+      // Mechanism2d ligament angle is relative to its parent (crank), so:
+      //   couplerRelative = couplerAbsolute − crankAbsolute = 0° − displayDeg
+      coupler.setAngle(-displayDeg);
+    }
   }
 }
