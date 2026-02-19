@@ -55,7 +55,6 @@ import frc.robot.subsystems.vision.VisionIOPhotonVision;
 import frc.robot.util.AllianceFlipUtil;
 import frc.robot.util.HubShiftUtil;
 import frc.robot.util.TriggerUtil;
-import java.util.function.DoubleSupplier;
 import lombok.experimental.ExtensionMethod;
 import org.littletonrobotics.junction.Logger;
 import org.littletonrobotics.junction.networktables.LoggedDashboardChooser;
@@ -81,6 +80,8 @@ public class RobotContainer {
 
   // Controller
   private final CommandXboxController controller = new CommandXboxController(0);
+
+  private DriveCommands driveCommand;
 
   private final Alert controllerDisconnected =
       new Alert("Controller disconnected (port 0).", AlertType.kWarning);
@@ -189,10 +190,10 @@ public class RobotContainer {
     // autoChooser.addOption("Depot Auto (Choreo)", autos.depotAuto().cmd());
 
     // Set up SysId routines
-    autoChooser.addOption(
-        "Drive Wheel Radius Characterization", DriveCommands.wheelRadiusCharacterization(drive));
-    autoChooser.addOption(
-        "Drive Simple FF Characterization", DriveCommands.feedforwardCharacterization(drive));
+    // autoChooser.addOption(
+    //     "Drive Wheel Radius Characterization", DriveCommands.wheelRadiusCharacterization(drive));
+    // autoChooser.addOption(
+    //     "Drive Simple FF Characterization", DriveCommands.feedforwardCharacterization(drive));
     autoChooser.addOption(
         "Drive SysId (Quasistatic Forward)",
         drive.sysIdQuasistatic(SysIdRoutine.Direction.kForward));
@@ -203,6 +204,8 @@ public class RobotContainer {
         "Drive SysId (Dynamic Forward)", drive.sysIdDynamic(SysIdRoutine.Direction.kForward));
     autoChooser.addOption(
         "Drive SysId (Dynamic Reverse)", drive.sysIdDynamic(SysIdRoutine.Direction.kReverse));
+
+    driveCommand = new DriveCommands(drive, controller);
 
     // Configure the button bindings
     configureButtonBindings();
@@ -215,12 +218,8 @@ public class RobotContainer {
    * edu.wpi.first.wpilibj2.command.button.JoystickButton}.
    */
   private void configureButtonBindings() {
-    DoubleSupplier leftY = () -> -controller.getLeftY();
-    DoubleSupplier leftX = () -> -controller.getLeftX();
-    DoubleSupplier rightX = () -> -controller.getRightX();
-
     // Default command, normal field-relative drive
-    drive.setDefaultCommand(DriveCommands.joystickDrive(drive, leftY, leftX, rightX));
+    drive.setDefaultCommand(driveCommand);
 
     // --- Mutable state for manual tuning ---
     final double[] targetSpeed = {45.0};
@@ -307,12 +306,12 @@ public class RobotContainer {
     // --- Utility Controls ---
 
     // Right Bumper: Auto-aim at hub while driving (hold)
-    controller
-        .rightBumper()
-        .and(controller.leftBumper().negate())
-        .whileTrue(
-            DriveCommands.joystickDriveWhileLaunching(drive, leftY, leftX)
-                .withName("DriveWhileLaunching"));
+    /*controller
+    .rightBumper()
+    .and(controller.leftBumper().negate())
+    .whileTrue(
+        DriveCommands.joystickDriveWhileLaunching(drive, leftY, leftX)
+            .withName("DriveWhileLaunching"));*/
 
     // B Button: Stop all shooter subsystems (flywheel + hood)
     controller

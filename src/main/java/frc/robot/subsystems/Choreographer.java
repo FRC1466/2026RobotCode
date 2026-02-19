@@ -6,7 +6,6 @@ package frc.robot.subsystems;
 import edu.wpi.first.math.geometry.Rotation2d;
 import edu.wpi.first.wpilibj2.command.Command;
 import edu.wpi.first.wpilibj2.command.SubsystemBase;
-import frc.robot.commands.DriveCommands;
 import frc.robot.subsystems.drive.Drive;
 import frc.robot.subsystems.intake.Intake;
 import frc.robot.subsystems.kicker.Kicker;
@@ -119,7 +118,7 @@ public class Choreographer extends SubsystemBase {
 
     boolean flywheelReady = flywheel.atGoal();
     boolean hoodReady = hood.isAtGoal();
-    boolean driveAligned = DriveCommands.atLaunchGoal();
+    boolean driveAligned = true; // DriveCommands.atLaunchGoal();
 
     if (flywheelReady && hoodReady && driveAligned) {
       spindexer.run();
@@ -178,7 +177,7 @@ public class Choreographer extends SubsystemBase {
   private void logOutputs() {
     Logger.recordOutput("Choreographer/FlywheelReady", flywheel.atGoal());
     Logger.recordOutput("Choreographer/HoodReady", hood.isAtGoal());
-    Logger.recordOutput("Choreographer/DriveAligned", DriveCommands.atLaunchGoal());
+    // Logger.recordOutput("Choreographer/DriveAligned", DriveCommands.atLaunchGoal());
     Logger.recordOutput("Choreographer/SpindexerRunning", spindexer.isRunning());
     Logger.recordOutput("Choreographer/SpindexerStalled", spindexer.isStalled());
     Logger.recordOutput("Choreographer/KickerRunning", kicker.isRunning());
