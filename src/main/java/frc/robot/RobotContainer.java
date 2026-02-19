@@ -27,7 +27,6 @@ import frc.robot.subsystems.drive.GyroIOPigeon2;
 import frc.robot.subsystems.drive.ModuleIO;
 import frc.robot.subsystems.drive.ModuleIOSim;
 import frc.robot.subsystems.drive.ModuleIOTalonFX;
-import frc.robot.subsystems.intake.Intake;
 import frc.robot.subsystems.kicker.Kicker;
 import frc.robot.subsystems.kicker.KickerIO;
 import frc.robot.subsystems.kicker.KickerIOSim;
@@ -39,7 +38,6 @@ import frc.robot.subsystems.shooter.flywheel.FlywheelIOTalonFX;
 import frc.robot.subsystems.shooter.hood.Hood;
 import frc.robot.subsystems.shooter.hood.HoodIO;
 import frc.robot.subsystems.shooter.hood.HoodIOSim;
-import frc.robot.subsystems.shooter.hood.HoodIOTalonFX;
 import frc.robot.subsystems.spindexer.Spindexer;
 import frc.robot.subsystems.spindexer.SpindexerIO;
 import frc.robot.subsystems.spindexer.SpindexerIOSim;
@@ -71,7 +69,7 @@ public class RobotContainer {
   private Kicker kicker;
   // private Choreographer choreographer;
   private Autos autos;
-  private Intake intake;
+  // private Intake intake;
 
   // Controller
   private final CommandXboxController controller = new CommandXboxController(0);
@@ -106,16 +104,16 @@ public class RobotContainer {
           break;
         }
         case DEVBOT -> {
-          /*drive =
-          new Drive(
-              new GyroIOPigeon2(),
-              new ModuleIOTalonFX(TunerConstants.FrontLeft),
-              new ModuleIOTalonFX(TunerConstants.FrontRight),
-              new ModuleIOTalonFX(TunerConstants.BackLeft),
-              new ModuleIOTalonFX(TunerConstants.BackRight));*/
-          flywheel = new Flywheel(new FlywheelIOTalonFX());
-          hood = new Hood(new HoodIOTalonFX());
-          intake = new Intake();
+          drive =
+              new Drive(
+                  new GyroIOPigeon2(),
+                  new ModuleIOTalonFX(TunerConstants.FrontLeft),
+                  new ModuleIOTalonFX(TunerConstants.FrontRight),
+                  new ModuleIOTalonFX(TunerConstants.BackLeft),
+                  new ModuleIOTalonFX(TunerConstants.BackRight));
+          // flywheel = new Flywheel(new FlywheelIOTalonFX());
+          // hood = new Hood(new HoodIOTalonFX());
+          // intake = new Intake();
           break;
         }
         case SIMBOT -> {
@@ -338,7 +336,7 @@ public class RobotContainer {
         .doublePress()
         .whileTrue(Commands.run(() -> hood.setGoalAngleDeg(25), hood).withName("Hood to 25"));
 
-    controller
+    /*controller
         .a()
         .and(controller.a().doublePress().negate())
         .whileTrue(Commands.run(() -> intake.setDutyCycle(.5), intake).withName("Intake .5 duty"))
@@ -348,7 +346,7 @@ public class RobotContainer {
         .a()
         .doublePress()
         .whileTrue(Commands.run(() -> intake.setDutyCycle(1), intake).withName("Intake 1 duty"))
-        .onFalse(Commands.runOnce(() -> intake.setDutyCycle(0), intake).withName("Intake off"));
+        .onFalse(Commands.runOnce(() -> intake.setDutyCycle(0), intake).withName("Intake off"));*/
   }
 
   /** Update dashboard outputs. */
