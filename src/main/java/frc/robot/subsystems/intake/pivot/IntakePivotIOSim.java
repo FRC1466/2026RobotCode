@@ -39,8 +39,8 @@ public class IntakePivotIOSim implements IntakePivotIO {
     double position = MathUtil.clamp(sim.getAngleRads(), minAngle, maxAngle);
 
     inputs.motorConnected = true;
-    inputs.positionRads = position;
-    inputs.velocityRadsPerSec = sim.getVelocityRadPerSec();
+    inputs.positionRotations = position / (2 * Math.PI);
+    inputs.velocityRotationsPerSec = sim.getVelocityRadPerSec() / (2 * Math.PI);
     inputs.appliedVolts = appliedVolts;
     inputs.supplyCurrentAmps = sim.getCurrentDrawAmps();
     inputs.torqueCurrentAmps = sim.getCurrentDrawAmps();
@@ -55,7 +55,7 @@ public class IntakePivotIOSim implements IntakePivotIO {
     } else if (outputs.mode == IntakePivotIOOutputMode.CLOSED_LOOP) {
       closedLoop = true;
       controller.setPID(outputs.kP, 0.0, outputs.kD);
-      controller.setSetpoint(outputs.positionRad);
+      controller.setSetpoint(outputs.positionRotations * 2 * Math.PI);
     }
   }
 }

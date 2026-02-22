@@ -15,21 +15,22 @@ public interface FlywheelIO {
     public double tempMasterCelsius;
     public double tempFollowerCelsius;
 
-    public double positionRads;
-    public double velocityRadsPerSec;
+    public double positionRotations;
+    public double velocityRotationsPerSec;
     public double appliedVoltage;
     public double torqueCurrentAmps;
   }
 
   enum FlywheelIOOutputMode {
     COAST,
+    VOLTAGE,
     VELOCITY_VOLTAGE,
     VELOCITY_TORQUE_CURRENT
   }
 
   class FlywheelIOOutputs {
     public FlywheelIOOutputMode mode = FlywheelIOOutputMode.COAST;
-    public double velocityRadsPerSec = 0.0;
+    public double velocityRotationsPerSec = 0.0;
     public double feedforward = 0.0;
 
     public double voltageKP;

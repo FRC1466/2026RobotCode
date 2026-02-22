@@ -37,6 +37,7 @@ import frc.robot.subsystems.kicker.Kicker;
 import frc.robot.subsystems.kicker.KickerIO;
 import frc.robot.subsystems.kicker.KickerIOSim;
 import frc.robot.subsystems.kicker.KickerIOTalonFX;
+import frc.robot.subsystems.shooter.ShotCalculator;
 import frc.robot.subsystems.shooter.flywheel.Flywheel;
 import frc.robot.subsystems.shooter.flywheel.FlywheelIO;
 import frc.robot.subsystems.shooter.flywheel.FlywheelIOSim;
@@ -305,13 +306,17 @@ public class RobotContainer {
 
     // --- Utility Controls ---
 
-    // Right Bumper: Auto-aim at hub while driving (hold)
-    /*controller
-    .rightBumper()
-    .and(controller.leftBumper().negate())
-    .whileTrue(
-        DriveCommands.joystickDriveWhileLaunching(drive, leftY, leftX)
-            .withName("DriveWhileLaunching"));*/
+    // Right Bumper (no Left): Launch-while-driving — auto-aims rotation at hub while driving
+    controller
+        .rightBumper()
+        .and(controller.leftBumper().negate())
+        .whileTrue(
+            Commands.parallel(
+                    driveCommand.launchModeCommand(),
+                    flywheel.runTrackTargetCommand(),
+                    hood.runTrackTargetCommand())
+                .finallyDo(() -> ShotCalculator.getInstance().clearShootingParameters())
+                .withName("DriveWhileLaunching"));
 
     // B Button: Stop all shooter subsystems (flywheel + hood)
     controller

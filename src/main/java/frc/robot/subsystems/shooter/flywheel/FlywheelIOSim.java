@@ -18,7 +18,7 @@ public class FlywheelIOSim implements FlywheelIO {
   private PIDController controller = new PIDController(0, 0, 0, Constants.loopPeriodSecs);
   private double appliedVolts = 0.0;
   private boolean closedLoop = false;
-  private double setpointRadsPerSec = 0.0;
+  private double setpointRotationsPerSec = 0.0;
   private double feedforward = 0.0;
 
   public FlywheelIOSim() {}
@@ -27,7 +27,9 @@ public class FlywheelIOSim implements FlywheelIO {
   public void updateInputs(FlywheelIOInputs inputs) {
     if (closedLoop) {
       appliedVolts =
-          controller.calculate(sim.getAngularVelocityRadPerSec(), setpointRadsPerSec) + feedforward;
+          controller.calculate(
+                  sim.getAngularVelocityRadPerSec(), setpointRotationsPerSec * 2 * Math.PI)
+              + feedforward;
     }
 
     appliedVolts = MathUtil.clamp(appliedVolts, -12.0, 12.0);
@@ -38,8 +40,8 @@ public class FlywheelIOSim implements FlywheelIO {
 
     inputs.connectedMaster = true;
     inputs.connectedFollower = true;
-    inputs.positionRads = sim.getAngularPositionRad();
-    inputs.velocityRadsPerSec = sim.getAngularVelocityRadPerSec();
+    inputs.positionRotations = sim.getAngularPositionRad() / (2 * Math.PI);
+    inputs.velocityRotationsPerSec = sim.getAngularVelocityRadPerSec() / (2 * Math.PI);
     inputs.appliedVoltage = appliedVolts;
     inputs.supplyCurrentMasterAmps = sim.getCurrentDrawAmps();
     inputs.supplyCurrentFollowerAmps = 0.0;
@@ -53,10 +55,13 @@ public class FlywheelIOSim implements FlywheelIO {
     if (outputs.mode == FlywheelIOOutputMode.VELOCITY_VOLTAGE
         || outputs.mode == FlywheelIOOutputMode.VELOCITY_TORQUE_CURRENT) {
       closedLoop = true;
-      setpointRadsPerSec = outputs.velocityRadsPerSec;
+      setpointRotationsPerSec = outputs.velocityRotationsPerSec;
       feedforward = outputs.feedforward;
       controller.setP(outputs.voltageKP);
       controller.setD(outputs.voltageKD);
+    } else if (outputs.mode == FlywheelIOOutputMode.VOLTAGE) {
+      closedLoop = false;
+      appliedVolts = outputs.feedforward;
     } else {
       closedLoop = false;
       appliedVolts = 0.0;

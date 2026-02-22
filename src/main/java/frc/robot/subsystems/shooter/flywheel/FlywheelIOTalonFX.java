@@ -40,6 +40,8 @@ public class FlywheelIOTalonFX implements FlywheelIO {
       new MotionMagicVelocityVoltage(0).withSlot(0);
   private final MotionMagicVelocityTorqueCurrentFOC torqueCurrentRequest =
       new MotionMagicVelocityTorqueCurrentFOC(0).withSlot(1);
+  private final com.ctre.phoenix6.controls.VoltageOut voltageOutRequest =
+      new com.ctre.phoenix6.controls.VoltageOut(0);
 
   private double lastVoltageKP = 0.0;
   private double lastVoltageKD = 0.0;
@@ -107,8 +109,8 @@ public class FlywheelIOTalonFX implements FlywheelIO {
         BaseStatusSignal.isAllGood(
             position, velocity, appliedVoltage, supplyCurrent, torqueCurrent, temp);
     inputs.connectedFollower = BaseStatusSignal.isAllGood(supplyCurrentFollower, tempFollower);
-    inputs.positionRads = position.getValue().in(Radians);
-    inputs.velocityRadsPerSec = velocity.getValue().in(RadiansPerSecond);
+    inputs.positionRotations = position.getValue().in(Rotations);
+    inputs.velocityRotationsPerSec = velocity.getValue().in(RotationsPerSecond);
     inputs.appliedVoltage = appliedVoltage.getValue().in(Volts);
     inputs.supplyCurrentMasterAmps = supplyCurrent.getValue().in(Amps);
     inputs.supplyCurrentFollowerAmps = supplyCurrentFollower.getValue().in(Amps);
@@ -152,17 +154,18 @@ public class FlywheelIOTalonFX implements FlywheelIO {
     }
 
     switch (outputs.mode) {
+      case VOLTAGE -> talon.setControl(voltageOutRequest.withOutput(outputs.feedforward));
       case VELOCITY_VOLTAGE ->
           talon.setControl(
               voltageRequest
-                  .withVelocity(RadiansPerSecond.of(outputs.velocityRadsPerSec))
+                  .withVelocity(RotationsPerSecond.of(outputs.velocityRotationsPerSec))
                   .withFeedForward(outputs.feedforward));
       case VELOCITY_TORQUE_CURRENT ->
           talon.setControl(
               torqueCurrentRequest
-                  .withVelocity(RadiansPerSecond.of(outputs.velocityRadsPerSec))
+                  .withVelocity(RotationsPerSecond.of(outputs.velocityRotationsPerSec))
                   .withFeedForward(outputs.feedforward));
-      default -> talon.setControl(voltageRequest.withVelocity(0).withFeedForward(0));
+      default -> talon.setControl(voltageOutRequest.withOutput(0));
     }
   }
 }

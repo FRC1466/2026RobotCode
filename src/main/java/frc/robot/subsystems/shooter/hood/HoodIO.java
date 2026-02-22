@@ -10,8 +10,8 @@ public interface HoodIO {
   @AutoLog
   public static class HoodIOInputs {
     public boolean motorConnected = false;
-    public double positionRads = 0.0;
-    public double velocityRadsPerSec = 0.0;
+    public double positionRotations = 0.0;
+    public double velocityRotationsPerSec = 0.0;
     public double appliedVolts = 0.0;
     public double supplyCurrentAmps = 0.0;
     public double torqueCurrentAmps = 0.0;
@@ -25,7 +25,7 @@ public interface HoodIO {
 
   public static class HoodIOOutputs {
     public HoodIOOutputMode mode = HoodIOOutputMode.CLOSED_LOOP;
-    public double positionRad = 0.0;
+    public double positionRotations = 0.0;
     public double kP = 0.0;
     public double kD = 0.0;
     public double kS = 0.0;

@@ -27,12 +27,15 @@ import edu.wpi.first.wpilibj2.command.button.Trigger;
 import frc.robot.Constants;
 import frc.robot.Constants.ControllerConstants;
 import frc.robot.subsystems.drive.Drive;
+import frc.robot.subsystems.shooter.ShotCalculator;
+import frc.robot.util.LoggedTunableNumber;
 import frc.robot.util.SlewRateLimiter2d;
 import frc.robot.util.TunableControls.ControlConstants;
 import frc.robot.util.TunableControls.TunableControlConstants;
 import frc.robot.util.TunableControls.TunablePIDController;
 import java.util.function.DoubleSupplier;
 import org.littletonrobotics.junction.AutoLogOutput;
+import org.littletonrobotics.junction.Logger;
 
 /** Default drive command to run that drives based on controller input */
 public class DriveCommands extends Command {
@@ -52,6 +55,12 @@ public class DriveCommands extends Command {
       new TunableControlConstants("Swerve/Trench Translation", TRENCH_TRANSLATION_BASE_CONSTANTS);
   public static final TunableControlConstants ROTATION_CONSTANTS =
       new TunableControlConstants("Swerve/Rotation", ROTATION_BASE_CONSTANTS);
+
+  // Launch-while-driving tuning
+  private static final LoggedTunableNumber driveLaunchToleranceDeg =
+      new LoggedTunableNumber("DriveCommands/Launching/ToleranceDeg", 10.0);
+  private static final LoggedTunableNumber driveLaunchMaxPolarVelocityRadPerSec =
+      new LoggedTunableNumber("DriveCommands/Launching/MaxPolarVelocityRadPerSec", 0.5);
 
   // public static final LinearVelocity DEFAULT_DRIVE_SPEED = MetersPerSecond.of(3.2);
   // public static final AngularVelocity DEFAULT_ROT_SPEED = RotationsPerSecond.of(0.75);
@@ -230,11 +239,53 @@ public class DriveCommands extends Command {
         }
         targetHeading = getTrenchLockAngle();
         headingLocked = true;
+        ShotCalculator.getInstance().dropHood();
         break;
       case BUMP_LOCK:
         targetHeading = getBumpLockAngle();
         headingLocked = true;
         break;
+      case LAUNCH_LOCK:
+        {
+          final var params = ShotCalculator.getInstance().getParameters();
+
+          // Limit linear velocity so the hub angle change over TOF stays within polar limit
+          if (!params.passing() && linearVelocity.getNorm() > 1e-6) {
+            double robotToHubAngle =
+                Math.abs(
+                    ShotCalculator.getStationaryAimedPose(drive.getPose().getTranslation())
+                        .getRotation()
+                        .minus(linearVelocity.getAngle())
+                        .getRadians());
+            double robotHubDistance = params.distanceNoLookahead();
+            double hubAngle =
+                driveLaunchMaxPolarVelocityRadPerSec.get()
+                    * ShotCalculator.getInstance().getNaiveTOF(robotHubDistance);
+            double lookaheadAngle = Math.PI - robotToHubAngle - hubAngle;
+            if (lookaheadAngle > 0) {
+              double robotLookaheadDistance =
+                  robotHubDistance * Math.sin(hubAngle) / Math.sin(lookaheadAngle);
+              double maxLinearMagnitude =
+                  robotLookaheadDistance
+                      / ShotCalculator.getInstance().getNaiveTOF(robotHubDistance);
+              if (linearVelocity.getNorm() > maxLinearMagnitude) {
+                linearVelocity =
+                    linearVelocity.times(maxLinearMagnitude / linearVelocity.getNorm());
+              }
+            }
+          }
+
+          // Set the target heading from ShotCalculator — the shared PID block below will drive it
+          targetHeading = params.driveAngle();
+          headingLocked = true;
+
+          Logger.recordOutput(
+              "DriveCommands/Launching/ErrorPosition",
+              params.driveAngle().minus(drive.getRotation()));
+          Logger.recordOutput("DriveCommands/Launching/SetpointPosition", params.driveAngle());
+          Logger.recordOutput("DriveCommands/Launching/MeasuredPosition", drive.getRotation());
+          break;
+        }
     }
 
     // Apply heading lock PID if not directly commanding rotation
@@ -271,6 +322,27 @@ public class DriveCommands extends Command {
         });
   }
 
+  /** Returns true when the robot is aimed within tolerance at the shot target. */
+  @AutoLogOutput
+  public boolean atLaunchGoal() {
+    return DriverStation.isEnabled()
+        && Math.abs(
+                drive
+                    .getRotation()
+                    .minus(ShotCalculator.getInstance().getParameters().driveAngle())
+                    .getRadians())
+            <= edu.wpi.first.math.util.Units.degreesToRadians(driveLaunchToleranceDeg.get());
+  }
+
+  /**
+   * Returns a command that engages LAUNCH_LOCK drive mode while held and reverts to NORMAL on
+   * release.
+   */
+  public Command launchModeCommand() {
+    return Commands.startEnd(
+        () -> currentDriveMode = DriveMode.LAUNCH_LOCK, () -> currentDriveMode = DriveMode.NORMAL);
+  }
+
   // Called once the command ends or is interrupted.
   @Override
   public void end(boolean interrupted) {}
@@ -284,6 +356,7 @@ public class DriveCommands extends Command {
   private enum DriveMode {
     NORMAL,
     TRENCH_LOCK,
-    BUMP_LOCK
+    BUMP_LOCK,
+    LAUNCH_LOCK
   }
 }

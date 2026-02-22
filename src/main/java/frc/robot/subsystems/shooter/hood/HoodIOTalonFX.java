@@ -91,8 +91,8 @@ public class HoodIOTalonFX implements HoodIO {
     inputs.motorConnected =
         BaseStatusSignal.isAllGood(
             position, velocity, appliedVoltage, supplyCurrent, torqueCurrent, temp);
-    inputs.positionRads = position.getValue().in(Radians);
-    inputs.velocityRadsPerSec = velocity.getValue().in(RadiansPerSecond);
+    inputs.positionRotations = position.getValue().in(Rotations);
+    inputs.velocityRotationsPerSec = velocity.getValue().in(RotationsPerSecond);
     inputs.appliedVolts = appliedVoltage.getValue().in(Volts);
     inputs.supplyCurrentAmps = supplyCurrent.getValue().in(Amps);
     inputs.torqueCurrentAmps = torqueCurrent.getValue().in(Amps);
@@ -136,7 +136,7 @@ public class HoodIOTalonFX implements HoodIO {
         lastAcceleration = outputs.acceleration;
       }
 
-      talon.setControl(request.withPosition(Radians.of(outputs.positionRad)));
+      talon.setControl(request.withPosition(Rotations.of(outputs.positionRotations)));
     }
   }
 }

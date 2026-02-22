@@ -6,7 +6,6 @@ package frc.robot.subsystems.shooter.hood;
 import edu.wpi.first.math.MathUtil;
 import edu.wpi.first.math.filter.Debouncer;
 import edu.wpi.first.math.geometry.Pose3d;
-import edu.wpi.first.math.util.Units;
 import edu.wpi.first.wpilibj.Alert;
 import edu.wpi.first.wpilibj.DriverStation;
 import edu.wpi.first.wpilibj.util.Color;
@@ -30,8 +29,8 @@ import org.littletonrobotics.junction.mechanism.LoggedMechanismLigament2d;
 import org.littletonrobotics.junction.mechanism.LoggedMechanismRoot2d;
 
 public class Hood extends FullSubsystem {
-  private static final double minAngleDeg = 0.1;
-  private static final double maxAngleDeg = 31.0;
+  public static final double minAngleDeg = 0.1;
+  public static final double maxAngleDeg = 31.0;
 
   private static final LoggedTunableNumber kP = new LoggedTunableNumber("Hood/kP");
   private static final LoggedTunableNumber kD = new LoggedTunableNumber("Hood/kD");
@@ -133,7 +132,7 @@ public class Hood extends FullSubsystem {
   public void periodicAfterScheduler() {
     if (DriverStation.isEnabled()) {
       double clampedGoalDeg = MathUtil.clamp(goalAngleDeg, minAngleDeg, maxAngleDeg);
-      outputs.positionRad = Units.degreesToRadians(clampedGoalDeg);
+      outputs.positionRotations = clampedGoalDeg / 360.0;
       outputs.mode = HoodIOOutputMode.CLOSED_LOOP;
       outputs.volts = 0.0;
 
@@ -149,7 +148,7 @@ public class Hood extends FullSubsystem {
 
   @AutoLogOutput(key = "Hood/MeasuredAngleDeg")
   public double getMeasuredAngleDeg() {
-    return unitsToDeg(inputs.positionRads);
+    return inputs.positionRotations * 360.0;
   }
 
   @AutoLogOutput(key = "Hood/AtGoal")
@@ -162,8 +161,7 @@ public class Hood extends FullSubsystem {
     return run(
         () -> {
           var params = ShotCalculator.getInstance().getParameters();
-          // ShotCalculator currently provides radians.
-          setGoalAngleDeg(unitsToDeg(params.hoodAngle()));
+          setGoalAngleDeg(params.hoodAngle() * 360.0);
         });
   }
 
@@ -182,9 +180,5 @@ public class Hood extends FullSubsystem {
           outputs.mode = HoodIOOutputMode.OPEN_LOOP;
           outputs.volts = volts.getAsDouble();
         });
-  }
-
-  private static double unitsToDeg(double radians) {
-    return Units.radiansToDegrees(radians);
   }
 }

@@ -6,6 +6,7 @@ package frc.robot.subsystems.shooter.flywheel;
 import edu.wpi.first.math.filter.Debouncer;
 import edu.wpi.first.wpilibj.Alert;
 import edu.wpi.first.wpilibj2.command.Command;
+import edu.wpi.first.wpilibj2.command.sysid.SysIdRoutine;
 import frc.robot.Constants;
 import frc.robot.Robot;
 import frc.robot.subsystems.shooter.ShotCalculator;
@@ -38,6 +39,8 @@ public class Flywheel extends FullSubsystem {
   private final Alert disconnected;
   private final Alert followerDisconnected;
 
+  private final SysIdRoutine sysId;
+
   private static final LoggedTunableNumber voltageKP =
       new LoggedTunableNumber("Flywheel/Voltage/kP");
   private static final LoggedTunableNumber voltageKD =
@@ -55,6 +58,9 @@ public class Flywheel extends FullSubsystem {
       new LoggedTunableNumber("Flywheel/TorqueCurrent/kS");
   private static final LoggedTunableNumber torqueCurrentKV =
       new LoggedTunableNumber("Flywheel/TorqueCurrent/kV");
+
+  private static final LoggedTunableNumber toleranceRotationsPerSec =
+      new LoggedTunableNumber("Flywheel/ToleranceRotationsPerSec");
 
   static {
     switch (Constants.getMode()) {
@@ -76,6 +82,7 @@ public class Flywheel extends FullSubsystem {
         voltageKV.initDefault(0.12021);
       }
     }
+    toleranceRotationsPerSec.initDefault(10.0 / (2 * Math.PI));
   }
 
   @Getter
@@ -94,6 +101,23 @@ public class Flywheel extends FullSubsystem {
     disconnected = new Alert("Flywheel motor disconnected!", Alert.AlertType.kWarning);
     followerDisconnected =
         new Alert("Flywheel follower motor disconnected!", Alert.AlertType.kWarning);
+
+    sysId =
+        new SysIdRoutine(
+            new SysIdRoutine.Config(
+                null,
+                null,
+                null,
+                (state) -> Logger.recordOutput("Flywheel/SysIdState", state.toString())),
+            new SysIdRoutine.Mechanism(
+                (voltage) -> {
+                  outputs.mode = FlywheelIOOutputMode.VOLTAGE;
+                  outputs.velocityRotationsPerSec = 0.0;
+                  outputs.feedforward = voltage.in(edu.wpi.first.units.Units.Volts);
+                },
+                null,
+                this,
+                "Flywheel"));
   }
 
   public void periodic() {
@@ -110,11 +134,23 @@ public class Flywheel extends FullSubsystem {
     outputs.torqueCurrentKS = torqueCurrentKS.get();
     outputs.torqueCurrentKV = torqueCurrentKV.get();
 
+    if (edu.wpi.first.wpilibj.DriverStation.isDisabled()) {
+      stop();
+    }
+
     disconnected.set(
         Robot.showHardwareAlerts() && !motorConnectedDebouncer.calculate(inputs.connectedMaster));
     followerDisconnected.set(
         Robot.showHardwareAlerts()
             && !motorFollowerConnectedDebouncer.calculate(inputs.connectedFollower));
+
+    if (outputs.mode != FlywheelIOOutputMode.COAST) {
+      atGoal =
+          Math.abs(inputs.velocityRotationsPerSec - outputs.velocityRotationsPerSec)
+              <= toleranceRotationsPerSec.get();
+    } else {
+      atGoal = false;
+    }
 
     LoggedTracer.record("Flywheel/Periodic");
   }
@@ -128,7 +164,7 @@ public class Flywheel extends FullSubsystem {
   }
 
   /** Run closed loop at the specified velocity. */
-  public void runVelocity(double velocityRadsPerSec) {
+  public void runVelocity(double velocityRotationsPerSec) {
     double kS;
     double kV;
     switch (controlMode) {
@@ -148,21 +184,21 @@ public class Flywheel extends FullSubsystem {
         kV = voltageKV.get();
       }
     }
-    outputs.velocityRadsPerSec = velocityRadsPerSec;
-    outputs.feedforward = Math.signum(velocityRadsPerSec) * kS + velocityRadsPerSec * kV;
-    Logger.recordOutput("Flywheel/Setpoint", velocityRadsPerSec);
+    outputs.velocityRotationsPerSec = velocityRotationsPerSec;
+    outputs.feedforward = Math.signum(velocityRotationsPerSec) * kS + velocityRotationsPerSec * kV;
+    Logger.recordOutput("Flywheel/Setpoint", velocityRotationsPerSec);
   }
 
   /** Stops the flywheel. */
   public void stop() {
     outputs.mode = FlywheelIOOutputMode.COAST;
-    outputs.velocityRadsPerSec = 0.0;
+    outputs.velocityRotationsPerSec = 0.0;
     atGoal = false;
   }
 
-  /** Returns the current velocity in RPM. */
+  /** Returns the current velocity in rotations per second. */
   public double getVelocity() {
-    return inputs.velocityRadsPerSec;
+    return inputs.velocityRotationsPerSec;
   }
 
   public Command runTrackTargetCommand() {
@@ -175,7 +211,25 @@ public class Flywheel extends FullSubsystem {
     return runEnd(() -> runVelocity(velocity.getAsDouble()), this::stop);
   }
 
+  public Command runVolts(DoubleSupplier volts) {
+    return runEnd(
+        () -> {
+          outputs.mode = FlywheelIOOutputMode.VOLTAGE;
+          outputs.velocityRotationsPerSec = 0.0;
+          outputs.feedforward = volts.getAsDouble();
+        },
+        this::stop);
+  }
+
   public Command stopCommand() {
     return runOnce(this::stop);
+  }
+
+  public Command sysIdQuasistatic(SysIdRoutine.Direction direction) {
+    return sysId.quasistatic(direction);
+  }
+
+  public Command sysIdDynamic(SysIdRoutine.Direction direction) {
+    return sysId.dynamic(direction);
   }
 }

@@ -6,7 +6,6 @@ package frc.robot.subsystems.intake;
 import edu.wpi.first.math.MathUtil;
 import edu.wpi.first.math.filter.Debouncer;
 import edu.wpi.first.math.geometry.Pose3d;
-import edu.wpi.first.math.util.Units;
 import edu.wpi.first.wpilibj.Alert;
 import edu.wpi.first.wpilibj.DriverStation;
 import edu.wpi.first.wpilibj.util.Color;
@@ -186,7 +185,7 @@ public class Intake extends FullSubsystem {
   public void periodicAfterScheduler() {
     if (DriverStation.isEnabled()) {
       double clampedGoalDeg = MathUtil.clamp(goalAngleDeg, minAngleDeg, maxAngleDeg);
-      pivotOutputs.positionRad = Units.degreesToRadians(clampedGoalDeg);
+      pivotOutputs.positionRotations = clampedGoalDeg / 360.0;
       pivotOutputs.mode = IntakePivotIO.IntakePivotIOOutputMode.CLOSED_LOOP;
       pivotOutputs.volts = 0.0;
       Logger.recordOutput("IntakePivot/GoalPositionDeg", clampedGoalDeg);
@@ -203,7 +202,7 @@ public class Intake extends FullSubsystem {
 
   @AutoLogOutput(key = "IntakePivot/MeasuredAngleDeg")
   public double getMeasuredAngleDeg() {
-    return Units.radiansToDegrees(pivotInputs.positionRads);
+    return pivotInputs.positionRotations * 360.0;
   }
 
   @AutoLogOutput(key = "IntakePivot/AtGoal")
