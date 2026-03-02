@@ -65,11 +65,11 @@ public class DriveCommands extends Command {
   // public static final LinearVelocity DEFAULT_DRIVE_SPEED = MetersPerSecond.of(3.2);
   // public static final AngularVelocity DEFAULT_ROT_SPEED = RotationsPerSecond.of(0.75);
 
-  public static final LinearVelocity DEFAULT_DRIVE_SPEED = MetersPerSecond.of(4.5);
-  public static final AngularVelocity DEFAULT_ROT_SPEED = RotationsPerSecond.of(2);
+  public static final LinearVelocity DEFAULT_DRIVE_SPEED = MetersPerSecond.of(3);
+  public static final AngularVelocity DEFAULT_ROT_SPEED = RotationsPerSecond.of(1);
 
   public static final LinearVelocity FAST_DRIVE_SPEED = MetersPerSecond.of(4.5);
-  public static final AngularVelocity FAST_ROT_SPEED = RotationsPerSecond.of(2);
+  public static final AngularVelocity FAST_ROT_SPEED = RotationsPerSecond.of(1.5);
 
   public static final LinearAcceleration MAX_TELEOP_ACCEL = MetersPerSecondPerSecond.of(25);
 
@@ -92,6 +92,7 @@ public class DriveCommands extends Command {
       new TunablePIDController(ROTATION_CONSTANTS);
 
   @AutoLogOutput private DriveMode currentDriveMode = DriveMode.NORMAL;
+  private boolean launchRequested = false;
 
   /** Creates a new DriveCommands. */
   public DriveCommands(Drive drive, CommandXboxController controller) {
@@ -104,10 +105,6 @@ public class DriveCommands extends Command {
     inTrenchZoneTrigger.onTrue(updateDriveMode(DriveMode.TRENCH_LOCK));
     inBumpZoneTrigger.onTrue(updateDriveMode(DriveMode.BUMP_LOCK));
     inTrenchZoneTrigger.or(inBumpZoneTrigger).onFalse(updateDriveMode(DriveMode.NORMAL));
-    // for (int i = 0; i < 4; i++) {
-    //     Logger.recordOutput("Trench" + i, FieldConstants.TRENCH_ZONES[i]);
-    //     Logger.recordOutput("Bump" + i, FieldConstants.BUMP_ZONES[i]);
-    // }
     addRequirements(drive);
   }
 
@@ -195,6 +192,9 @@ public class DriveCommands extends Command {
                 && DriverStation.getAlliance().get() == DriverStation.Alliance.Red
             ? -1
             : 1;
+
+    setDriveSpeed(FAST_DRIVE_SPEED);
+    setRotSpeed(FAST_ROT_SPEED);
   }
 
   // Called every time the scheduler runs while the command is scheduled.
@@ -209,7 +209,26 @@ public class DriveCommands extends Command {
     double yVelocity = linearVelocity.getY();
     boolean driverCommanding = false;
 
-    switch (currentDriveMode) {
+    // Resolve effective mode: trench/bump zones override launch lock heading,
+    // but ShotCalculator keeps running so the solution stays fresh
+    DriveMode effectiveMode = currentDriveMode;
+    if (launchRequested) {
+      if (inTrenchZone()) {
+        effectiveMode = DriveMode.TRENCH_LOCK;
+      } else if (inBumpZone()) {
+        effectiveMode = DriveMode.BUMP_LOCK;
+      } else {
+        effectiveMode = DriveMode.LAUNCH_LOCK;
+      }
+    }
+
+    // Keep shot solution fresh whenever the driver wants to launch,
+    // even if trench/bump heading lock is active
+    if (launchRequested) {
+      ShotCalculator.getInstance().getParameters();
+    }
+
+    switch (effectiveMode) {
       case NORMAL:
         double omega =
             MathUtil.applyDeadband(
@@ -322,6 +341,18 @@ public class DriveCommands extends Command {
         });
   }
 
+  public Command slowDownCommand() {
+    return Commands.startEnd(
+        () -> {
+          setDriveSpeed(DEFAULT_DRIVE_SPEED);
+          setRotSpeed(DEFAULT_ROT_SPEED);
+        },
+        () -> {
+          setDriveSpeed(FAST_DRIVE_SPEED);
+          setRotSpeed(FAST_ROT_SPEED);
+        });
+  }
+
   /** Returns true when the robot is aimed within tolerance at the shot target. */
   @AutoLogOutput
   public boolean atLaunchGoal() {
@@ -339,8 +370,7 @@ public class DriveCommands extends Command {
    * release.
    */
   public Command launchModeCommand() {
-    return Commands.startEnd(
-        () -> currentDriveMode = DriveMode.LAUNCH_LOCK, () -> currentDriveMode = DriveMode.NORMAL);
+    return Commands.startEnd(() -> launchRequested = true, () -> launchRequested = false);
   }
 
   // Called once the command ends or is interrupted.

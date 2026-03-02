@@ -221,6 +221,7 @@ public class RobotContainer {
   private void configureButtonBindings() {
     // Default command, normal field-relative drive
     drive.setDefaultCommand(driveCommand);
+    // hood.setDefaultCommand(hood.runTrackTargetCommand());
 
     // --- Mutable state for manual tuning ---
     final double[] targetSpeed = {45.0};
@@ -236,6 +237,8 @@ public class RobotContainer {
                       Logger.recordOutput("Debug/HoodTargetAngle", targetHoodAngle[0]);
                     })
                 .withName("TuningLogger"));
+
+    controller.rightStick().whileTrue(driveCommand.slowDownCommand());
 
     // --- Flywheel Controls ---
 

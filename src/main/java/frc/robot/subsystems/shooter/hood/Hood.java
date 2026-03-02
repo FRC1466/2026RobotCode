@@ -161,7 +161,7 @@ public class Hood extends FullSubsystem {
     return run(
         () -> {
           var params = ShotCalculator.getInstance().getParameters();
-          setGoalAngleDeg(params.hoodAngle() * 360.0);
+          setGoalAngleDeg(params.hoodAngleDeg());
         });
   }
 

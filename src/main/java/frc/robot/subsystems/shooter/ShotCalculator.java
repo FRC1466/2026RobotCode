@@ -22,6 +22,7 @@ import frc.robot.RobotState;
 import frc.robot.subsystems.drive.Drive;
 import frc.robot.subsystems.shooter.hood.Hood;
 import frc.robot.util.AllianceFlipUtil;
+import frc.robot.util.Bounds;
 import frc.robot.util.GeomUtil;
 import frc.robot.util.LoggedTunableNumber;
 import lombok.Getter;
@@ -54,9 +55,9 @@ public class ShotCalculator {
       boolean isValid,
       Rotation2d driveAngle,
       double driveVelocity,
-      double hoodAngle,
-      double hoodVelocity,
-      double flywheelSpeed,
+      double hoodAngleDeg,
+      double hoodVelocityDegPerSec,
+      double flywheelSpeedRPS,
       double distance,
       double distanceNoLookahead,
       double timeOfFlight,
@@ -115,21 +116,20 @@ public class ShotCalculator {
       LoggedTunableNumber hoodAngleDeg, LoggedTunableNumber flywheelSpeed) {}
 
   // Bad-box bounds (min x, max x, min y, max y) — field-relative, blue-origin
-  private static final double[] towerBound = {
-    0, Units.inchesToMeters(129), Units.inchesToMeters(46), Units.inchesToMeters(168)
-  };
-  private static final double[] nearHubBound = {
-    FieldConstants.LinesVertical.neutralZoneNear,
-    FieldConstants.LinesVertical.neutralZoneNear + Units.inchesToMeters(65),
-    FieldConstants.LinesHorizontal.rightBumpStart,
-    FieldConstants.LinesHorizontal.leftBumpEnd
-  };
-  private static final double[] farHubBound = {
-    FieldConstants.LinesVertical.oppAllianceZone,
-    FieldConstants.fieldLength,
-    FieldConstants.LinesHorizontal.rightBumpStart,
-    FieldConstants.LinesHorizontal.leftBumpEnd
-  };
+  private static final Bounds towerBound =
+      new Bounds(0, Units.inchesToMeters(129), Units.inchesToMeters(46), Units.inchesToMeters(168));
+  private static final Bounds nearHubBound =
+      new Bounds(
+          FieldConstants.LinesVertical.neutralZoneNear,
+          FieldConstants.LinesVertical.neutralZoneNear + Units.inchesToMeters(65),
+          FieldConstants.LinesHorizontal.rightBumpStart,
+          FieldConstants.LinesHorizontal.leftBumpEnd);
+  private static final Bounds farHubBound =
+      new Bounds(
+          FieldConstants.LinesVertical.oppAllianceZone,
+          FieldConstants.fieldLength,
+          FieldConstants.LinesHorizontal.rightBumpStart,
+          FieldConstants.LinesHorizontal.leftBumpEnd);
 
   static {
     minDistance = 1.34;
@@ -223,9 +223,9 @@ public class ShotCalculator {
               latestParameters.isValid(),
               latestParameters.driveAngle(),
               latestParameters.driveVelocity(),
-              Hood.minAngleDeg / 360.0,
-              latestParameters.hoodVelocity(),
-              latestParameters.flywheelSpeed(),
+              Hood.minAngleDeg,
+              latestParameters.hoodVelocityDegPerSec(),
+              latestParameters.flywheelSpeedRPS(),
               latestParameters.distance(),
               latestParameters.distanceNoLookahead(),
               latestParameters.timeOfFlight(),
@@ -261,8 +261,11 @@ public class ShotCalculator {
     double shooterToTargetDistance = target.getDistance(shooterPosition.getTranslation());
 
     // Calculate field relative shooter velocity
-    double shooterVelocityX = RobotState.getInstance().getFieldVelocity().vxMetersPerSecond;
-    double shooterVelocityY = RobotState.getInstance().getFieldVelocity().vyMetersPerSecond;
+    var robotVelocity = RobotState.getInstance().getFieldVelocity();
+    var robotAngle = RobotState.getInstance().getEstimatedPose().getRotation();
+    ChassisSpeeds shooterVelocity =
+        GeomUtil.transformVelocity(
+            robotVelocity, robotToShooter.getTranslation().toTranslation2d(), robotAngle);
 
     // Account for imparted velocity by robot (shooter) to offset
     double timeOfFlight =
@@ -277,8 +280,8 @@ public class ShotCalculator {
           passing
               ? passingTimeOfFlightMap.get(lookaheadShooterToTargetDistance)
               : timeOfFlightMap.get(lookaheadShooterToTargetDistance);
-      double offsetX = shooterVelocityX * timeOfFlight;
-      double offsetY = shooterVelocityY * timeOfFlight;
+      double offsetX = shooterVelocity.vxMetersPerSecond * timeOfFlight;
+      double offsetY = shooterVelocity.vyMetersPerSecond * timeOfFlight;
       lookaheadPose =
           new Pose2d(
               shooterPosition.getTranslation().plus(new Translation2d(offsetX, offsetY)),
@@ -291,15 +294,15 @@ public class ShotCalculator {
     Rotation2d driveAngle = getDriveAngleWithShooterOffset(lookaheadRobotPose, target);
 
     // Calculate remaining parameters
-    double hoodAngle =
+    double hoodAngleDeg =
         passing
-            ? passingHoodAngleMap.get(lookaheadShooterToTargetDistance).getRotations()
-            : hoodAngleMap.get(lookaheadShooterToTargetDistance).getRotations();
+            ? passingHoodAngleMap.get(lookaheadShooterToTargetDistance).getDegrees()
+            : hoodAngleMap.get(lookaheadShooterToTargetDistance).getDegrees();
     if (lastDriveAngle == null) lastDriveAngle = driveAngle;
-    if (Double.isNaN(lastHoodAngle)) lastHoodAngle = hoodAngle;
-    double hoodVelocity =
-        hoodAngleFilter.calculate((hoodAngle - lastHoodAngle) / Constants.loopPeriodSecs);
-    lastHoodAngle = hoodAngle;
+    if (Double.isNaN(lastHoodAngle)) lastHoodAngle = hoodAngleDeg;
+    double hoodVelocityDegPerSec =
+        hoodAngleFilter.calculate((hoodAngleDeg - lastHoodAngle) / Constants.loopPeriodSecs);
+    lastHoodAngle = hoodAngleDeg;
     double driveVelocity =
         driveAngleFilter.calculate(
             driveAngle.minus(lastDriveAngle).getRadians() / Constants.loopPeriodSecs);
@@ -308,9 +311,9 @@ public class ShotCalculator {
     // Check if inside a bad zone
     var flippedPose = AllianceFlipUtil.apply(estimatedPose);
     Translation2d fp = flippedPose.getTranslation();
-    boolean insideTowerBadBox = inBounds(fp, towerBound);
-    boolean behindNearHub = inBounds(fp, nearHubBound);
-    boolean behindFarHub = inBounds(fp, farHubBound);
+    boolean insideTowerBadBox = towerBound.contains(fp);
+    boolean behindNearHub = nearHubBound.contains(fp);
+    boolean behindFarHub = farHubBound.contains(fp);
     boolean outsideOfBadBoxes = !(insideTowerBadBox || behindNearHub || behindFarHub);
 
     latestParameters =
@@ -320,8 +323,8 @@ public class ShotCalculator {
                 && lookaheadShooterToTargetDistance <= (passing ? passingMaxDistance : maxDistance),
             driveAngle,
             driveVelocity,
-            hoodAngle + hoodAngleOffsetDeg / 360.0,
-            hoodVelocity,
+            hoodAngleDeg + hoodAngleOffsetDeg,
+            hoodVelocityDegPerSec,
             passing
                 ? passingFlywheelSpeedMap.get(lookaheadShooterToTargetDistance)
                 : flywheelSpeedMap.get(lookaheadShooterToTargetDistance),
@@ -337,13 +340,6 @@ public class ShotCalculator {
         "LaunchCalculator/ShooterToTargetDistance", lookaheadShooterToTargetDistance);
 
     return latestParameters;
-  }
-
-  private static boolean inBounds(Translation2d point, double[] bound) {
-    return point.getX() >= bound[0]
-        && point.getX() <= bound[1]
-        && point.getY() >= bound[2]
-        && point.getY() <= bound[3];
   }
 
   public Translation2d getPassingTarget() {

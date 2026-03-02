@@ -7,6 +7,9 @@ import edu.wpi.first.wpilibj.DriverStation;
 import edu.wpi.first.wpilibj.DriverStation.Alliance;
 import edu.wpi.first.wpilibj.Timer;
 import frc.robot.subsystems.shooter.ShotCalculator;
+import java.util.Optional;
+import java.util.function.Supplier;
+import lombok.Setter;
 
 public class HubShiftUtil {
   public enum ShiftEnum {
@@ -43,7 +46,24 @@ public class HubShiftUtil {
   private static final boolean[] activeSchedule = {true, true, false, true, false, true};
   private static final boolean[] inactiveSchedule = {true, false, true, false, true, true};
 
-  private static Alliance getFirstActiveAlliance() {
+  @Setter private static Supplier<Optional<Boolean>> allianceWinOverride = () -> Optional.empty();
+
+  public static Optional<Boolean> getAllianceWinOverride() {
+    return allianceWinOverride.get();
+  }
+
+  public static Alliance getFirstActiveAlliance() {
+    var alliance = DriverStation.getAlliance().orElse(Alliance.Blue);
+
+    // Return override value
+    var winOverride = getAllianceWinOverride();
+    if (!winOverride.isEmpty()) {
+      return winOverride.get()
+          ? (alliance == Alliance.Blue ? Alliance.Red : Alliance.Blue)
+          : (alliance == Alliance.Blue ? Alliance.Blue : Alliance.Red);
+    }
+
+    // Return FMS value
     String message = DriverStation.getGameSpecificMessage();
     if (message.length() > 0) {
       char character = message.charAt(0);
@@ -53,9 +73,9 @@ public class HubShiftUtil {
         return Alliance.Red;
       }
     }
-    return DriverStation.getAlliance().orElse(Alliance.Blue) == Alliance.Blue
-        ? Alliance.Red
-        : Alliance.Blue;
+
+    // Return default value
+    return alliance == Alliance.Blue ? Alliance.Red : Alliance.Blue;
   }
 
   /** Starts the timer at the begining of teleop. */

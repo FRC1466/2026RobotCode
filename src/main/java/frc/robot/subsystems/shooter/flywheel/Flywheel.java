@@ -203,7 +203,7 @@ public class Flywheel extends FullSubsystem {
 
   public Command runTrackTargetCommand() {
     return runEnd(
-        () -> runVelocity(ShotCalculator.getInstance().getParameters().flywheelSpeed()),
+        () -> runVelocity(ShotCalculator.getInstance().getParameters().flywheelSpeedRPS()),
         this::stop);
   }
 

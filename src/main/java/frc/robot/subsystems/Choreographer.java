@@ -14,6 +14,7 @@ import frc.robot.subsystems.shooter.ShotCalculator.ShootingParameters;
 import frc.robot.subsystems.shooter.flywheel.Flywheel;
 import frc.robot.subsystems.shooter.hood.Hood;
 import frc.robot.subsystems.spindexer.Spindexer;
+import frc.robot.util.HubShiftUtil;
 import java.util.function.BooleanSupplier;
 import lombok.Getter;
 import org.littletonrobotics.junction.AutoLogOutput;
@@ -104,6 +105,14 @@ public class Choreographer extends SubsystemBase {
   }
 
   private void handleScoreHub() {
+    boolean hubActive = HubShiftUtil.getShiftedShiftInfo().active();
+
+    if (!hubActive) {
+      stopAll();
+      currentState = State.IDLE;
+      return;
+    }
+
     intake.stow();
     intake.stop();
 
@@ -184,5 +193,9 @@ public class Choreographer extends SubsystemBase {
     Logger.recordOutput("Choreographer/IntakeRunning", intake.isRunning());
     Logger.recordOutput("Choreographer/HasShotParams", hasShotParams());
     Logger.recordOutput("Choreographer/Passing", hasShotParams() && cachedShotParams.passing());
+    var shiftInfo = HubShiftUtil.getShiftedShiftInfo();
+    Logger.recordOutput("Choreographer/HubActive", shiftInfo.active());
+    Logger.recordOutput("Choreographer/HubShift", shiftInfo.currentShift().name());
+    Logger.recordOutput("Choreographer/HubTimeRemaining", shiftInfo.remainingTime());
   }
 }
