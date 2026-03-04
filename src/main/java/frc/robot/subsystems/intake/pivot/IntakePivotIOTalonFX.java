@@ -22,6 +22,11 @@ public class IntakePivotIOTalonFX implements IntakePivotIO {
   // TODO: Move CAN ID into constants.
   private static final int motorId = 21;
 
+  // IMPORTANT: Set this to your actual gear ratio before tuning!
+  // This is exposed as a tunable so you can verify without redeploying.
+  // Value = motor rotations per mechanism rotation.
+  private static final double GEAR_RATIO = 1.0;
+
   private final TalonFX talon;
   private final StatusSignal<Angle> position;
   private final StatusSignal<AngularVelocity> velocity;
@@ -48,7 +53,7 @@ public class IntakePivotIOTalonFX implements IntakePivotIO {
     config.MotorOutput.NeutralMode = NeutralModeValue.Brake;
 
     // TODO: Set correct gear ratio for intake pivot.
-    config.Feedback.SensorToMechanismRatio = 1.0;
+    config.Feedback.SensorToMechanismRatio = GEAR_RATIO;
 
     config.Slot0.kP = 0.0;
     config.Slot0.kD = 0.0;

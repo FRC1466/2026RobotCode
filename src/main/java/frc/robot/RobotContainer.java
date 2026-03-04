@@ -56,9 +56,9 @@ import frc.robot.subsystems.vision.VisionIO;
 import frc.robot.subsystems.vision.VisionIOPhotonVision;
 import frc.robot.util.AllianceFlipUtil;
 import frc.robot.util.HubShiftUtil;
+import frc.robot.util.LoggedTunableNumber;
 import frc.robot.util.TriggerUtil;
 import lombok.experimental.ExtensionMethod;
-import org.littletonrobotics.junction.Logger;
 import org.littletonrobotics.junction.networktables.LoggedDashboardChooser;
 
 /**
@@ -90,6 +90,15 @@ public class RobotContainer {
 
   // Dashboard inputs
   private final LoggedDashboardChooser<Command> autoChooser;
+
+  // Tuning values — editable live via NetworkTables when tuningMode=true, otherwise fixed defaults.
+  // Visible under /Tuning/ in AdvantageScope / NT explorer.
+  private static final LoggedTunableNumber manualFlywheelSpeed =
+      new LoggedTunableNumber("Shooter/ManualFlywheelSpeedRPS", 45.0);
+  private static final LoggedTunableNumber manualHoodAngle =
+      new LoggedTunableNumber("Shooter/ManualHoodAngleDeg", 0.1);
+  private static final LoggedTunableNumber manualIntakeDeployAngle =
+      new LoggedTunableNumber("Intake/ManualDeployAngleDeg", 105.0);
 
   /** The container for the robot. Contains subsystems, OI devices, and commands. */
   public RobotContainer() {
@@ -189,10 +198,6 @@ public class RobotContainer {
     autoChooser.addOption("Depot Auto (Choreo)", autos.depotAuto().cmd());
 
     // Set up SysId routines
-    // autoChooser.addOption(
-    //     "Drive Wheel Radius Characterization", DriveCommands.wheelRadiusCharacterization(drive));
-    // autoChooser.addOption(
-    //     "Drive Simple FF Characterization", DriveCommands.feedforwardCharacterization(drive));
     autoChooser.addOption(
         "Drive SysId (Quasistatic Forward)",
         drive.sysIdQuasistatic(SysIdRoutine.Direction.kForward));
@@ -203,6 +208,41 @@ public class RobotContainer {
         "Drive SysId (Dynamic Forward)", drive.sysIdDynamic(SysIdRoutine.Direction.kForward));
     autoChooser.addOption(
         "Drive SysId (Dynamic Reverse)", drive.sysIdDynamic(SysIdRoutine.Direction.kReverse));
+    autoChooser.addOption(
+        "Flywheel SysId (Quasistatic Forward)",
+        flywheel.sysIdQuasistatic(SysIdRoutine.Direction.kForward));
+    autoChooser.addOption(
+        "Flywheel SysId (Quasistatic Reverse)",
+        flywheel.sysIdQuasistatic(SysIdRoutine.Direction.kReverse));
+    autoChooser.addOption(
+        "Flywheel SysId (Dynamic Forward)", flywheel.sysIdDynamic(SysIdRoutine.Direction.kForward));
+    autoChooser.addOption(
+        "Flywheel SysId (Dynamic Reverse)", flywheel.sysIdDynamic(SysIdRoutine.Direction.kReverse));
+    autoChooser.addOption(
+        "Hood SysId (Quasistatic Forward)", hood.sysIdQuasistatic(SysIdRoutine.Direction.kForward));
+    autoChooser.addOption(
+        "Hood SysId (Quasistatic Reverse)", hood.sysIdQuasistatic(SysIdRoutine.Direction.kReverse));
+    autoChooser.addOption(
+        "Hood SysId (Dynamic Forward)", hood.sysIdDynamic(SysIdRoutine.Direction.kForward));
+    autoChooser.addOption(
+        "Hood SysId (Dynamic Reverse)", hood.sysIdDynamic(SysIdRoutine.Direction.kReverse));
+
+    // Subsystem bring-up tests — run each motor at a fixed voltage for verification
+    autoChooser.addOption(
+        "Test: Flywheel 3V",
+        flywheel.runVolts(() -> 3.0).withTimeout(5.0).withName("Test Flywheel 3V"));
+    autoChooser.addOption(
+        "Test: Hood", hood.runVolts(() -> 0.5).withTimeout(3.0).withName("Test Hood 0.5V"));
+    autoChooser.addOption(
+        "Test: Intake Pivot",
+        intake.runVolts(() -> 0.25).withTimeout(3.0).withName("Test Intake Pivot 0.25V"));
+    autoChooser.addOption(
+        "Test: Intake Rollers",
+        intake.runCommand().withTimeout(3.0).withName("Test Intake Rollers"));
+    autoChooser.addOption(
+        "Test: Indexer", indexer.runCommand().withTimeout(3.0).withName("Test Indexer"));
+    autoChooser.addOption(
+        "Test: Kicker", kicker.runCommand().withTimeout(3.0).withName("Test Kicker"));
 
     driveCommand = new DriveCommands(drive, controller);
 
@@ -215,126 +255,46 @@ public class RobotContainer {
    * instantiating a {@link GenericHID} or one of its subclasses ({@link
    * edu.wpi.first.wpilibj.Joystick} or {@link XboxController}), and then passing it to a {@link
    * edu.wpi.first.wpilibj2.command.button.JoystickButton}.
+   *
+   * <p>Layout:
+   *
+   * <pre>
+   *  RIGHT TRIGGER  — Choreographer SCORE_HUB + auto-rotate drive
+   *  LEFT TRIGGER   — Choreographer INTAKE
+   *  LEFT BUMPER    — Speed boost (hold)
+   *  RIGHT BUMPER   — (reserved / future climb)
+   *  A              — Emergency stop → Choreographer IDLE
+   *  B              — (reserved)
+   *  X              — Tuning: spin flywheel at manualFlywheelSpeed (hold, Choreographer disabled)
+   *  Y              — Tuning: move hood to manualHoodAngle (hold, Choreographer disabled)
+   *  POV LEFT/RIGHT — Tuning: adjust flywheel speed ±1 RPS
+   *  POV UP/DOWN    — Tuning: adjust hood angle ±1°
+   *  POV UP+RIGHT   — Tuning: intake deploy angle +1°
+   *  POV DOWN+LEFT  — Tuning: intake deploy angle -1°
+   *  BACK (solo)    — Toggle Choreographer enabled/disabled (enter/exit tuning mode)
+   *  START + BACK   — Reset gyro to forward
+   * </pre>
    */
   private void configureButtonBindings() {
-    // Default command, normal field-relative drive
+    // Default command — normal field-relative drive
     drive.setDefaultCommand(driveCommand);
-    // hood.setDefaultCommand(hood.runTrackTargetCommand());
 
-    // --- Mutable state for manual tuning ---
-    final double[] targetSpeed = {45.0};
-    final boolean[] flywheelActive = {false};
-    final double[] targetHoodAngle = {0.1};
+    // ── Drive overrides ──────────────────────────────────────────────────────
 
-    // Logging Command: Periodically logs target speed and hood angle to AdvantageScope
-    RobotModeTriggers.teleop()
-        .whileTrue(
-            Commands.run(
-                    () -> {
-                      Logger.recordOutput("Debug/FlywheelTargetSpeed", targetSpeed[0]);
-                      Logger.recordOutput("Debug/HoodTargetAngle", targetHoodAngle[0]);
-                    })
-                .withName("TuningLogger"));
+    // Left Bumper: speed boost (hold) — default ~3 m/s, boost to ~4.5 m/s
+    controller.leftBumper().whileTrue(driveCommand.speedUpCommand());
 
-    controller.rightStick().whileTrue(driveCommand.slowDownCommand());
-
-    // --- Flywheel Controls ---
-
-    // X Button: Toggle flywheel spinning at target speed
-    controller
-        .x()
-        .onTrue(
-            Commands.either(
-                    flywheel.stopCommand(),
-                    flywheel.runFixedCommand(() -> targetSpeed[0]),
-                    () -> flywheelActive[0])
-                .andThen(Commands.runOnce(() -> flywheelActive[0] = !flywheelActive[0])));
-
-    // POV Left: Decrease flywheel target speed
-    controller
-        .povLeft()
-        .onTrue(
-            Commands.runOnce(() -> targetSpeed[0] = Math.max(0.0, targetSpeed[0] - 1.0))
-                .withName("DecreaseFlywheelSpeed"));
-
-    // POV Right: Increase flywheel target speed
-    controller
-        .povRight()
-        .onTrue(
-            Commands.runOnce(() -> targetSpeed[0] = Math.min(110.0, targetSpeed[0] + 1.0))
-                .withName("IncreaseFlywheelSpeed"));
-
-    // Left + Right Bumper: Toggle flywheel control mode (voltage / torque current)
-    controller
-        .leftBumper()
-        .and(controller.rightBumper())
-        .onTrue(
-            Commands.runOnce(
-                    () -> {
-                      if (flywheel.getControlMode() == Flywheel.ControlMode.VOLTAGE) {
-                        flywheel.setControlMode(Flywheel.ControlMode.TORQUE_CURRENT);
-                      } else {
-                        flywheel.setControlMode(Flywheel.ControlMode.VOLTAGE);
-                      }
-                    })
-                .withName("ToggleFlywheelControlMode"));
-
-    // --- Hood Controls ---
-
-    // POV Up: Increase hood angle
-    controller
-        .povUp()
-        .onTrue(
-            Commands.runOnce(() -> targetHoodAngle[0] = Math.min(32.0, targetHoodAngle[0] + 1.0))
-                .withName("IncreaseHoodAngle"));
-
-    // POV Down: Decrease hood angle
-    controller
-        .povDown()
-        .onTrue(
-            Commands.runOnce(() -> targetHoodAngle[0] = Math.max(0.1, targetHoodAngle[0] - 1.0))
-                .withName("DecreaseHoodAngle"));
-
-    // Y Button: Move hood to target angle (hold)
-    controller
-        .y()
-        .whileTrue(hood.runFixedCommand(() -> targetHoodAngle[0]).withName("HoodToTargetAngle"));
-
-    // --- Intake Controls ---
-
-    // A Button (single press): Deploy pivot and run rollers (hold)
-    controller.a().whileTrue(intake.intakeCommand());
-
-    // --- Indexer / Kicker Controls ---
-
-    // Left Trigger: Run indexer and kicker to feed game piece (hold)
-    controller
-        .leftTrigger()
-        .whileTrue(
-            Commands.parallel(indexer.runCommand(), kicker.runCommand()).withName("FeedGamePiece"));
-
-    // --- Utility Controls ---
-
-    // Right Bumper (no Left): Launch-while-driving — auto-aims rotation at hub while driving
+    // Right Bumper: toggle hub-preset override — bypasses vision/pose, uses hubPreset values and
+    // the robot's current heading (no auto-rotation). Visible on SmartDashboard as
+    // "ShotCalculator/HubPresetOverride". Use when vision is unreliable and you know your position.
     controller
         .rightBumper()
-        .and(controller.leftBumper().negate())
-        .whileTrue(
-            Commands.parallel(
-                    driveCommand.launchModeCommand(),
-                    flywheel.runTrackTargetCommand(),
-                    hood.runTrackTargetCommand())
-                .finallyDo(() -> ShotCalculator.getInstance().clearShootingParameters())
-                .withName("DriveWhileLaunching"));
-
-    // B Button: Stop all shooter subsystems (flywheel + hood)
-    controller
-        .b()
         .onTrue(
-            Commands.parallel(flywheel.stopCommand(), hood.runFixedCommand(() -> 0.1))
-                .andThen(Commands.runOnce(() -> flywheelActive[0] = false)));
+            Commands.runOnce(() -> ShotCalculator.getInstance().toggleHubPresetOverride())
+                .withName("ToggleHubPresetOverride")
+                .ignoringDisable(true));
 
-    // Start + Back: Reset gyro
+    // Start + Back: reset gyro heading to alliance-forward
     controller
         .start()
         .and(controller.back())
@@ -348,8 +308,56 @@ public class RobotContainer {
                 .withName("ResetGyro")
                 .ignoringDisable(true));
 
-    RobotModeTriggers.teleop().onTrue(Commands.runOnce(() -> HubShiftUtil.initialize()));
-    RobotModeTriggers.autonomous().onTrue(Commands.runOnce(() -> HubShiftUtil.initialize()));
+    // ── Primary scoring (Choreographer) ──────────────────────────────────────
+
+    // Right Trigger: SCORE_HUB — Choreographer handles flywheel, hood, indexer, kicker.
+    // Drive auto-rotates to target while held.
+    controller
+        .rightTrigger()
+        .onTrue(choreographer.setGoalCommand(Choreographer.Goal.SCORE_HUB))
+        .whileTrue(driveCommand.launchModeCommand())
+        .onFalse(choreographer.setGoalCommand(Choreographer.Goal.IDLE));
+
+    // Left Trigger: INTAKE — Choreographer deploys pivot and runs rollers.
+    controller
+        .leftTrigger()
+        .onTrue(choreographer.setGoalCommand(Choreographer.Goal.INTAKE))
+        .onFalse(choreographer.setGoalCommand(Choreographer.Goal.IDLE));
+
+    // ── Emergency stop ────────────────────────────────────────────────────────
+
+    // A Button: cancel everything → Choreographer IDLE (stows intake, stops shooter)
+    controller
+        .a()
+        .onTrue(choreographer.setGoalCommand(Choreographer.Goal.IDLE).withName("EmergencyStop"));
+
+    // ── Tuning mode (active only when Choreographer is disabled via Back button) ──
+
+    // Back (solo): toggle Choreographer enabled — when disabled, X/Y + POV tune directly
+    controller.back().and(controller.start().negate()).onTrue(choreographer.toggleEnabledCommand());
+
+    // B Button: hold to deploy intake to manualIntakeDeployAngle (tuning, Choreographer off)
+    controller
+        .b()
+        .whileTrue(
+            intake.runFixedCommand(manualIntakeDeployAngle).withName("TuneIntakeDeployAngle"))
+        .onFalse(intake.stowCommand());
+
+    // X Button: hold to spin flywheel at manualFlywheelSpeed (tuning, Choreographer off)
+    controller
+        .x()
+        .whileTrue(flywheel.runFixedCommand(manualFlywheelSpeed).withName("TuneFlywheelSpin"))
+        .onFalse(flywheel.stopCommand());
+
+    // Y Button: hold to move hood to manualHoodAngle (tuning, Choreographer off)
+    controller
+        .y()
+        .whileTrue(hood.runFixedCommand(manualHoodAngle).withName("TuneHoodAngle"))
+        .onFalse(hood.stowCommand());
+
+    // ── Mode init ────────────────────────────────────────────────────────────
+    RobotModeTriggers.teleop().onTrue(Commands.runOnce(HubShiftUtil::initialize));
+    RobotModeTriggers.autonomous().onTrue(Commands.runOnce(HubShiftUtil::initialize));
   }
 
   /** Update dashboard outputs. */

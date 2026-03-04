@@ -11,6 +11,7 @@ import edu.wpi.first.wpilibj.DriverStation;
 import edu.wpi.first.wpilibj.util.Color;
 import edu.wpi.first.wpilibj.util.Color8Bit;
 import edu.wpi.first.wpilibj2.command.Command;
+import edu.wpi.first.wpilibj2.command.sysid.SysIdRoutine;
 import frc.robot.Constants;
 import frc.robot.Robot;
 import frc.robot.subsystems.shooter.ShotCalculator;
@@ -91,8 +92,26 @@ public class Hood extends FullSubsystem {
 
   private Boolean lastBrakeMode = null;
 
+  private final SysIdRoutine sysId;
+
   public Hood(HoodIO io) {
     this.io = io;
+
+    sysId =
+        new SysIdRoutine(
+            new SysIdRoutine.Config(
+                null,
+                null,
+                null,
+                (state) -> Logger.recordOutput("Hood/SysIdState", state.toString())),
+            new SysIdRoutine.Mechanism(
+                (voltage) -> {
+                  outputs.mode = HoodIOOutputMode.OPEN_LOOP;
+                  outputs.volts = voltage.in(edu.wpi.first.units.Units.Volts);
+                },
+                null,
+                this,
+                "Hood"));
   }
 
   @Override
@@ -131,7 +150,8 @@ public class Hood extends FullSubsystem {
 
   @Override
   public void periodicAfterScheduler() {
-    if (DriverStation.isEnabled()) {
+    // Only set closed-loop if nothing else (SysId, runVolts) has taken control
+    if (DriverStation.isEnabled() && outputs.mode != HoodIOOutputMode.OPEN_LOOP) {
       double clampedGoalDeg = MathUtil.clamp(goalAngleDeg, minAngleDeg, maxAngleDeg);
       outputs.positionRotations = clampedGoalDeg / 360.0;
       outputs.mode = HoodIOOutputMode.CLOSED_LOOP;
@@ -139,12 +159,18 @@ public class Hood extends FullSubsystem {
 
       // Log state
       Logger.recordOutput("Hood/Profile/GoalPositionDeg", clampedGoalDeg);
-    } else {
+    } else if (!DriverStation.isEnabled()) {
       outputs.mode = HoodIOOutputMode.OPEN_LOOP;
       outputs.volts = 0.0;
     }
+    // else: OPEN_LOOP was set by a command (SysId/runVolts) — don't override
 
     io.applyOutputs(outputs);
+
+    // Reset mode to closed-loop for next cycle so commands must actively claim OPEN_LOOP
+    if (DriverStation.isEnabled()) {
+      outputs.mode = HoodIOOutputMode.CLOSED_LOOP;
+    }
   }
 
   @AutoLogOutput(key = "Hood/MeasuredAngleDeg")
@@ -175,11 +201,23 @@ public class Hood extends FullSubsystem {
     setGoalAngleDeg(minAngleDeg);
   }
 
+  public Command stowCommand() {
+    return run(this::stow);
+  }
+
   public Command runVolts(DoubleSupplier volts) {
     return run(
         () -> {
           outputs.mode = HoodIOOutputMode.OPEN_LOOP;
           outputs.volts = volts.getAsDouble();
         });
+  }
+
+  public Command sysIdQuasistatic(SysIdRoutine.Direction direction) {
+    return sysId.quasistatic(direction);
+  }
+
+  public Command sysIdDynamic(SysIdRoutine.Direction direction) {
+    return sysId.dynamic(direction);
   }
 }

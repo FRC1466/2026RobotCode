@@ -26,8 +26,10 @@ import edu.wpi.first.wpilibj2.command.button.CommandXboxController;
 import edu.wpi.first.wpilibj2.command.button.Trigger;
 import frc.robot.Constants;
 import frc.robot.Constants.ControllerConstants;
+import frc.robot.FieldConstants;
 import frc.robot.subsystems.drive.Drive;
 import frc.robot.subsystems.shooter.ShotCalculator;
+import frc.robot.util.AllianceFlipUtil;
 import frc.robot.util.LoggedTunableNumber;
 import frc.robot.util.SlewRateLimiter2d;
 import frc.robot.util.TunableControls.ControlConstants;
@@ -193,8 +195,8 @@ public class DriveCommands extends Command {
             ? -1
             : 1;
 
-    setDriveSpeed(FAST_DRIVE_SPEED);
-    setRotSpeed(FAST_ROT_SPEED);
+    setDriveSpeed(DEFAULT_DRIVE_SPEED);
+    setRotSpeed(DEFAULT_ROT_SPEED);
   }
 
   // Called every time the scheduler runs while the command is scheduled.
@@ -206,7 +208,6 @@ public class DriveCommands extends Command {
     linearVelocity = driveLimiter.calculate(linearVelocity);
 
     // Determine translation and target heading based on drive mode
-    double yVelocity = linearVelocity.getY();
     boolean driverCommanding = false;
 
     // Resolve effective mode: trench/bump zones override launch lock heading,
@@ -241,7 +242,7 @@ public class DriveCommands extends Command {
           driverCommanding = true;
           driveFieldCentric(
               MetersPerSecond.of(linearVelocity.getX()),
-              MetersPerSecond.of(yVelocity),
+              MetersPerSecond.of(linearVelocity.getY()),
               maxRotSpeed.times(omega));
         } else if (!headingLocked) {
           // Driver just released rotation stick — capture current heading
@@ -252,10 +253,11 @@ public class DriveCommands extends Command {
         break;
       case TRENCH_LOCK:
         trenchYController.setSetpoint(getTrenchY().in(Meters));
-        yVelocity = trenchYController.calculate(drive.getPose().getY());
+        double trenchY = trenchYController.calculate(drive.getPose().getY());
         if (trenchYController.atSetpoint()) {
-          yVelocity = 0;
+          trenchY = 0;
         }
+        linearVelocity = new Translation2d(linearVelocity.getX(), trenchY);
         targetHeading = getTrenchLockAngle();
         headingLocked = true;
         ShotCalculator.getInstance().dropHood();
@@ -268,29 +270,37 @@ public class DriveCommands extends Command {
         {
           final var params = ShotCalculator.getInstance().getParameters();
 
-          // Limit linear velocity so the hub angle change over TOF stays within polar limit
-          if (!params.passing() && linearVelocity.getNorm() > 1e-6) {
-            double robotToHubAngle =
+          // Limit linear velocity so the hub angle change over TOF stays within polar limit.
+          // Logic ported from Mechanical Advantage's 2026
+          // DriveCommands.joystickDriveWhileLaunching.
+          if (!params.passing()) {
+            double maxLinearVelocityMagnitude = Double.POSITIVE_INFINITY;
+            double robotAngle =
                 Math.abs(
-                    ShotCalculator.getStationaryAimedPose(drive.getPose().getTranslation())
-                        .getRotation()
+                    AllianceFlipUtil.apply(FieldConstants.Hub.topCenterPoint.toTranslation2d())
+                        .minus(drive.getPose().getTranslation())
+                        .getAngle()
                         .minus(linearVelocity.getAngle())
                         .getRadians());
             double robotHubDistance = params.distanceNoLookahead();
             double hubAngle =
                 driveLaunchMaxPolarVelocityRadPerSec.get()
                     * ShotCalculator.getInstance().getNaiveTOF(robotHubDistance);
-            double lookaheadAngle = Math.PI - robotToHubAngle - hubAngle;
+            double lookaheadAngle = Math.PI - robotAngle - hubAngle;
+
+            // Calculate limit if triangle is valid (otherwise no limit)
             if (lookaheadAngle > 0) {
               double robotLookaheadDistance =
                   robotHubDistance * Math.sin(hubAngle) / Math.sin(lookaheadAngle);
-              double maxLinearMagnitude =
+              maxLinearVelocityMagnitude =
                   robotLookaheadDistance
                       / ShotCalculator.getInstance().getNaiveTOF(robotHubDistance);
-              if (linearVelocity.getNorm() > maxLinearMagnitude) {
-                linearVelocity =
-                    linearVelocity.times(maxLinearMagnitude / linearVelocity.getNorm());
-              }
+            }
+
+            // Apply limit to velocity
+            if (linearVelocity.getNorm() > maxLinearVelocityMagnitude) {
+              linearVelocity =
+                  linearVelocity.times(maxLinearVelocityMagnitude / linearVelocity.getNorm());
             }
           }
 
@@ -316,7 +326,7 @@ public class DriveCommands extends Command {
       }
       driveFieldCentric(
           MetersPerSecond.of(linearVelocity.getX()),
-          MetersPerSecond.of(yVelocity),
+          MetersPerSecond.of(linearVelocity.getY()),
           RadiansPerSecond.of(headingCorrection));
     }
   }
@@ -342,15 +352,7 @@ public class DriveCommands extends Command {
   }
 
   public Command slowDownCommand() {
-    return Commands.startEnd(
-        () -> {
-          setDriveSpeed(DEFAULT_DRIVE_SPEED);
-          setRotSpeed(DEFAULT_ROT_SPEED);
-        },
-        () -> {
-          setDriveSpeed(FAST_DRIVE_SPEED);
-          setRotSpeed(FAST_ROT_SPEED);
-        });
+    return speedUpCommand();
   }
 
   /** Returns true when the robot is aimed within tolerance at the shot target. */

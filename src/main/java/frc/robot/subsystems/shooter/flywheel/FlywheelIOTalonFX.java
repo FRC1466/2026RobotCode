@@ -62,9 +62,13 @@ public class FlywheelIOTalonFX implements FlywheelIO {
     config.MotorOutput.Inverted = InvertedValue.Clockwise_Positive;
     config.MotorOutput.NeutralMode = NeutralModeValue.Coast;
     config.Feedback.SensorToMechanismRatio = 1.0;
+    config.CurrentLimits.SupplyCurrentLimit = 80.0;
+    config.CurrentLimits.SupplyCurrentLimitEnable = true;
 
     var followerConfig = new TalonFXConfiguration();
     followerConfig.MotorOutput.NeutralMode = NeutralModeValue.Coast;
+    followerConfig.CurrentLimits.SupplyCurrentLimit = 80.0;
+    followerConfig.CurrentLimits.SupplyCurrentLimitEnable = true;
 
     PhoenixUtil.tryUntilOk(5, () -> talon.getConfigurator().apply(config));
     PhoenixUtil.tryUntilOk(5, () -> talonFollower.getConfigurator().apply(followerConfig));

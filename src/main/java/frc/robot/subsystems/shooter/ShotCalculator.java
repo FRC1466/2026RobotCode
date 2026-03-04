@@ -16,13 +16,13 @@ import edu.wpi.first.math.interpolation.InterpolatingTreeMap;
 import edu.wpi.first.math.interpolation.InverseInterpolator;
 import edu.wpi.first.math.kinematics.ChassisSpeeds;
 import edu.wpi.first.math.util.Units;
+import edu.wpi.first.wpilibj.smartdashboard.SmartDashboard;
 import frc.robot.Constants;
 import frc.robot.FieldConstants;
 import frc.robot.RobotState;
 import frc.robot.subsystems.drive.Drive;
 import frc.robot.subsystems.shooter.hood.Hood;
 import frc.robot.util.AllianceFlipUtil;
-import frc.robot.util.Bounds;
 import frc.robot.util.GeomUtil;
 import frc.robot.util.LoggedTunableNumber;
 import lombok.Getter;
@@ -43,7 +43,7 @@ public class ShotCalculator {
   private final LinearFilter driveAngleFilter =
       LinearFilter.movingAverage((int) (0.8 / Constants.loopPeriodSecs));
 
-  private double lastHoodAngle;
+  private double lastHoodAngle = Double.NaN;
   private Rotation2d lastDriveAngle;
 
   public static ShotCalculator getInstance() {
@@ -65,6 +65,13 @@ public class ShotCalculator {
 
   // Cache parameters
   private ShootingParameters latestParameters = null;
+
+  /**
+   * When true, getParameters() ignores vision/pose and returns hub-preset values at
+   * hubPresetDistance with the robot's current heading — no auto-rotation. Toggle via right bumper
+   * on controller or the SmartDashboard key "ShotCalculator/HubPresetOverride".
+   */
+  private boolean hubPresetOverride = false;
 
   private static double minDistance;
   private static double maxDistance;
@@ -105,31 +112,15 @@ public class ShotCalculator {
   public static final LaunchPreset outpostPreset;
   public static final LaunchPreset hoodMinPreset =
       new LaunchPreset(
-          new LoggedTunableNumber("LaunchCalculator/Presets/HoodMin/HoodAngle", Hood.minAngleDeg),
-          new LoggedTunableNumber("LaunchCalculator/Presets/HoodMin/FlywheelSpeed", 100));
+          new LoggedTunableNumber("ShotCalculator/Presets/HoodMin/HoodAngle", Hood.minAngleDeg),
+          new LoggedTunableNumber("ShotCalculator/Presets/HoodMin/FlywheelSpeed", 100));
   public static final LaunchPreset hoodMaxPreset =
       new LaunchPreset(
-          new LoggedTunableNumber("LaunchCalculator/Presets/HoodMax/HoodAngle", Hood.maxAngleDeg),
-          new LoggedTunableNumber("LaunchCalculator/Presets/HoodMax/FlywheelSpeed", 100));
+          new LoggedTunableNumber("ShotCalculator/Presets/HoodMax/HoodAngle", Hood.maxAngleDeg),
+          new LoggedTunableNumber("ShotCalculator/Presets/HoodMax/FlywheelSpeed", 100));
 
   public static record LaunchPreset(
       LoggedTunableNumber hoodAngleDeg, LoggedTunableNumber flywheelSpeed) {}
-
-  // Bad-box bounds (min x, max x, min y, max y) — field-relative, blue-origin
-  private static final Bounds towerBound =
-      new Bounds(0, Units.inchesToMeters(129), Units.inchesToMeters(46), Units.inchesToMeters(168));
-  private static final Bounds nearHubBound =
-      new Bounds(
-          FieldConstants.LinesVertical.neutralZoneNear,
-          FieldConstants.LinesVertical.neutralZoneNear + Units.inchesToMeters(65),
-          FieldConstants.LinesHorizontal.rightBumpStart,
-          FieldConstants.LinesHorizontal.leftBumpEnd);
-  private static final Bounds farHubBound =
-      new Bounds(
-          FieldConstants.LinesVertical.oppAllianceZone,
-          FieldConstants.fieldLength,
-          FieldConstants.LinesHorizontal.rightBumpStart,
-          FieldConstants.LinesHorizontal.leftBumpEnd);
 
   static {
     minDistance = 1.34;
@@ -177,34 +168,34 @@ public class ShotCalculator {
     hubPreset =
         new LaunchPreset(
             new LoggedTunableNumber(
-                "LaunchCalculator/Presets/Hub/HoodAngle",
+                "ShotCalculator/Presets/Hub/HoodAngle",
                 hoodAngleMap.get(hubPresetDistance).getDegrees()),
             new LoggedTunableNumber(
-                "LaunchCalculator/Presets/Hub/FlywheelSpeed",
+                "ShotCalculator/Presets/Hub/FlywheelSpeed",
                 flywheelSpeedMap.get(hubPresetDistance)));
     towerPreset =
         new LaunchPreset(
             new LoggedTunableNumber(
-                "LaunchCalculator/Presets/Tower/HoodAngle",
+                "ShotCalculator/Presets/Tower/HoodAngle",
                 hoodAngleMap.get(towerPresetDistance).getDegrees()),
             new LoggedTunableNumber(
-                "LaunchCalculator/Presets/Tower/FlywheelSpeed",
+                "ShotCalculator/Presets/Tower/FlywheelSpeed",
                 flywheelSpeedMap.get(towerPresetDistance)));
     trenchPreset =
         new LaunchPreset(
             new LoggedTunableNumber(
-                "LaunchCalculator/Presets/Trench/HoodAngle",
+                "ShotCalculator/Presets/Trench/HoodAngle",
                 hoodAngleMap.get(trenchPresetDistance).getDegrees()),
             new LoggedTunableNumber(
-                "LaunchCalculator/Presets/Trench/FlywheelSpeed",
+                "ShotCalculator/Presets/Trench/FlywheelSpeed",
                 flywheelSpeedMap.get(trenchPresetDistance)));
     outpostPreset =
         new LaunchPreset(
             new LoggedTunableNumber(
-                "LaunchCalculator/Presets/Outpost/HoodAngle",
+                "ShotCalculator/Presets/Outpost/HoodAngle",
                 hoodAngleMap.get(outpostPresetDistance).getDegrees()),
             new LoggedTunableNumber(
-                "LaunchCalculator/Presets/Outpost/FlywheelSpeed",
+                "ShotCalculator/Presets/Outpost/FlywheelSpeed",
                 flywheelSpeedMap.get(outpostPresetDistance)));
   }
 
@@ -214,6 +205,18 @@ public class ShotCalculator {
 
   public static double getMaxTimeOfFlight() {
     return timeOfFlightMap.get(maxDistance);
+  }
+
+  /** Toggles hub-preset override on/off. Returns the new state. */
+  public boolean toggleHubPresetOverride() {
+    hubPresetOverride = !hubPresetOverride;
+    SmartDashboard.putBoolean("ShotCalculator/HubPresetOverride", hubPresetOverride);
+    Logger.recordOutput("ShotCalculator/HubPresetOverride", hubPresetOverride);
+    return hubPresetOverride;
+  }
+
+  public boolean isHubPresetOverride() {
+    return hubPresetOverride;
   }
 
   public void dropHood() {
@@ -238,6 +241,27 @@ public class ShotCalculator {
         AllianceFlipUtil.applyX(RobotState.getInstance().getEstimatedPose().getX())
             > FieldConstants.LinesVertical.hubCenter;
     if (latestParameters != null) {
+      return latestParameters;
+    }
+
+    // Hub-preset override: ignore vision/pose, use preset values at hubPresetDistance and keep
+    // the robot's current heading so there is no auto-rotation.
+    if (hubPresetOverride) {
+      Rotation2d currentHeading = RobotState.getInstance().getEstimatedPose().getRotation();
+      double d = hubPresetDistance;
+      latestParameters =
+          new ShootingParameters(
+              true,
+              currentHeading,
+              0.0,
+              hubPreset.hoodAngleDeg().get() + hoodAngleOffsetDeg,
+              0.0,
+              hubPreset.flywheelSpeed().get(),
+              d,
+              d,
+              timeOfFlightMap.get(d),
+              false);
+      Logger.recordOutput("ShotCalculator/HubPresetOverride", true);
       return latestParameters;
     }
 
@@ -308,18 +332,9 @@ public class ShotCalculator {
             driveAngle.minus(lastDriveAngle).getRadians() / Constants.loopPeriodSecs);
     lastDriveAngle = driveAngle;
 
-    // Check if inside a bad zone
-    var flippedPose = AllianceFlipUtil.apply(estimatedPose);
-    Translation2d fp = flippedPose.getTranslation();
-    boolean insideTowerBadBox = towerBound.contains(fp);
-    boolean behindNearHub = nearHubBound.contains(fp);
-    boolean behindFarHub = farHubBound.contains(fp);
-    boolean outsideOfBadBoxes = !(insideTowerBadBox || behindNearHub || behindFarHub);
-
     latestParameters =
         new ShootingParameters(
-            outsideOfBadBoxes
-                && lookaheadShooterToTargetDistance >= (passing ? passingMinDistance : minDistance)
+            lookaheadShooterToTargetDistance >= (passing ? passingMinDistance : minDistance)
                 && lookaheadShooterToTargetDistance <= (passing ? passingMaxDistance : maxDistance),
             driveAngle,
             driveVelocity,
@@ -334,10 +349,9 @@ public class ShotCalculator {
             passing);
 
     // Log calculated values
-    Logger.recordOutput("LaunchCalculator/TargetPose", new Pose2d(target, Rotation2d.kZero));
-    Logger.recordOutput("LaunchCalculator/LookaheadPose", lookaheadPose);
-    Logger.recordOutput(
-        "LaunchCalculator/ShooterToTargetDistance", lookaheadShooterToTargetDistance);
+    Logger.recordOutput("ShotCalculator/TargetPose", new Pose2d(target, Rotation2d.kZero));
+    Logger.recordOutput("ShotCalculator/LookaheadPose", lookaheadPose);
+    Logger.recordOutput("ShotCalculator/ShooterToTargetDistance", lookaheadShooterToTargetDistance);
 
     return latestParameters;
   }

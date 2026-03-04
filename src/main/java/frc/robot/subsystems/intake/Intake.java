@@ -183,19 +183,26 @@ public class Intake extends FullSubsystem {
 
   @Override
   public void periodicAfterScheduler() {
-    if (DriverStation.isEnabled()) {
+    // Only set closed-loop if nothing else (runVolts) has taken control
+    if (DriverStation.isEnabled()
+        && pivotOutputs.mode != IntakePivotIO.IntakePivotIOOutputMode.OPEN_LOOP) {
       double clampedGoalDeg = MathUtil.clamp(goalAngleDeg, minAngleDeg, maxAngleDeg);
       pivotOutputs.positionRotations = clampedGoalDeg / 360.0;
       pivotOutputs.mode = IntakePivotIO.IntakePivotIOOutputMode.CLOSED_LOOP;
       pivotOutputs.volts = 0.0;
       Logger.recordOutput("IntakePivot/GoalPositionDeg", clampedGoalDeg);
-    } else {
+    } else if (!DriverStation.isEnabled()) {
       pivotOutputs.mode = IntakePivotIO.IntakePivotIOOutputMode.OPEN_LOOP;
       pivotOutputs.volts = 0.0;
     }
 
     pivotIO.applyOutputs(pivotOutputs);
     rollersIO.applyOutputs(rollersOutputs);
+
+    // Reset mode for next cycle so commands must actively claim OPEN_LOOP
+    if (DriverStation.isEnabled()) {
+      pivotOutputs.mode = IntakePivotIO.IntakePivotIOOutputMode.CLOSED_LOOP;
+    }
   }
 
   // Pivot API

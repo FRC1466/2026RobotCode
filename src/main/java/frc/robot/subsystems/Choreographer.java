@@ -4,8 +4,10 @@
 package frc.robot.subsystems;
 
 import edu.wpi.first.math.geometry.Rotation2d;
+import edu.wpi.first.math.geometry.Translation2d;
 import edu.wpi.first.wpilibj2.command.Command;
 import edu.wpi.first.wpilibj2.command.SubsystemBase;
+import frc.robot.FieldConstants;
 import frc.robot.subsystems.drive.Drive;
 import frc.robot.subsystems.indexer.Indexer;
 import frc.robot.subsystems.intake.Intake;
@@ -14,9 +16,11 @@ import frc.robot.subsystems.shooter.ShotCalculator;
 import frc.robot.subsystems.shooter.ShotCalculator.ShootingParameters;
 import frc.robot.subsystems.shooter.flywheel.Flywheel;
 import frc.robot.subsystems.shooter.hood.Hood;
+import frc.robot.util.AllianceFlipUtil;
 import frc.robot.util.HubShiftUtil;
 import java.util.function.BooleanSupplier;
 import lombok.Getter;
+import lombok.Setter;
 import org.littletonrobotics.junction.AutoLogOutput;
 import org.littletonrobotics.junction.Logger;
 
@@ -48,6 +52,12 @@ public class Choreographer extends SubsystemBase {
   @AutoLogOutput(key = "Choreographer/State")
   private State currentState = State.IDLE;
 
+  /** When false, Choreographer does not control any subsystems (for manual tuning). */
+  @Getter
+  @Setter
+  @AutoLogOutput(key = "Choreographer/Enabled")
+  private boolean enabled = true;
+
   private final Drive drive;
   private final Flywheel flywheel;
   private final Hood hood;
@@ -69,7 +79,19 @@ public class Choreographer extends SubsystemBase {
 
   @Override
   public void periodic() {
+    // Always log distance from hub regardless of enabled state
+    Translation2d hubTarget =
+        AllianceFlipUtil.apply(FieldConstants.Hub.topCenterPoint.toTranslation2d());
+    double distanceFromHub = drive.getPose().getTranslation().getDistance(hubTarget);
+    Logger.recordOutput("Choreographer/DistanceFromHubMeters", distanceFromHub);
+
     cachedShotParams = ShotCalculator.getInstance().getParameters();
+
+    if (!enabled) {
+      currentState = State.IDLE;
+      logOutputs();
+      return;
+    }
 
     switch (currentGoal) {
       case IDLE -> handleIdle();
@@ -102,14 +124,16 @@ public class Choreographer extends SubsystemBase {
   private void handleScoreHub() {
     boolean hubActive = HubShiftUtil.getShiftedShiftInfo().active();
 
-    if (!hubActive) {
+    /* if (!hubActive) {
       stopAll();
       currentState = State.IDLE;
       return;
-    }
+    } */
 
     intake.stow();
     intake.stop();
+
+    cachedShotParams = ShotCalculator.getInstance().getParameters();
 
     if (cachedShotParams == null || !cachedShotParams.isValid()) {
       stopAll();
@@ -117,7 +141,6 @@ public class Choreographer extends SubsystemBase {
       return;
     }
 
-    // Set flywheel velocity and hood angle directly (not via commands)
     flywheel.runVelocity(cachedShotParams.flywheelSpeedRPS());
     hood.setGoalAngleDeg(cachedShotParams.hoodAngleDeg());
 
@@ -164,6 +187,11 @@ public class Choreographer extends SubsystemBase {
 
   public Command setGoalCommand(Goal goal) {
     return runOnce(() -> this.currentGoal = goal).withName("Choreographer.setGoal(" + goal + ")");
+  }
+
+  /** Toggles whether the Choreographer controls subsystems. */
+  public Command toggleEnabledCommand() {
+    return runOnce(() -> this.enabled = !this.enabled).withName("Choreographer.toggleEnabled");
   }
 
   @AutoLogOutput(key = "Choreographer/ReadyToShoot")

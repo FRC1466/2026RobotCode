@@ -59,7 +59,7 @@ public class Indexer extends FullSubsystem {
       case REAL, REPLAY -> {
         runVolts.initDefault(6.0);
         reverseVolts.initDefault(-4.0);
-        stallCurrentThreshold.initDefault(30.0);
+        stallCurrentThreshold.initDefault(90.0);
         stallVelocityThreshold.initDefault(0.5);
         stallDebounceTime.initDefault(0.15);
         reverseDuration.initDefault(0.25);
@@ -67,7 +67,7 @@ public class Indexer extends FullSubsystem {
       case SIM -> {
         runVolts.initDefault(6.0);
         reverseVolts.initDefault(-4.0);
-        stallCurrentThreshold.initDefault(30.0);
+        stallCurrentThreshold.initDefault(90.0);
         stallVelocityThreshold.initDefault(0.5);
         stallDebounceTime.initDefault(0.15);
         reverseDuration.initDefault(0.25);
