@@ -182,7 +182,6 @@ public class Choreographer extends SubsystemBase {
   private void logOutputs() {
     Logger.recordOutput("Choreographer/FlywheelReady", flywheel.atGoal());
     Logger.recordOutput("Choreographer/HoodReady", hood.isAtGoal());
-    // Logger.recordOutput("Choreographer/DriveAligned", DriveCommands.atLaunchGoal());
     Logger.recordOutput("Choreographer/IndexerRunning", indexer.isRunning());
     Logger.recordOutput("Choreographer/IndexerStalled", indexer.isStalled());
     Logger.recordOutput("Choreographer/KickerRunning", kicker.isRunning());
