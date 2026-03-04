@@ -67,11 +67,11 @@ public class DriveCommands extends Command {
   // public static final LinearVelocity DEFAULT_DRIVE_SPEED = MetersPerSecond.of(3.2);
   // public static final AngularVelocity DEFAULT_ROT_SPEED = RotationsPerSecond.of(0.75);
 
-  public static final LinearVelocity DEFAULT_DRIVE_SPEED = MetersPerSecond.of(3);
-  public static final AngularVelocity DEFAULT_ROT_SPEED = RotationsPerSecond.of(1);
+  public static final LinearVelocity DEFAULT_DRIVE_SPEED = MetersPerSecond.of(4.5);
+  public static final AngularVelocity DEFAULT_ROT_SPEED = RotationsPerSecond.of(1.5);
 
-  public static final LinearVelocity FAST_DRIVE_SPEED = MetersPerSecond.of(4.5);
-  public static final AngularVelocity FAST_ROT_SPEED = RotationsPerSecond.of(1.5);
+  public static final LinearVelocity SLOW_DRIVE_SPEED = MetersPerSecond.of(3);
+  public static final AngularVelocity SLOW_ROT_SPEED = RotationsPerSecond.of(1);
 
   public static final LinearAcceleration MAX_TELEOP_ACCEL = MetersPerSecondPerSecond.of(25);
 
@@ -339,20 +339,16 @@ public class DriveCommands extends Command {
     maxRotSpeed = speed;
   }
 
-  public Command speedUpCommand() {
+  public Command slowDownCommand() {
     return Commands.startEnd(
         () -> {
-          setDriveSpeed(FAST_DRIVE_SPEED);
-          setRotSpeed(FAST_ROT_SPEED);
+          setDriveSpeed(SLOW_DRIVE_SPEED);
+          setRotSpeed(SLOW_ROT_SPEED);
         },
         () -> {
           setDriveSpeed(DEFAULT_DRIVE_SPEED);
           setRotSpeed(DEFAULT_ROT_SPEED);
         });
-  }
-
-  public Command slowDownCommand() {
-    return speedUpCommand();
   }
 
   /** Returns true when the robot is aimed within tolerance at the shot target. */

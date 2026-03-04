@@ -208,24 +208,6 @@ public class RobotContainer {
         "Drive SysId (Dynamic Forward)", drive.sysIdDynamic(SysIdRoutine.Direction.kForward));
     autoChooser.addOption(
         "Drive SysId (Dynamic Reverse)", drive.sysIdDynamic(SysIdRoutine.Direction.kReverse));
-    autoChooser.addOption(
-        "Flywheel SysId (Quasistatic Forward)",
-        flywheel.sysIdQuasistatic(SysIdRoutine.Direction.kForward));
-    autoChooser.addOption(
-        "Flywheel SysId (Quasistatic Reverse)",
-        flywheel.sysIdQuasistatic(SysIdRoutine.Direction.kReverse));
-    autoChooser.addOption(
-        "Flywheel SysId (Dynamic Forward)", flywheel.sysIdDynamic(SysIdRoutine.Direction.kForward));
-    autoChooser.addOption(
-        "Flywheel SysId (Dynamic Reverse)", flywheel.sysIdDynamic(SysIdRoutine.Direction.kReverse));
-    autoChooser.addOption(
-        "Hood SysId (Quasistatic Forward)", hood.sysIdQuasistatic(SysIdRoutine.Direction.kForward));
-    autoChooser.addOption(
-        "Hood SysId (Quasistatic Reverse)", hood.sysIdQuasistatic(SysIdRoutine.Direction.kReverse));
-    autoChooser.addOption(
-        "Hood SysId (Dynamic Forward)", hood.sysIdDynamic(SysIdRoutine.Direction.kForward));
-    autoChooser.addOption(
-        "Hood SysId (Dynamic Reverse)", hood.sysIdDynamic(SysIdRoutine.Direction.kReverse));
 
     // Subsystem bring-up tests — run each motor at a fixed voltage for verification
     autoChooser.addOption(
@@ -281,8 +263,8 @@ public class RobotContainer {
 
     // ── Drive overrides ──────────────────────────────────────────────────────
 
-    // Left Bumper: speed boost (hold) — default ~3 m/s, boost to ~4.5 m/s
-    controller.leftBumper().whileTrue(driveCommand.speedUpCommand());
+    // Left Bumper: slow mode (hold) — default is 4.5 m/s, slow to 3 m/s
+    controller.leftBumper().whileTrue(driveCommand.slowDownCommand());
 
     // Right Bumper: toggle hub-preset override — bypasses vision/pose, uses hubPreset values and
     // the robot's current heading (no auto-rotation). Visible on SmartDashboard as
