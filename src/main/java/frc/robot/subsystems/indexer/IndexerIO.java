@@ -1,13 +1,13 @@
 // Copyright (c) 2025-2026 Webb Robotics
 // http://github.com/FRC1466
 
-package frc.robot.subsystems.spindexer;
+package frc.robot.subsystems.indexer;
 
 import org.littletonrobotics.junction.AutoLog;
 
-public interface SpindexerIO {
+public interface IndexerIO {
   @AutoLog
-  class SpindexerIOInputs {
+  class IndexerIOInputs {
     public double velocityRps;
     public double appliedVoltage;
     public double supplyCurrentAmps;
@@ -16,13 +16,13 @@ public interface SpindexerIO {
     public boolean connected;
   }
 
-  class SpindexerIOOutputs {
+  class IndexerIOOutputs {
     public double appliedVolts = 0.0;
   }
 
-  default void updateInputs(SpindexerIOInputs inputs) {}
+  default void updateInputs(IndexerIOInputs inputs) {}
 
-  default void applyOutputs(SpindexerIOOutputs outputs) {}
+  default void applyOutputs(IndexerIOOutputs outputs) {}
 
   default void setBrakeMode(boolean enableBrake) {}
 }

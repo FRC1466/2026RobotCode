@@ -57,13 +57,9 @@ public class HoodIOTalonFX implements HoodIO {
     config.Slot0.kA = 0.0;
 
     // Motion Magic profile constraints (in mechanism rotations per second)
-    config.MotionMagic.MotionMagicCruiseVelocity = 2.0;
+    config.MotionMagic.MotionMagicCruiseVelocity = 4.0;
     config.MotionMagic.MotionMagicAcceleration = 4.0;
     config.MotionMagic.MotionMagicJerk = 0.0;
-
-    // Configured for Motion Magic
-    config.MotionMagic.MotionMagicAcceleration = 120;
-    config.MotionMagic.MotionMagicCruiseVelocity = 120;
 
     PhoenixUtil.tryUntilOk(5, () -> talon.getConfigurator().apply(config));
 

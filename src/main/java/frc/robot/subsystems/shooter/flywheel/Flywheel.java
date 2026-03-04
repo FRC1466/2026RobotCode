@@ -120,6 +120,7 @@ public class Flywheel extends FullSubsystem {
                 "Flywheel"));
   }
 
+  @Override
   public void periodic() {
     io.updateInputs(inputs);
     Logger.processInputs("Flywheel", inputs);

@@ -1,7 +1,7 @@
 // Copyright (c) 2025-2026 Webb Robotics
 // http://github.com/FRC1466
 
-package frc.robot.subsystems.spindexer;
+package frc.robot.subsystems.indexer;
 
 import static edu.wpi.first.units.Units.*;
 
@@ -15,7 +15,7 @@ import com.ctre.phoenix6.signals.NeutralModeValue;
 import edu.wpi.first.units.measure.*;
 import frc.robot.util.PhoenixUtil;
 
-public class SpindexerIOTalonFX implements SpindexerIO {
+public class IndexerIOTalonFX implements IndexerIO {
   // TODO: Move CAN ID into constants.
   private static final int motorId = 30;
 
@@ -28,7 +28,7 @@ public class SpindexerIOTalonFX implements SpindexerIO {
 
   private final VoltageOut voltageRequest = new VoltageOut(0);
 
-  public SpindexerIOTalonFX() {
+  public IndexerIOTalonFX() {
     talon = new TalonFX(motorId);
 
     var config = new TalonFXConfiguration();
@@ -59,7 +59,7 @@ public class SpindexerIOTalonFX implements SpindexerIO {
   }
 
   @Override
-  public void updateInputs(SpindexerIOInputs inputs) {
+  public void updateInputs(IndexerIOInputs inputs) {
     BaseStatusSignal.refreshAll(velocity, appliedVoltage, supplyCurrent, torqueCurrent, temp);
     inputs.connected =
         BaseStatusSignal.isAllGood(velocity, appliedVoltage, supplyCurrent, torqueCurrent, temp);
@@ -71,7 +71,7 @@ public class SpindexerIOTalonFX implements SpindexerIO {
   }
 
   @Override
-  public void applyOutputs(SpindexerIOOutputs outputs) {
+  public void applyOutputs(IndexerIOOutputs outputs) {
     talon.setControl(voltageRequest.withOutput(outputs.appliedVolts));
   }
 }

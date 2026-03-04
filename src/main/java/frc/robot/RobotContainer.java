@@ -20,12 +20,17 @@ import edu.wpi.first.wpilibj2.command.button.RobotModeTriggers;
 import edu.wpi.first.wpilibj2.command.sysid.SysIdRoutine;
 import frc.robot.commands.DriveCommands;
 import frc.robot.generated.TunerConstants;
+import frc.robot.subsystems.Choreographer;
 import frc.robot.subsystems.drive.Drive;
 import frc.robot.subsystems.drive.GyroIO;
 import frc.robot.subsystems.drive.GyroIOPigeon2;
 import frc.robot.subsystems.drive.ModuleIO;
 import frc.robot.subsystems.drive.ModuleIOSim;
 import frc.robot.subsystems.drive.ModuleIOTalonFX;
+import frc.robot.subsystems.indexer.Indexer;
+import frc.robot.subsystems.indexer.IndexerIO;
+import frc.robot.subsystems.indexer.IndexerIOSim;
+import frc.robot.subsystems.indexer.IndexerIOTalonFX;
 import frc.robot.subsystems.intake.Intake;
 import frc.robot.subsystems.intake.pivot.IntakePivotIO;
 import frc.robot.subsystems.intake.pivot.IntakePivotIOSim;
@@ -46,10 +51,6 @@ import frc.robot.subsystems.shooter.hood.Hood;
 import frc.robot.subsystems.shooter.hood.HoodIO;
 import frc.robot.subsystems.shooter.hood.HoodIOSim;
 import frc.robot.subsystems.shooter.hood.HoodIOTalonFX;
-import frc.robot.subsystems.spindexer.Spindexer;
-import frc.robot.subsystems.spindexer.SpindexerIO;
-import frc.robot.subsystems.spindexer.SpindexerIOSim;
-import frc.robot.subsystems.spindexer.SpindexerIOTalonFX;
 import frc.robot.subsystems.vision.Vision;
 import frc.robot.subsystems.vision.VisionIO;
 import frc.robot.subsystems.vision.VisionIOPhotonVision;
@@ -73,10 +74,10 @@ public class RobotContainer {
   private Vision vision;
   private Flywheel flywheel;
   private Hood hood;
-  private Spindexer spindexer;
+  private Indexer indexer;
   private Kicker kicker;
-  // private Choreographer choreographer;
-  // private Autos autos;
+  private Choreographer choreographer;
+  private Autos autos;
   private Intake intake;
 
   // Controller
@@ -108,9 +109,10 @@ public class RobotContainer {
                   new VisionIOPhotonVision(camera0Name, robotToCamera0));
 
           flywheel = new Flywheel(new FlywheelIOTalonFX());
-          hood = new Hood(new HoodIO() {});
-          spindexer = new Spindexer(new SpindexerIOTalonFX());
+          hood = new Hood(new HoodIOTalonFX());
+          indexer = new Indexer(new IndexerIOTalonFX());
           kicker = new Kicker(new KickerIOTalonFX());
+          intake = new Intake(new IntakePivotIOTalonFX(), new IntakeRollersIOTalonFX());
           break;
         }
         case DEVBOT -> {
@@ -136,7 +138,7 @@ public class RobotContainer {
                   new ModuleIOSim(TunerConstants.BackRight));
           flywheel = new Flywheel(new FlywheelIOSim());
           hood = new Hood(new HoodIOSim());
-          spindexer = new Spindexer(new SpindexerIOSim());
+          indexer = new Indexer(new IndexerIOSim());
           kicker = new Kicker(new KickerIOSim());
           intake = new Intake(new IntakePivotIOSim(), new IntakeRollersIOSim());
           break;
@@ -163,8 +165,8 @@ public class RobotContainer {
     if (hood == null) {
       hood = new Hood(new HoodIO() {});
     }
-    if (spindexer == null) {
-      spindexer = new Spindexer(new SpindexerIO() {});
+    if (indexer == null) {
+      indexer = new Indexer(new IndexerIO() {});
     }
     if (kicker == null) {
       kicker = new Kicker(new KickerIO() {});
@@ -174,21 +176,17 @@ public class RobotContainer {
     }
 
     // Instantiate Choreographer
-    // choreographer = new Choreographer(drive, flywheel, hood, spindexer, kicker, intake);
-
-    // LoggedNetworkBoolean coastOverride =
-    //     new LoggedNetworkBoolean("Choreographer/CoastOverride", false);
-    // choreographer.setCoastOverride(coastOverride);
+    choreographer = new Choreographer(drive, flywheel, hood, indexer, kicker, intake);
 
     // Set up Autos
-    // autos = new Autos(drive, flywheel, hood, choreographer);
+    autos = new Autos(drive, flywheel, hood, choreographer);
 
     // Set up auto routines
     autoChooser = new LoggedDashboardChooser<>("Auto Choices");
     autoChooser.addDefaultOption("None", Commands.none());
 
     // Add Choreo autos
-    // autoChooser.addOption("Depot Auto (Choreo)", autos.depotAuto().cmd());
+    autoChooser.addOption("Depot Auto (Choreo)", autos.depotAuto().cmd());
 
     // Set up SysId routines
     // autoChooser.addOption(
@@ -306,6 +304,14 @@ public class RobotContainer {
 
     // A Button (single press): Deploy pivot and run rollers (hold)
     controller.a().whileTrue(intake.intakeCommand());
+
+    // --- Indexer / Kicker Controls ---
+
+    // Left Trigger: Run indexer and kicker to feed game piece (hold)
+    controller
+        .leftTrigger()
+        .whileTrue(
+            Commands.parallel(indexer.runCommand(), kicker.runCommand()).withName("FeedGamePiece"));
 
     // --- Utility Controls ---
 

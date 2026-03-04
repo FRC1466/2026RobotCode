@@ -1,7 +1,7 @@
 // Copyright (c) 2025-2026 Webb Robotics
 // http://github.com/FRC1466
 
-package frc.robot.subsystems.spindexer;
+package frc.robot.subsystems.indexer;
 
 import edu.wpi.first.math.MathUtil;
 import edu.wpi.first.math.system.plant.DCMotor;
@@ -10,17 +10,17 @@ import edu.wpi.first.math.util.Units;
 import edu.wpi.first.wpilibj.simulation.DCMotorSim;
 import frc.robot.Constants;
 
-public class SpindexerIOSim implements SpindexerIO {
+public class IndexerIOSim implements IndexerIO {
   private static final DCMotor motorModel = DCMotor.getKrakenX60(1);
   private static final DCMotorSim sim =
       new DCMotorSim(LinearSystemId.createDCMotorSystem(motorModel, 0.01, 1), motorModel);
 
   private double appliedVolts = 0.0;
 
-  public SpindexerIOSim() {}
+  public IndexerIOSim() {}
 
   @Override
-  public void updateInputs(SpindexerIOInputs inputs) {
+  public void updateInputs(IndexerIOInputs inputs) {
     appliedVolts = MathUtil.clamp(appliedVolts, -12.0, 12.0);
 
     sim.setInputVoltage(appliedVolts);
@@ -35,7 +35,7 @@ public class SpindexerIOSim implements SpindexerIO {
   }
 
   @Override
-  public void applyOutputs(SpindexerIOOutputs outputs) {
+  public void applyOutputs(IndexerIOOutputs outputs) {
     appliedVolts = outputs.appliedVolts;
   }
 

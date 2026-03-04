@@ -1,7 +1,7 @@
 // Copyright (c) 2025-2026 Webb Robotics
 // http://github.com/FRC1466
 
-package frc.robot.subsystems.spindexer;
+package frc.robot.subsystems.indexer;
 
 import edu.wpi.first.math.filter.Debouncer;
 import edu.wpi.first.wpilibj.Alert;
@@ -10,7 +10,7 @@ import edu.wpi.first.wpilibj.Timer;
 import edu.wpi.first.wpilibj2.command.Command;
 import frc.robot.Constants;
 import frc.robot.Robot;
-import frc.robot.subsystems.spindexer.SpindexerIO.SpindexerIOOutputs;
+import frc.robot.subsystems.indexer.IndexerIO.IndexerIOOutputs;
 import frc.robot.util.FullSubsystem;
 import frc.robot.util.LoggedTunableNumber;
 import java.util.function.BooleanSupplier;
@@ -18,10 +18,10 @@ import lombok.Getter;
 import lombok.Setter;
 import org.littletonrobotics.junction.Logger;
 
-public class Spindexer extends FullSubsystem {
-  private final SpindexerIO io;
-  private final SpindexerIOInputsAutoLogged inputs = new SpindexerIOInputsAutoLogged();
-  private final SpindexerIOOutputs outputs = new SpindexerIOOutputs();
+public class Indexer extends FullSubsystem {
+  private final IndexerIO io;
+  private final IndexerIOInputsAutoLogged inputs = new IndexerIOInputsAutoLogged();
+  private final IndexerIOOutputs outputs = new IndexerIOOutputs();
 
   private final Debouncer motorConnectedDebouncer =
       new Debouncer(0.5, Debouncer.DebounceType.kFalling);
@@ -38,17 +38,17 @@ public class Spindexer extends FullSubsystem {
   private double reverseStartTime = 0.0;
 
   private static final LoggedTunableNumber runVolts =
-      new LoggedTunableNumber("Spindexer/RunVolts", 6.0);
+      new LoggedTunableNumber("Indexer/RunVolts", 6.0);
   private static final LoggedTunableNumber reverseVolts =
-      new LoggedTunableNumber("Spindexer/ReverseVolts", -4.0);
+      new LoggedTunableNumber("Indexer/ReverseVolts", -4.0);
   private static final LoggedTunableNumber stallCurrentThreshold =
-      new LoggedTunableNumber("Spindexer/StallCurrentThreshold", 30.0);
+      new LoggedTunableNumber("Indexer/StallCurrentThreshold", 90.0);
   private static final LoggedTunableNumber stallVelocityThreshold =
-      new LoggedTunableNumber("Spindexer/StallVelocityThreshold", 0.5);
+      new LoggedTunableNumber("Indexer/StallVelocityThreshold", 0.5);
   private static final LoggedTunableNumber stallDebounceTime =
-      new LoggedTunableNumber("Spindexer/StallDebounceSecs", 0.15);
+      new LoggedTunableNumber("Indexer/StallDebounceSecs", 0.15);
   private static final LoggedTunableNumber reverseDuration =
-      new LoggedTunableNumber("Spindexer/ReverseDurationSecs", 0.25);
+      new LoggedTunableNumber("Indexer/ReverseDurationSecs", 0.25);
 
   private Debouncer stallDebouncer;
 
@@ -75,10 +75,10 @@ public class Spindexer extends FullSubsystem {
     }
   }
 
-  public Spindexer(SpindexerIO io) {
+  public Indexer(IndexerIO io) {
     this.io = io;
 
-    disconnected = new Alert("Spindexer motor disconnected!", Alert.AlertType.kWarning);
+    disconnected = new Alert("Indexer motor disconnected!", Alert.AlertType.kWarning);
 
     stallDebouncer = new Debouncer(stallDebounceTime.get(), Debouncer.DebounceType.kRising);
   }
@@ -86,7 +86,7 @@ public class Spindexer extends FullSubsystem {
   @Override
   public void periodic() {
     io.updateInputs(inputs);
-    Logger.processInputs("Spindexer", inputs);
+    Logger.processInputs("Indexer", inputs);
 
     if (stallDebounceTime.hasChanged(hashCode())) {
       stallDebouncer = new Debouncer(stallDebounceTime.get(), Debouncer.DebounceType.kRising);
@@ -131,10 +131,10 @@ public class Spindexer extends FullSubsystem {
     disconnected.set(
         Robot.showHardwareAlerts() && !motorConnectedDebouncer.calculate(inputs.connected));
 
-    Logger.recordOutput("Spindexer/Running", running);
-    Logger.recordOutput("Spindexer/Stalled", stalled);
-    Logger.recordOutput("Spindexer/Reversing", reversing);
-    Logger.recordOutput("Spindexer/AppliedVolts", outputs.appliedVolts);
+    Logger.recordOutput("Indexer/Running", running);
+    Logger.recordOutput("Indexer/Stalled", stalled);
+    Logger.recordOutput("Indexer/Reversing", reversing);
+    Logger.recordOutput("Indexer/AppliedVolts", outputs.appliedVolts);
   }
 
   @Override
@@ -142,19 +142,19 @@ public class Spindexer extends FullSubsystem {
     io.applyOutputs(outputs);
   }
 
-  /** Run the spindexer forward at the default voltage. */
+  /** Run the indexer forward at the default voltage. */
   public void run() {
     running = true;
   }
 
-  /** Run the spindexer at a custom voltage (bypasses stall detection). */
+  /** Run the indexer at a custom voltage (bypasses stall detection). */
   public void runVolts(double volts) {
     running = true;
     reversing = false;
     outputs.appliedVolts = volts;
   }
 
-  /** Stop the spindexer. */
+  /** Stop the indexer. */
   public void stop() {
     running = false;
     reversing = false;
@@ -162,13 +162,13 @@ public class Spindexer extends FullSubsystem {
     outputs.appliedVolts = 0.0;
   }
 
-  /** Command to run the spindexer (with automatic stall detection). */
+  /** Command to run the indexer (with automatic stall detection). */
   public Command runCommand() {
-    return runEnd(this::run, this::stop).withName("Spindexer.run");
+    return runEnd(this::run, this::stop).withName("Indexer.run");
   }
 
-  /** Command to stop the spindexer. */
+  /** Command to stop the indexer. */
   public Command stopCommand() {
-    return runOnce(this::stop).withName("Spindexer.stop");
+    return runOnce(this::stop).withName("Indexer.stop");
   }
 }
