@@ -33,6 +33,7 @@ import frc.robot.subsystems.indexer.IndexerIOSim;
 import frc.robot.subsystems.intake.Intake;
 import frc.robot.subsystems.intake.pivot.IntakePivotIO;
 import frc.robot.subsystems.intake.pivot.IntakePivotIOSim;
+import frc.robot.subsystems.intake.pivot.IntakePivotIOSlamTalonFX;
 import frc.robot.subsystems.intake.pivot.IntakePivotIOTalonFX;
 import frc.robot.subsystems.intake.rollers.IntakeRollersIO;
 import frc.robot.subsystems.intake.rollers.IntakeRollersIOSim;
@@ -110,11 +111,11 @@ public class RobotContainer {
                   new ModuleIOTalonFX(TunerConstants.BackLeft),
                   new ModuleIOTalonFX(TunerConstants.BackRight));
 
-          flywheel = new Flywheel(new FlywheelIOTalonFX());
-          hood = new Hood(new HoodIOTalonFX());
+          // flywheel = new Flywheel(new FlywheelIOTalonFX());
+          // hood = new Hood(new HoodIOTalonFX());
           // indexer = new Indexer(new IndexerIOTalonFX());
-          kicker = new Kicker(new KickerIOTalonFX());
-          // intake = new Intake(new IntakePivotIOSlamTalonFX(), new IntakeRollersIOTalonFX());
+          // kicker = new Kicker(new KickerIOTalonFX());
+          // intake = new Intake(new IntakePivotIOSlamTalonFX() {}, new IntakeRollersIOTalonFX());
           break;
         }
         case DEVBOT -> {
@@ -327,8 +328,12 @@ public class RobotContainer {
     // X Button: hold to spin flywheel at manualFlywheelSpeed (tuning, Choreographer off)
     controller
         .x()
-        .whileTrue(flywheel.runFixedCommand(manualFlywheelSpeed).withName("TuneFlywheelSpin"))
-        .onFalse(flywheel.stopCommand());
+        .whileTrue(
+            Commands.parallel(
+                    flywheel.runFixedCommand(manualFlywheelSpeed).withName("TuneFlywheelSpin"),
+                    kicker.runCommand())
+                .withName("TuneFlywheelAndKicker"))
+        .onFalse(Commands.parallel(flywheel.stopCommand(), kicker.stopCommand()));
 
     // Y Button: hold to move hood to manualHoodAngle (tuning, Choreographer off)
     controller

@@ -137,8 +137,8 @@ public class ShotCalculator {
     hoodAngleMap.put(4.09, Rotation2d.fromDegrees(30.0));
     hoodAngleMap.put(4.40, Rotation2d.fromDegrees(31.0));
     hoodAngleMap.put(4.77, Rotation2d.fromDegrees(31.0));
-    hoodAngleMap.put(5.57, Rotation2d.fromDegrees(31.0));
-    hoodAngleMap.put(5.60, Rotation2d.fromDegrees(31.0));
+    hoodAngleMap.put(5.57, Rotation2d.fromDegrees(0));
+    hoodAngleMap.put(5.60, Rotation2d.fromDegrees(0));
 
     flywheelSpeedMap.put(1.34, 210.0 / (2 * Math.PI));
     flywheelSpeedMap.put(1.78, 220.0 / (2 * Math.PI));

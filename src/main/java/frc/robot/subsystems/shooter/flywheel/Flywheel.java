@@ -82,7 +82,7 @@ public class Flywheel extends FullSubsystem {
         voltageKV.initDefault(0.12021);
       }
     }
-    toleranceRotationsPerSec.initDefault(10.0 / (2 * Math.PI));
+    toleranceRotationsPerSec.initDefault(10);
   }
 
   @Getter
@@ -186,7 +186,8 @@ public class Flywheel extends FullSubsystem {
       }
     }
     outputs.velocityRotationsPerSec = velocityRotationsPerSec;
-    outputs.feedforward = Math.signum(velocityRotationsPerSec) * kS + velocityRotationsPerSec * kV;
+    outputs.feedforward =
+        0; // Math.signum(velocityRotationsPerSec) * kS + velocityRotationsPerSec * kV;
     Logger.recordOutput("Flywheel/Setpoint", velocityRotationsPerSec);
   }
 
