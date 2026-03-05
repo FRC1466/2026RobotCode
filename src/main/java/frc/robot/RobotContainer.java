@@ -54,6 +54,7 @@ import frc.robot.subsystems.shooter.hood.HoodIOTalonFX;
 import frc.robot.subsystems.vision.Vision;
 import frc.robot.subsystems.vision.VisionIO;
 import frc.robot.subsystems.vision.VisionIOPhotonVision;
+import frc.robot.subsystems.vision.VisionIOPhotonVisionSim;
 import frc.robot.util.AllianceFlipUtil;
 import frc.robot.util.HubShiftUtil;
 import frc.robot.util.LoggedTunableNumber;
@@ -145,6 +146,10 @@ public class RobotContainer {
                   new ModuleIOSim(TunerConstants.FrontRight),
                   new ModuleIOSim(TunerConstants.BackLeft),
                   new ModuleIOSim(TunerConstants.BackRight));
+          vision =
+              new Vision(
+                  drive::addVisionMeasurement,
+                  new VisionIOPhotonVisionSim(camera0Name, robotToCamera0, drive::getPose));
           flywheel = new Flywheel(new FlywheelIOSim());
           hood = new Hood(new HoodIOSim());
           indexer = new Indexer(new IndexerIOSim());

@@ -23,6 +23,7 @@ import lombok.Getter;
 import lombok.Setter;
 import org.littletonrobotics.junction.AutoLogOutput;
 import org.littletonrobotics.junction.Logger;
+import org.littletonrobotics.junction.networktables.LoggedNetworkBoolean;
 
 public class Choreographer extends SubsystemBase {
 
@@ -66,6 +67,7 @@ public class Choreographer extends SubsystemBase {
   private final Intake intake;
 
   private ShootingParameters cachedShotParams = null;
+  private final LoggedNetworkBoolean useHubShiftUtil;
 
   public Choreographer(
       Drive drive, Flywheel flywheel, Hood hood, Indexer indexer, Kicker kicker, Intake intake) {
@@ -75,6 +77,7 @@ public class Choreographer extends SubsystemBase {
     this.indexer = indexer;
     this.kicker = kicker;
     this.intake = intake;
+    this.useHubShiftUtil = new LoggedNetworkBoolean("UseHubShiftUtil", true);
   }
 
   @Override
@@ -122,13 +125,14 @@ public class Choreographer extends SubsystemBase {
   }
 
   private void handleScoreHub() {
-    boolean hubActive = HubShiftUtil.getShiftedShiftInfo().active();
+    boolean hubActive =
+        HubShiftUtil.getShiftedShiftInfo().active() || !useHubShiftUtil.getAsBoolean();
 
-    /* if (!hubActive) {
+    if (!hubActive) {
       stopAll();
       currentState = State.IDLE;
       return;
-    } */
+    }
 
     intake.stow();
     intake.stop();

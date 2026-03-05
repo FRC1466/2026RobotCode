@@ -4,22 +4,15 @@
 package frc.robot.subsystems.vision;
 
 import edu.wpi.first.apriltag.AprilTagFieldLayout;
+import edu.wpi.first.apriltag.AprilTagFields;
 import edu.wpi.first.math.geometry.Rotation3d;
 import edu.wpi.first.math.geometry.Transform3d;
 import edu.wpi.first.math.util.Units;
 
 public class VisionConstants {
   // AprilTag layout
-  public static final AprilTagFieldLayout aprilTagLayout;
-
-  static {
-    try {
-      aprilTagLayout =
-          new AprilTagFieldLayout("/home/lvuser/deploy/apriltagLayout/2026-rebuilt-welded.json");
-    } catch (Exception e) {
-      throw new RuntimeException("Failed to load AprilTag layout", e);
-    }
-  }
+  public static AprilTagFieldLayout aprilTagLayout =
+      AprilTagFieldLayout.loadField(AprilTagFields.kDefaultField);
 
   // Camera names, must match names configured on coprocessor
   public static String camera0Name = "camera_0";
@@ -27,14 +20,15 @@ public class VisionConstants {
 
   // Robot to camera transforms
   // (Not used by Limelight, configure in web UI instead)
+  // CAD origin: +X=left, +Y=backward, +Z=down
+  // WPILib: X=forward(-cadY), Y=left(+cadX), Z=up(-cadZ)
   public static Transform3d robotToCamera0 =
       new Transform3d(
-          Units.inchesToMeters(14.875),
-          Units.inchesToMeters(-0.5),
-          Units.inchesToMeters(6),
-          new Rotation3d(0.0, Units.degreesToRadians(15), Math.PI));
-  public static Transform3d robotToCamera1 =
-      new Transform3d(-0.2, 0.0, 0.2, new Rotation3d(0.0, -0.4, Math.PI));
+          Units.inchesToMeters(3.466729),
+          Units.inchesToMeters(-9.009843),
+          Units.inchesToMeters(20.465837),
+          new Rotation3d(0.0, Units.degreesToRadians(-41), 0.0));
+  public static Transform3d robotToCamera1 = new Transform3d();
 
   // Basic filtering thresholds
   public static double maxAmbiguity = 0.3;
@@ -42,8 +36,8 @@ public class VisionConstants {
 
   // Standard deviation baselines, for 1 meter distance and 1 tag
   // (Adjusted automatically based on distance and # of tags)
-  public static double linearStdDevBaseline = 0.2; // Meters
-  public static double angularStdDevBaseline = 0.15; // Radians
+  public static double linearStdDevBaseline = 0.02; // Meters
+  public static double angularStdDevBaseline = 0.06; // Radians
 
   // Standard deviation multipliers for each camera
   // (Adjust to trust some cameras more than others)

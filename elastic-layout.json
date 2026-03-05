@@ -1,0 +1,171 @@
+{
+  "version": 1.0,
+  "grid_size": 128,
+  "tabs": [
+    {
+      "name": "Pre-Match",
+      "grid_layout": {
+        "layouts": [],
+        "containers": [
+          {
+            "title": "Auto Chooser",
+            "x": 0.0,
+            "y": 0.0,
+            "width": 512.0,
+            "height": 128.0,
+            "type": "ComboBox Chooser",
+            "properties": {
+              "topic": "/SmartDashboard/Auto Choices",
+              "period": 0.033,
+              "sort_options": false
+            }
+          },
+          {
+            "title": "FMS Info",
+            "x": 512.0,
+            "y": 0.0,
+            "width": 512.0,
+            "height": 128.0,
+            "type": "FMSInfo",
+            "properties": {
+              "topic": "/FMSInfo",
+              "period": 0.033
+            }
+          },
+          {
+            "title": "Camera",
+            "x": 0.0,
+            "y": 128.0,
+            "width": 512.0,
+            "height": 384.0,
+            "type": "Camera Stream",
+            "properties": {
+              "topic": "/photonvision/camera_0/inputStream",
+              "period": 0.033
+            }
+          },
+          {
+            "title": "Alerts",
+            "x": 512.0,
+            "y": 128.0,
+            "width": 512.0,
+            "height": 384.0,
+            "type": "Alerts",
+            "properties": {
+              "topic": "/SmartDashboard/Alerts",
+              "period": 0.033
+            }
+          }
+        ]
+      }
+    },
+    {
+      "name": "Match",
+      "grid_layout": {
+        "layouts": [],
+        "containers": [
+          {
+            "title": "Match Time",
+            "x": 0.0,
+            "y": 0.0,
+            "width": 512.0,
+            "height": 384.0,
+            "type": "Match Time",
+            "properties": {
+              "topic": "/SmartDashboard/Match Time",
+              "period": 0.033,
+              "time_display_mode": "Minutes and Seconds",
+              "red_start_time": 15,
+              "yellow_start_time": 30
+            }
+          },
+          {
+            "title": "Robot State",
+            "x": 512.0,
+            "y": 0.0,
+            "width": 384.0,
+            "height": 256.0,
+            "type": "Large Text Display",
+            "properties": {
+              "topic": "/SmartDashboard/Choreographer/State",
+              "period": 0.033
+            }
+          },
+          {
+            "title": "Ready To Shoot",
+            "x": 512.0,
+            "y": 256.0,
+            "width": 384.0,
+            "height": 128.0,
+            "type": "Boolean Box",
+            "properties": {
+              "topic": "/SmartDashboard/Choreographer/ReadyToShoot",
+              "period": 0.033,
+              "true_color": 4278243592,
+              "false_color": 4294198070,
+              "true_icon": "None",
+              "false_icon": "None"
+            }
+          },
+          {
+            "title": "Hub Active",
+            "x": 896.0,
+            "y": 0.0,
+            "width": 128.0,
+            "height": 128.0,
+            "type": "Boolean Box",
+            "properties": {
+              "topic": "/SmartDashboard/Choreographer/HubActive",
+              "period": 0.033,
+              "true_color": 4278243592,
+              "false_color": 4290822336,
+              "true_icon": "None",
+              "false_icon": "None"
+            }
+          },
+          {
+            "title": "Hub Time Left",
+            "x": 896.0,
+            "y": 128.0,
+            "width": 384.0,
+            "height": 128.0,
+            "type": "Number Bar",
+            "properties": {
+              "topic": "/SmartDashboard/Choreographer/HubTimeRemaining",
+              "period": 0.033,
+              "min_value": 0.0,
+              "max_value": 30.0,
+              "divisions": 6,
+              "inverted": false,
+              "orientation": "horizontal"
+            }
+          },
+          {
+            "title": "Camera",
+            "x": 896.0,
+            "y": 256.0,
+            "width": 384.0,
+            "height": 256.0,
+            "type": "Camera Stream",
+            "properties": {
+              "topic": "/photonvision/camera_0/inputStream",
+              "period": 0.033
+            }
+          },
+          {
+            "title": "Alerts",
+            "x": 0.0,
+            "y": 384.0,
+            "width": 896.0,
+            "height": 128.0,
+            "type": "Alerts",
+            "properties": {
+              "topic": "/SmartDashboard/Alerts",
+              "period": 0.033
+            }
+          }
+        ]
+      }
+    }
+  ]
+}

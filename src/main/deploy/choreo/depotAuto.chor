@@ -3,8 +3,38 @@
  "version":2,
  "type":"Swerve",
  "variables":{
-  "expressions":{},
-  "poses":{}
+  "expressions":{
+   "MiddleY":{
+    "dimension":"Number",
+    "var":{
+     "exp":"8.043 / 2",
+     "val":4.0215
+    }
+   },
+   "StartLine":{
+    "dimension":"Number",
+    "var":{
+     "exp":"0.46",
+     "val":0.46
+    }
+   }
+  },
+  "poses":{
+   "Score":{
+    "x":{
+     "exp":"2.75 m",
+     "val":2.75
+    },
+    "y":{
+     "exp":"MiddleY m",
+     "val":4.0215
+    },
+    "heading":{
+     "exp":"0 rad",
+     "val":0.0
+    }
+   }
+  }
  },
  "config":{
   "frontLeft":{

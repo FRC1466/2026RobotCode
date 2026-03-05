@@ -21,7 +21,6 @@ import edu.wpi.first.hal.FRCNetComm.tInstances;
 import edu.wpi.first.hal.FRCNetComm.tResourceType;
 import edu.wpi.first.hal.HAL;
 import edu.wpi.first.math.Matrix;
-import edu.wpi.first.math.controller.PIDController;
 import edu.wpi.first.math.estimator.SwerveDrivePoseEstimator;
 import edu.wpi.first.math.geometry.Pose2d;
 import edu.wpi.first.math.geometry.Rotation2d;
@@ -49,6 +48,7 @@ import frc.robot.Constants.Mode;
 import frc.robot.RobotState;
 import frc.robot.generated.TunerConstants;
 import frc.robot.util.LocalADStarAK;
+import frc.robot.util.TunableControls;
 import java.util.concurrent.locks.Lock;
 import java.util.concurrent.locks.ReentrantLock;
 import org.littletonrobotics.junction.AutoLogOutput;
@@ -110,10 +110,23 @@ public class Drive extends SubsystemBase {
 
   private final SwerveSetpointGenerator setpointGenerator;
   private SwerveSetpoint previousSetpoint;
+  private static final TunableControls.TunableControlConstants TRANSLATION_CONTROLLER_CONSTANTS =
+      new TunableControls.TunableControlConstants(
+          "Drive/TranslationController",
+          new TunableControls.ControlConstants().withPID(5.0, 0.0, 0.0));
+  private static final TunableControls.TunableControlConstants HEADING_CONTROLLER_CONSTANTS =
+      new TunableControls.TunableControlConstants(
+          "Drive/HeadingController",
+          new TunableControls.ControlConstants()
+              .withPID(5.0, 0.0, 0.0)
+              .withContinuous(-Math.PI, Math.PI));
 
-  private final PIDController xController = new PIDController(10.0, 0.0, 0.0);
-  private final PIDController yController = new PIDController(10.0, 0.0, 0.0);
-  private final PIDController headingController = new PIDController(7.5, 0.0, 0.0);
+  private final TunableControls.TunablePIDController xController =
+      new TunableControls.TunablePIDController(TRANSLATION_CONTROLLER_CONSTANTS);
+  private final TunableControls.TunablePIDController yController =
+      new TunableControls.TunablePIDController(TRANSLATION_CONTROLLER_CONSTANTS);
+  private final TunableControls.TunablePIDController headingController =
+      new TunableControls.TunablePIDController(HEADING_CONTROLLER_CONSTANTS);
 
   public Drive(
       GyroIO gyroIO,
@@ -133,8 +146,6 @@ public class Drive extends SubsystemBase {
             );
     previousSetpoint =
         new SwerveSetpoint(getChassisSpeeds(), getModuleStates(), DriveFeedforwards.zeros(4));
-
-    headingController.enableContinuousInput(-Math.PI, Math.PI);
 
     // Usage reporting for swerve template
     HAL.report(tResourceType.kResourceType_RobotDrive, tInstances.kRobotDriveSwerve_AdvantageKit);
@@ -414,12 +425,18 @@ public class Drive extends SubsystemBase {
   public void followTrajectory(SwerveSample sample) {
     Pose2d pose = getPose();
 
+    Logger.recordOutput(
+        "Drive/ChoreoSetpoint",
+        new Pose2d(sample.x, sample.y, Rotation2d.fromRadians(sample.heading)));
+
+    // Choreo sample velocities (vx, vy) are field-relative, so convert to robot-relative
     ChassisSpeeds speeds =
-        new ChassisSpeeds(
+        ChassisSpeeds.fromFieldRelativeSpeeds(
             sample.vx + xController.calculate(pose.getX(), sample.x),
             sample.vy + yController.calculate(pose.getY(), sample.y),
             sample.omega
-                + headingController.calculate(pose.getRotation().getRadians(), sample.heading));
+                + headingController.calculate(pose.getRotation().getRadians(), sample.heading),
+            pose.getRotation());
 
     runVelocity(speeds);
   }
