@@ -18,6 +18,7 @@ import com.ctre.phoenix6.signals.InvertedValue;
 import com.ctre.phoenix6.signals.MotorAlignmentValue;
 import com.ctre.phoenix6.signals.NeutralModeValue;
 import edu.wpi.first.units.measure.*;
+import frc.robot.generated.TunerConstants;
 import frc.robot.util.PhoenixUtil;
 
 public class FlywheelIOTalonFX implements FlywheelIO {
@@ -53,8 +54,8 @@ public class FlywheelIOTalonFX implements FlywheelIO {
   private double lastTorqueCurrentKV = 0.0;
 
   public FlywheelIOTalonFX() {
-    talon = new TalonFX(leaderId);
-    talonFollower = new TalonFX(followerId);
+    talon = new TalonFX(leaderId, TunerConstants.kCANBus);
+    talonFollower = new TalonFX(followerId, TunerConstants.kCANBus);
 
     var config = new TalonFXConfiguration();
     config.MotionMagic.MotionMagicAcceleration = 500.0;

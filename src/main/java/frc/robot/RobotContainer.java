@@ -30,7 +30,6 @@ import frc.robot.subsystems.drive.ModuleIOTalonFX;
 import frc.robot.subsystems.indexer.Indexer;
 import frc.robot.subsystems.indexer.IndexerIO;
 import frc.robot.subsystems.indexer.IndexerIOSim;
-import frc.robot.subsystems.indexer.IndexerIOTalonFX;
 import frc.robot.subsystems.intake.Intake;
 import frc.robot.subsystems.intake.pivot.IntakePivotIO;
 import frc.robot.subsystems.intake.pivot.IntakePivotIOSim;
@@ -53,7 +52,6 @@ import frc.robot.subsystems.shooter.hood.HoodIOSim;
 import frc.robot.subsystems.shooter.hood.HoodIOTalonFX;
 import frc.robot.subsystems.vision.Vision;
 import frc.robot.subsystems.vision.VisionIO;
-import frc.robot.subsystems.vision.VisionIOPhotonVision;
 import frc.robot.subsystems.vision.VisionIOPhotonVisionSim;
 import frc.robot.util.AllianceFlipUtil;
 import frc.robot.util.HubShiftUtil;
@@ -98,8 +96,6 @@ public class RobotContainer {
       new LoggedTunableNumber("Shooter/ManualFlywheelSpeedRPS", 45.0);
   private static final LoggedTunableNumber manualHoodAngle =
       new LoggedTunableNumber("Shooter/ManualHoodAngleDeg", 0.1);
-  private static final LoggedTunableNumber manualIntakeDeployAngle =
-      new LoggedTunableNumber("Intake/ManualDeployAngleDeg", 105.0);
 
   /** The container for the robot. Contains subsystems, OI devices, and commands. */
   public RobotContainer() {
@@ -113,16 +109,12 @@ public class RobotContainer {
                   new ModuleIOTalonFX(TunerConstants.FrontRight),
                   new ModuleIOTalonFX(TunerConstants.BackLeft),
                   new ModuleIOTalonFX(TunerConstants.BackRight));
-          vision =
-              new Vision(
-                  drive::addVisionMeasurement,
-                  new VisionIOPhotonVision(camera0Name, robotToCamera0));
 
           flywheel = new Flywheel(new FlywheelIOTalonFX());
           hood = new Hood(new HoodIOTalonFX());
-          indexer = new Indexer(new IndexerIOTalonFX());
+          // indexer = new Indexer(new IndexerIOTalonFX());
           kicker = new Kicker(new KickerIOTalonFX());
-          intake = new Intake(new IntakePivotIOTalonFX(), new IntakeRollersIOTalonFX());
+          // intake = new Intake(new IntakePivotIOSlamTalonFX(), new IntakeRollersIOTalonFX());
           break;
         }
         case DEVBOT -> {
@@ -222,7 +214,7 @@ public class RobotContainer {
         "Test: Hood", hood.runVolts(() -> 0.5).withTimeout(3.0).withName("Test Hood 0.5V"));
     autoChooser.addOption(
         "Test: Intake Pivot",
-        intake.runVolts(() -> 0.25).withTimeout(3.0).withName("Test Intake Pivot 0.25V"));
+        intake.runVolts(() -> 2).withTimeout(3.0).withName("Test Intake Pivot 0.25V"));
     autoChooser.addOption(
         "Test: Intake Rollers",
         intake.runCommand().withTimeout(3.0).withName("Test Intake Rollers"));
@@ -321,13 +313,15 @@ public class RobotContainer {
     // ── Tuning mode (active only when Choreographer is disabled via Back button) ──
 
     // Back (solo): toggle Choreographer enabled — when disabled, X/Y + POV tune directly
-    controller.back().and(controller.start().negate()).onTrue(choreographer.toggleEnabledCommand());
+    controller
+        .back()
+        .and(controller.start().negate())
+        .onTrue(choreographer.toggleEnabledCommand().ignoringDisable(true));
 
     // B Button: hold to deploy intake to manualIntakeDeployAngle (tuning, Choreographer off)
     controller
         .b()
-        .whileTrue(
-            intake.runFixedCommand(manualIntakeDeployAngle).withName("TuneIntakeDeployAngle"))
+        .whileTrue(intake.deployCommand().withName("TuneIntakeDeployAngle"))
         .onFalse(intake.stowCommand());
 
     // X Button: hold to spin flywheel at manualFlywheelSpeed (tuning, Choreographer off)

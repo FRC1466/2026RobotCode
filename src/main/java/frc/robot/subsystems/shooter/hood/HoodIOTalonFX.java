@@ -16,6 +16,7 @@ import com.ctre.phoenix6.hardware.TalonFX;
 import com.ctre.phoenix6.signals.InvertedValue;
 import com.ctre.phoenix6.signals.NeutralModeValue;
 import edu.wpi.first.units.measure.*;
+import frc.robot.generated.TunerConstants;
 import frc.robot.util.PhoenixUtil;
 
 public class HoodIOTalonFX implements HoodIO {
@@ -38,7 +39,7 @@ public class HoodIOTalonFX implements HoodIO {
   private double lastAcceleration = 0.0;
 
   public HoodIOTalonFX() {
-    talon = new TalonFX(42);
+    talon = new TalonFX(42, TunerConstants.kCANBus);
 
     var config = new TalonFXConfiguration();
     config.CurrentLimits.SupplyCurrentLimit = 40.0;

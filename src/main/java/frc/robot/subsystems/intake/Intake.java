@@ -42,7 +42,7 @@ public class Intake extends FullSubsystem {
   private static final LoggedTunableNumber toleranceDeg =
       new LoggedTunableNumber("IntakePivot/ToleranceDeg");
   private static final LoggedTunableNumber runVolts =
-      new LoggedTunableNumber("IntakeRollers/RunVolts", 10.0);
+      new LoggedTunableNumber("IntakeRollers/RunVolts", 5.5);
 
   static {
     switch (Constants.getMode()) {

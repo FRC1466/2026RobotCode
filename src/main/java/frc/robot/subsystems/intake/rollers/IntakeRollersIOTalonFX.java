@@ -13,11 +13,12 @@ import com.ctre.phoenix6.hardware.TalonFX;
 import com.ctre.phoenix6.signals.InvertedValue;
 import com.ctre.phoenix6.signals.NeutralModeValue;
 import edu.wpi.first.units.measure.*;
+import frc.robot.generated.TunerConstants;
 import frc.robot.util.PhoenixUtil;
 
 public class IntakeRollersIOTalonFX implements IntakeRollersIO {
   // TODO: Move CAN ID into constants.
-  private static final int motorId = 20;
+  private static final int motorId = 21;
 
   private final TalonFX talon;
   private final StatusSignal<AngularVelocity> velocity;
@@ -29,10 +30,10 @@ public class IntakeRollersIOTalonFX implements IntakeRollersIO {
   private final VoltageOut voltageRequest = new VoltageOut(0);
 
   public IntakeRollersIOTalonFX() {
-    talon = new TalonFX(motorId);
+    talon = new TalonFX(motorId, TunerConstants.kCANBus);
 
     var config = new TalonFXConfiguration();
-    config.MotorOutput.Inverted = InvertedValue.Clockwise_Positive;
+    config.MotorOutput.Inverted = InvertedValue.CounterClockwise_Positive;
     config.MotorOutput.NeutralMode = NeutralModeValue.Brake;
     config.CurrentLimits.SupplyCurrentLimitEnable = true;
     config.CurrentLimits.SupplyCurrentLimit = 40.0;

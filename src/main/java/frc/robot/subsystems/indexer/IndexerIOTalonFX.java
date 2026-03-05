@@ -13,11 +13,12 @@ import com.ctre.phoenix6.hardware.TalonFX;
 import com.ctre.phoenix6.signals.InvertedValue;
 import com.ctre.phoenix6.signals.NeutralModeValue;
 import edu.wpi.first.units.measure.*;
+import frc.robot.generated.TunerConstants;
 import frc.robot.util.PhoenixUtil;
 
 public class IndexerIOTalonFX implements IndexerIO {
   // TODO: Move CAN ID into constants.
-  private static final int motorId = 30;
+  private static final int motorId = 31;
 
   private final TalonFX talon;
   private final StatusSignal<AngularVelocity> velocity;
@@ -29,7 +30,7 @@ public class IndexerIOTalonFX implements IndexerIO {
   private final VoltageOut voltageRequest = new VoltageOut(0);
 
   public IndexerIOTalonFX() {
-    talon = new TalonFX(motorId);
+    talon = new TalonFX(motorId, TunerConstants.kCANBus);
 
     var config = new TalonFXConfiguration();
     config.MotorOutput.Inverted = InvertedValue.CounterClockwise_Positive;

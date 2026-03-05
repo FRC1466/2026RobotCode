@@ -77,7 +77,7 @@ public class Choreographer extends SubsystemBase {
     this.indexer = indexer;
     this.kicker = kicker;
     this.intake = intake;
-    this.useHubShiftUtil = new LoggedNetworkBoolean("UseHubShiftUtil", true);
+    this.useHubShiftUtil = new LoggedNetworkBoolean("UseHubShiftUtil", false);
   }
 
   @Override
