@@ -191,7 +191,7 @@ public class DriveCommands extends Command {
   public void initialize() {
     flipFactor =
         DriverStation.getAlliance().isPresent()
-                && DriverStation.getAlliance().get() == DriverStation.Alliance.Red
+                && DriverStation.getAlliance().get() == DriverStation.Alliance.Blue
             ? -1
             : 1;
 
