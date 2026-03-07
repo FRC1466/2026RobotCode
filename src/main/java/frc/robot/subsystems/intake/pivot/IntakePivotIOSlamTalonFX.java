@@ -18,26 +18,28 @@ import frc.robot.generated.TunerConstants;
 import frc.robot.util.LoggedTunableNumber;
 import frc.robot.util.PhoenixUtil;
 
-/**
- * Intake pivot IO that "slams" the pivot using timed open-loop voltage instead of closed-loop
- * position control. Deploy runs voltage for a short burst (0.25 s), retract runs voltage for a
- * longer duration (1.0 s), then the motor stops.
- */
 public class IntakePivotIOSlamTalonFX implements IntakePivotIO {
   private static final int motorId = 20;
 
   private static final LoggedTunableNumber deployVolts =
-      new LoggedTunableNumber("IntakePivotSlam/DeployVolts", 1.0);
+      new LoggedTunableNumber("IntakePivotSlam/DeployVolts", 2.0);
   private static final LoggedTunableNumber retractVolts =
       new LoggedTunableNumber("IntakePivotSlam/RetractVolts", -2.5);
   private static final LoggedTunableNumber deployDurationSec =
       new LoggedTunableNumber("IntakePivotSlam/DeployDurationSec", 0.75);
   private static final LoggedTunableNumber retractDurationSec =
-      new LoggedTunableNumber("IntakePivotSlam/RetractDurationSec", .5);
+      new LoggedTunableNumber("IntakePivotSlam/RetractDurationSec", 0.5);
+  private static final LoggedTunableNumber holdPulseIntervalSec =
+      new LoggedTunableNumber("IntakePivotSlam/HoldPulseIntervalSec", 0.3);
+  private static final LoggedTunableNumber holdPulseDurationSec =
+      new LoggedTunableNumber("IntakePivotSlam/HoldPulseDurationSec", 0.1);
+  private static final LoggedTunableNumber holdPulseDeployVolts =
+      new LoggedTunableNumber("IntakePivotSlam/HoldPulseDeployVolts", 0.8);
+  private static final LoggedTunableNumber holdPulseRetractVolts =
+      new LoggedTunableNumber("IntakePivotSlam/HoldPulseRetractVolts", -0.8);
 
-  // Threshold in rotations to distinguish deploy vs retract goals.
-  // Deploy goal is typically ~105 deg (0.292 rot), stow is ~0.1 deg (~0.0003 rot).
   private static final double deployThresholdRotations = 0.1;
+  private static final double goalChangeThresholdRotations = 0.01;
 
   private final TalonFX talon;
   private final StatusSignal<Angle> position;
@@ -57,7 +59,9 @@ public class IntakePivotIOSlamTalonFX implements IntakePivotIO {
 
   private SlamState state = SlamState.IDLE;
   private final Timer slamTimer = new Timer();
+  private final Timer holdPulseTimer = new Timer();
   private double lastGoalRotations = 0.0;
+  private boolean lastGoalWasDeploy = false;
 
   public IntakePivotIOSlamTalonFX() {
     talon = new TalonFX(motorId, TunerConstants.kCANBus);
@@ -84,6 +88,8 @@ public class IntakePivotIOSlamTalonFX implements IntakePivotIO {
             BaseStatusSignal.setUpdateFrequencyForAll(
                 50.0, position, velocity, appliedVoltage, supplyCurrent, torqueCurrent, temp));
     PhoenixUtil.tryUntilOk(5, () -> talon.optimizeBusUtilization());
+
+    holdPulseTimer.start();
   }
 
   @Override
@@ -109,21 +115,23 @@ public class IntakePivotIOSlamTalonFX implements IntakePivotIO {
   @Override
   public void applyOutputs(IntakePivotIOOutputs outputs) {
     if (outputs.mode == IntakePivotIOOutputMode.OPEN_LOOP) {
-      // Direct open-loop passthrough (e.g. from runVolts command)
       state = SlamState.IDLE;
+      holdPulseTimer.restart();
       talon.setControl(voltageRequest.withOutput(outputs.volts));
       return;
     }
 
-    // Closed-loop mode: detect goal changes and convert to timed voltage slam
     double goalRotations = outputs.positionRotations;
-    boolean goalChanged = Math.abs(goalRotations - lastGoalRotations) > 0.01;
+    boolean goalChanged =
+        Math.abs(goalRotations - lastGoalRotations) > goalChangeThresholdRotations;
+    boolean goalIsDeploy = goalRotations >= deployThresholdRotations;
     lastGoalRotations = goalRotations;
 
     if (goalChanged) {
-      boolean deploying = goalRotations >= deployThresholdRotations;
-      state = deploying ? SlamState.DEPLOYING : SlamState.RETRACTING;
+      lastGoalWasDeploy = goalIsDeploy;
+      state = goalIsDeploy ? SlamState.DEPLOYING : SlamState.RETRACTING;
       slamTimer.restart();
+      holdPulseTimer.restart();
     }
 
     switch (state) {
@@ -133,6 +141,7 @@ public class IntakePivotIOSlamTalonFX implements IntakePivotIO {
         } else {
           talon.setControl(voltageRequest.withOutput(0.0));
           state = SlamState.IDLE;
+          holdPulseTimer.restart();
         }
       }
       case RETRACTING -> {
@@ -141,10 +150,26 @@ public class IntakePivotIOSlamTalonFX implements IntakePivotIO {
         } else {
           talon.setControl(voltageRequest.withOutput(0.0));
           state = SlamState.IDLE;
+          holdPulseTimer.restart();
         }
       }
       case IDLE -> {
-        talon.setControl(voltageRequest.withOutput(0.0));
+        double intervalSec = holdPulseIntervalSec.get();
+        double pulseDurationSec = holdPulseDurationSec.get();
+        boolean pulsing =
+            holdPulseTimer.get() >= intervalSec
+                && holdPulseTimer.get() < intervalSec + pulseDurationSec;
+
+        if (pulsing) {
+          double holdVolts =
+              lastGoalWasDeploy ? holdPulseDeployVolts.get() : holdPulseRetractVolts.get();
+          talon.setControl(voltageRequest.withOutput(holdVolts));
+        } else {
+          talon.setControl(voltageRequest.withOutput(0.0));
+          if (holdPulseTimer.get() >= intervalSec + pulseDurationSec) {
+            holdPulseTimer.restart();
+          }
+        }
       }
     }
   }

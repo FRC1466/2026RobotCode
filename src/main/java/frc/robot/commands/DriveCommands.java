@@ -51,7 +51,10 @@ public class DriveCommands extends Command {
   private static final ControlConstants TRENCH_TRANSLATION_BASE_CONSTANTS =
       new ControlConstants().withPID(8, 0, 0.05).withTolerance(0.05);
   private static final ControlConstants ROTATION_BASE_CONSTANTS =
-      new ControlConstants().withPID(5, 0, 0).withTolerance(0.08).withContinuous(-Math.PI, Math.PI);
+      new ControlConstants()
+          .withPID(10, 0, .5)
+          .withTolerance(0.08)
+          .withContinuous(-Math.PI, Math.PI);
 
   public static final TunableControlConstants TRENCH_TRANSLATION_CONSTANTS =
       new TunableControlConstants("Swerve/Trench Translation", TRENCH_TRANSLATION_BASE_CONSTANTS);
@@ -78,6 +81,7 @@ public class DriveCommands extends Command {
   private int flipFactor = 1; // 1 for normal, -1 for flipped
   private boolean headingLocked = false;
   @AutoLogOutput private Rotation2d targetHeading = Rotation2d.kZero;
+  private DriveMode activeHeadingLockMode = null;
 
   private LinearVelocity maxDriveSpeed = DEFAULT_DRIVE_SPEED;
   private AngularVelocity maxRotSpeed = DEFAULT_ROT_SPEED;
@@ -181,6 +185,21 @@ public class DriveCommands extends Command {
     return Commands.runOnce(() -> currentDriveMode = driveMode);
   }
 
+  private void setHeadingLock(DriveMode driveMode, Rotation2d heading) {
+    if (!headingLocked || activeHeadingLockMode != driveMode || !targetHeading.equals(heading)) {
+      targetHeading = heading;
+      headingLocked = true;
+      activeHeadingLockMode = driveMode;
+      rotationController.reset();
+      rotationController.setSetpoint(heading.getRadians());
+    }
+  }
+
+  private void clearHeadingLock() {
+    headingLocked = false;
+    activeHeadingLockMode = null;
+  }
+
   public void driveFieldCentric(LinearVelocity xVel, LinearVelocity yVel, AngularVelocity omega) {
     drive.runVelocity(
         ChassisSpeeds.fromFieldRelativeSpeeds(xVel, yVel, omega, drive.getRotation()));
@@ -191,7 +210,7 @@ public class DriveCommands extends Command {
   public void initialize() {
     flipFactor =
         DriverStation.getAlliance().isPresent()
-                && DriverStation.getAlliance().get() == DriverStation.Alliance.Blue
+                && DriverStation.getAlliance().get() == DriverStation.Alliance.Red
             ? -1
             : 1;
 
@@ -236,20 +255,12 @@ public class DriveCommands extends Command {
                 omegaSupplier.getAsDouble(), ControllerConstants.CONTROLLER_DEADBAND);
         omega = Math.copySign(omega * omega, omega); // square for more precise rotation control
 
-        if (omega != 0) {
-          // Driver is actively rotating — drive directly and unlock heading
-          headingLocked = false;
-          driverCommanding = true;
-          driveFieldCentric(
-              MetersPerSecond.of(linearVelocity.getX()),
-              MetersPerSecond.of(linearVelocity.getY()),
-              maxRotSpeed.times(omega));
-        } else if (!headingLocked) {
-          // Driver just released rotation stick — capture current heading
-          targetHeading = drive.getRotation();
-          headingLocked = true;
-          rotationController.reset();
-        }
+        clearHeadingLock();
+        driverCommanding = true;
+        driveFieldCentric(
+            MetersPerSecond.of(linearVelocity.getX()),
+            MetersPerSecond.of(linearVelocity.getY()),
+            maxRotSpeed.times(-omega));
         break;
       case TRENCH_LOCK:
         trenchYController.setSetpoint(getTrenchY().in(Meters));
@@ -258,13 +269,11 @@ public class DriveCommands extends Command {
           trenchY = 0;
         }
         linearVelocity = new Translation2d(linearVelocity.getX(), trenchY);
-        targetHeading = getTrenchLockAngle();
-        headingLocked = true;
+        setHeadingLock(DriveMode.TRENCH_LOCK, getTrenchLockAngle());
         ShotCalculator.getInstance().dropHood();
         break;
       case BUMP_LOCK:
-        targetHeading = getBumpLockAngle();
-        headingLocked = true;
+        setHeadingLock(DriveMode.BUMP_LOCK, getBumpLockAngle());
         break;
       case LAUNCH_LOCK:
         {
@@ -305,8 +314,7 @@ public class DriveCommands extends Command {
           }
 
           // Set the target heading from ShotCalculator — the shared PID block below will drive it
-          targetHeading = params.driveAngle();
-          headingLocked = true;
+          setHeadingLock(DriveMode.LAUNCH_LOCK, params.driveAngle());
 
           Logger.recordOutput(
               "DriveCommands/Launching/ErrorPosition",
@@ -324,10 +332,15 @@ public class DriveCommands extends Command {
       if (rotationController.atSetpoint()) {
         headingCorrection = 0;
       }
+      headingCorrection =
+          MathUtil.clamp(
+              headingCorrection,
+              -maxRotSpeed.in(RadiansPerSecond),
+              maxRotSpeed.in(RadiansPerSecond));
       driveFieldCentric(
           MetersPerSecond.of(linearVelocity.getX()),
           MetersPerSecond.of(linearVelocity.getY()),
-          RadiansPerSecond.of(headingCorrection));
+          RadiansPerSecond.of(-headingCorrection));
     }
   }
 
@@ -337,6 +350,24 @@ public class DriveCommands extends Command {
 
   private void setRotSpeed(AngularVelocity speed) {
     maxRotSpeed = speed;
+  }
+
+  private void resetHeadingGoal(Rotation2d heading) {
+    targetHeading = heading;
+    headingLocked = true;
+    activeHeadingLockMode = null;
+    rotationController.reset();
+    rotationController.setSetpoint(heading.getRadians());
+  }
+
+  public Command resetGyroCommand() {
+    return Commands.runOnce(
+            () -> {
+              Rotation2d allianceForward = AllianceFlipUtil.apply(Rotation2d.kZero);
+              drive.setPose(new Pose2d(drive.getPose().getTranslation(), allianceForward));
+              resetHeadingGoal(allianceForward);
+            })
+        .withName("ResetGyro");
   }
 
   public Command slowDownCommand() {

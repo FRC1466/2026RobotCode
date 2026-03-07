@@ -5,8 +5,6 @@ package frc.robot;
 
 import static frc.robot.subsystems.vision.VisionConstants.*;
 
-import edu.wpi.first.math.geometry.Pose2d;
-import edu.wpi.first.math.geometry.Rotation2d;
 import edu.wpi.first.wpilibj.Alert;
 import edu.wpi.first.wpilibj.Alert.AlertType;
 import edu.wpi.first.wpilibj.DriverStation;
@@ -53,8 +51,8 @@ import frc.robot.subsystems.shooter.hood.HoodIOSim;
 import frc.robot.subsystems.shooter.hood.HoodIOTalonFX;
 import frc.robot.subsystems.vision.Vision;
 import frc.robot.subsystems.vision.VisionIO;
+import frc.robot.subsystems.vision.VisionIOPhotonVision;
 import frc.robot.subsystems.vision.VisionIOPhotonVisionSim;
-import frc.robot.util.AllianceFlipUtil;
 import frc.robot.util.HubShiftUtil;
 import frc.robot.util.LoggedTunableNumber;
 import frc.robot.util.TriggerUtil;
@@ -111,11 +109,15 @@ public class RobotContainer {
                   new ModuleIOTalonFX(TunerConstants.BackLeft),
                   new ModuleIOTalonFX(TunerConstants.BackRight));
 
-          // flywheel = new Flywheel(new FlywheelIOTalonFX());
-          // hood = new Hood(new HoodIOTalonFX());
+          flywheel = new Flywheel(new FlywheelIOTalonFX());
+          hood = new Hood(new HoodIOTalonFX());
           // indexer = new Indexer(new IndexerIOTalonFX());
-          // kicker = new Kicker(new KickerIOTalonFX());
-          // intake = new Intake(new IntakePivotIOSlamTalonFX() {}, new IntakeRollersIOTalonFX());
+          kicker = new Kicker(new KickerIOTalonFX());
+          intake = new Intake(new IntakePivotIOSlamTalonFX(), new IntakeRollersIOTalonFX());
+          vision =
+              new Vision(
+                  drive::addVisionMeasurement,
+                  new VisionIOPhotonVision(camera0Name, robotToCamera0));
           break;
         }
         case DEVBOT -> {
@@ -240,11 +242,11 @@ public class RobotContainer {
    *
    * <pre>
    *  RIGHT TRIGGER  — Choreographer SCORE_HUB + auto-rotate drive
-   *  LEFT TRIGGER   — Choreographer INTAKE
+   *  LEFT TRIGGER   — Intake rollers
    *  LEFT BUMPER    — Speed boost (hold)
    *  RIGHT BUMPER   — (reserved / future climb)
    *  A              — Emergency stop → Choreographer IDLE
-   *  B              — (reserved)
+   *  B              — Toggle intake deploy/stow
    *  X              — Tuning: spin flywheel at manualFlywheelSpeed (hold, Choreographer disabled)
    *  Y              — Tuning: move hood to manualHoodAngle (hold, Choreographer disabled)
    *  POV LEFT/RIGHT — Tuning: adjust flywheel speed ±1 RPS
@@ -278,15 +280,7 @@ public class RobotContainer {
     controller
         .start()
         .and(controller.back())
-        .onTrue(
-            Commands.runOnce(
-                    () ->
-                        drive.setPose(
-                            new Pose2d(
-                                drive.getPose().getTranslation(),
-                                AllianceFlipUtil.apply(Rotation2d.kZero))))
-                .withName("ResetGyro")
-                .ignoringDisable(true));
+        .onTrue(driveCommand.resetGyroCommand().ignoringDisable(true));
 
     // ── Primary scoring (Choreographer) ──────────────────────────────────────
 
@@ -298,18 +292,16 @@ public class RobotContainer {
         .whileTrue(driveCommand.launchModeCommand())
         .onFalse(choreographer.setGoalCommand(Choreographer.Goal.IDLE));
 
-    // Left Trigger: INTAKE — Choreographer deploys pivot and runs rollers.
+    // Left Trigger: run intake rollers while held.
     controller
         .leftTrigger()
-        .onTrue(choreographer.setGoalCommand(Choreographer.Goal.INTAKE))
-        .onFalse(choreographer.setGoalCommand(Choreographer.Goal.IDLE));
+        .whileTrue(intake.runCommand().withName("IntakeRollers"))
+        .onFalse(intake.stopCommand());
 
     // ── Emergency stop ────────────────────────────────────────────────────────
 
     // A Button: cancel everything → Choreographer IDLE (stows intake, stops shooter)
-    controller
-        .a()
-        .onTrue(choreographer.setGoalCommand(Choreographer.Goal.IDLE).withName("EmergencyStop"));
+    controller.a().whileTrue(driveCommand.launchModeCommand());
 
     // ── Tuning mode (active only when Choreographer is disabled via Back button) ──
 
@@ -319,11 +311,12 @@ public class RobotContainer {
         .and(controller.start().negate())
         .onTrue(choreographer.toggleEnabledCommand().ignoringDisable(true));
 
-    // B Button: hold to deploy intake to manualIntakeDeployAngle (tuning, Choreographer off)
+    // B Button: toggle intake deploy/stow.
     controller
         .b()
-        .whileTrue(intake.deployCommand().withName("TuneIntakeDeployAngle"))
-        .onFalse(intake.stowCommand());
+        .onTrue(
+            Commands.either(intake.stowCommand(), intake.deployCommand(), intake::isDeployed)
+                .withName("ToggleIntakeDeploy"));
 
     // X Button: hold to spin flywheel at manualFlywheelSpeed (tuning, Choreographer off)
     controller

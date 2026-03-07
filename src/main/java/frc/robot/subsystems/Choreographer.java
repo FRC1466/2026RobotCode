@@ -108,7 +108,10 @@ public class Choreographer extends SubsystemBase {
   }
 
   private void handleIdle() {
-    stopAll();
+    flywheel.stop();
+    hood.stow();
+    indexer.stop();
+    kicker.stop();
     currentState = State.IDLE;
   }
 
@@ -133,9 +136,6 @@ public class Choreographer extends SubsystemBase {
       currentState = State.IDLE;
       return;
     }
-
-    intake.stow();
-    intake.stop();
 
     cachedShotParams = ShotCalculator.getInstance().getParameters();
 
@@ -177,8 +177,6 @@ public class Choreographer extends SubsystemBase {
     hood.stow();
     indexer.stop();
     kicker.stop();
-    intake.stow();
-    intake.stop();
   }
 
   private boolean hasShotParams() {

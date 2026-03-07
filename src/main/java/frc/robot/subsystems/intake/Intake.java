@@ -218,6 +218,11 @@ public class Intake extends FullSubsystem {
         && Math.abs(getMeasuredAngleDeg() - goalAngleDeg) <= toleranceDeg.get();
   }
 
+  @AutoLogOutput(key = "IntakePivot/IsDeployed")
+  public boolean isDeployed() {
+    return goalAngleDeg > stowAngleDeg;
+  }
+
   public void deploy() {
     setGoalAngleDeg(deployAngleDeg);
   }

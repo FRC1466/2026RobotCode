@@ -70,10 +70,9 @@ public class Drive extends SubsystemBase {
       new PathConstraints(3.0, 3.0, 4 * Math.PI, 2 * Math.PI);
 
   // PathPlanner config constants
-  private static final double WHEEL_COF = 1.916;
-  private static final Mass ROBOT_MASS = Pounds.of(64);
-  private static final MomentOfInertia ROBOT_MOI = KilogramSquareMeters.of(2.11);
-
+  private static final double WHEEL_COF = 1.2;
+  private static final Mass ROBOT_MASS = Pounds.of(100);
+  private static final MomentOfInertia ROBOT_MOI = KilogramSquareMeters.of(3.483);
   private static final RobotConfig PP_CONFIG =
       new RobotConfig(
           ROBOT_MASS.in(Kilograms),

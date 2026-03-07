@@ -129,33 +129,26 @@ public class ShotCalculator {
     passingMinDistance = 0.0;
     passingMaxDistance = 100000;
 
-    hoodAngleMap.put(1.34, Rotation2d.fromDegrees(19.0));
-    hoodAngleMap.put(1.78, Rotation2d.fromDegrees(19.0));
-    hoodAngleMap.put(2.17, Rotation2d.fromDegrees(24.0));
-    hoodAngleMap.put(2.81, Rotation2d.fromDegrees(27.0));
-    hoodAngleMap.put(3.82, Rotation2d.fromDegrees(29.0));
-    hoodAngleMap.put(4.09, Rotation2d.fromDegrees(30.0));
-    hoodAngleMap.put(4.40, Rotation2d.fromDegrees(31.0));
-    hoodAngleMap.put(4.77, Rotation2d.fromDegrees(31.0));
-    hoodAngleMap.put(5.57, Rotation2d.fromDegrees(0));
-    hoodAngleMap.put(5.60, Rotation2d.fromDegrees(0));
+    hoodAngleMap.put(1.969, Rotation2d.fromDegrees(Hood.minAngleDeg));
+    hoodAngleMap.put(2.185, Rotation2d.fromDegrees(Hood.minAngleDeg));
+    hoodAngleMap.put(2.452, Rotation2d.fromDegrees(Hood.minAngleDeg));
+    hoodAngleMap.put(3.701, Rotation2d.fromDegrees(5.0));
+    hoodAngleMap.put(4.06, Rotation2d.fromDegrees(8.0));
+    hoodAngleMap.put(4.68, Rotation2d.fromDegrees(10.0));
 
-    flywheelSpeedMap.put(1.34, 210.0 / (2 * Math.PI));
-    flywheelSpeedMap.put(1.78, 220.0 / (2 * Math.PI));
-    flywheelSpeedMap.put(2.17, 220.0 / (2 * Math.PI));
-    flywheelSpeedMap.put(2.81, 230.0 / (2 * Math.PI));
-    flywheelSpeedMap.put(3.82, 250.0 / (2 * Math.PI));
-    flywheelSpeedMap.put(4.09, 255.0 / (2 * Math.PI));
-    flywheelSpeedMap.put(4.40, 260.0 / (2 * Math.PI));
-    flywheelSpeedMap.put(4.77, 265.0 / (2 * Math.PI));
-    flywheelSpeedMap.put(5.57, 275.0 / (2 * Math.PI));
-    flywheelSpeedMap.put(5.60, 290.0 / (2 * Math.PI));
+    flywheelSpeedMap.put(1.969, 31.0);
+    flywheelSpeedMap.put(2.185, 32.0);
+    flywheelSpeedMap.put(2.452, 33.0);
+    flywheelSpeedMap.put(3.701, 36.0);
+    flywheelSpeedMap.put(4.06, 37.75);
+    flywheelSpeedMap.put(4.68, 39.0);
 
-    timeOfFlightMap.put(5.68, 1.16);
-    timeOfFlightMap.put(4.55, 1.12);
-    timeOfFlightMap.put(3.15, 1.11);
-    timeOfFlightMap.put(1.88, 1.09);
-    timeOfFlightMap.put(1.38, 0.90);
+    timeOfFlightMap.put(1.969, 1.2);
+    timeOfFlightMap.put(2.185, 1.2);
+    timeOfFlightMap.put(2.452, 1.0);
+    timeOfFlightMap.put(3.701, 1.61);
+    timeOfFlightMap.put(4.06, 1.4);
+    timeOfFlightMap.put(4.68, 1.1);
 
     // TODO: tune passing maps
     passingHoodAngleMap.put(passingMinDistance, Rotation2d.fromDegrees(0.0));
@@ -167,12 +160,8 @@ public class ShotCalculator {
 
     hubPreset =
         new LaunchPreset(
-            new LoggedTunableNumber(
-                "ShotCalculator/Presets/Hub/HoodAngle",
-                hoodAngleMap.get(hubPresetDistance).getDegrees()),
-            new LoggedTunableNumber(
-                "ShotCalculator/Presets/Hub/FlywheelSpeed",
-                flywheelSpeedMap.get(hubPresetDistance)));
+            new LoggedTunableNumber("ShotCalculator/Presets/Hub/HoodAngle", 0),
+            new LoggedTunableNumber("ShotCalculator/Presets/Hub/FlywheelSpeed", 33));
     towerPreset =
         new LaunchPreset(
             new LoggedTunableNumber(
