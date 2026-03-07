@@ -95,6 +95,7 @@ public class RobotContainer {
       new LoggedTunableNumber("Shooter/ManualFlywheelSpeedRPS", 45.0);
   private static final LoggedTunableNumber manualHoodAngle =
       new LoggedTunableNumber("Shooter/ManualHoodAngleDeg", 0.1);
+  private static final double flywheelSpeedOffsetPercentStep = 0.05;
 
   /** The container for the robot. Contains subsystems, OI devices, and commands. */
   public RobotContainer() {
@@ -250,6 +251,7 @@ public class RobotContainer {
    *  B              — Toggle intake deploy/stow
    *  X              — Tuning: spin flywheel at manualFlywheelSpeed + kicker (hold, Choreographer disabled)
    *  Y              — Tuning: move hood to manualHoodAngle (hold, Choreographer disabled)
+   *  POV UP/DOWN    — Adjust flywheel setpoint by ±5% of the current base speed
    *  BACK (solo)    — Toggle Choreographer enabled/disabled (enter/exit tuning mode)
    *  START + BACK   — Reset gyro to forward
    * </pre>
@@ -271,6 +273,26 @@ public class RobotContainer {
         .onTrue(
             Commands.runOnce(() -> ShotCalculator.getInstance().toggleHubPresetOverride())
                 .withName("ToggleHubPresetOverride")
+                .ignoringDisable(true));
+
+    // D-pad Up/Down: nudge the flywheel setpoint slightly higher/lower to compensate for misses.
+    controller
+        .povUp()
+        .onTrue(
+            Commands.runOnce(
+                    () ->
+                        ShotCalculator.getInstance()
+                            .incrementFlywheelSpeedOffsetPercent(flywheelSpeedOffsetPercentStep))
+                .withName("IncreaseFlywheelSpeedOffset")
+                .ignoringDisable(true));
+    controller
+        .povDown()
+        .onTrue(
+            Commands.runOnce(
+                    () ->
+                        ShotCalculator.getInstance()
+                            .incrementFlywheelSpeedOffsetPercent(-flywheelSpeedOffsetPercentStep))
+                .withName("DecreaseFlywheelSpeedOffset")
                 .ignoringDisable(true));
 
     // Start + Back: reset gyro heading to alliance-forward
