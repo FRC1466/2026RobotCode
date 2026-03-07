@@ -160,9 +160,9 @@ public class Choreographer extends SubsystemBase {
 
     boolean flywheelReady = flywheel.atGoal();
     boolean hoodReady = hood.isAtGoal();
-    boolean driveAligned = cachedDriveAlignedForHubShot;
+    boolean driveAlignedForHubShot = cachedDriveAlignedForHubShot;
 
-    if (flywheelReady && hoodReady && driveAligned) {
+    if (flywheelReady && hoodReady && driveAlignedForHubShot) {
       indexer.run();
       kicker.run();
       currentState = State.SHOOTING;

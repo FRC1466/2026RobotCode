@@ -385,11 +385,11 @@ public class DriveCommands extends Command {
   /** Returns true when the drivetrain is rotationally aligned to the hub shot target. */
   @AutoLogOutput(key = "DriveCommands/HubRotationAligned")
   public boolean atLaunchGoal() {
-    var currentShotParams = ShotCalculator.getInstance().getParameters();
+    var shotParams = ShotCalculator.getInstance().getParameters();
     return DriverStation.isEnabled()
-        && currentShotParams != null
-        && currentShotParams.isValid()
-        && Math.abs(drive.getRotation().minus(currentShotParams.driveAngle()).getRadians())
+        && shotParams != null
+        && shotParams.isValid()
+        && Math.abs(drive.getRotation().minus(shotParams.driveAngle()).getRadians())
             <= edu.wpi.first.math.util.Units.degreesToRadians(driveLaunchToleranceDeg.get());
   }
 
