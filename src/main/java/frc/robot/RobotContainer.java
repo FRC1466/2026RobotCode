@@ -95,7 +95,7 @@ public class RobotContainer {
       new LoggedTunableNumber("Shooter/ManualFlywheelSpeedRPS", 45.0);
   private static final LoggedTunableNumber manualHoodAngle =
       new LoggedTunableNumber("Shooter/ManualHoodAngleDeg", 0.1);
-  private static final double shooterFudgeFactorPercent = 0.05;
+  private static final double shooterFudgeFactorFraction = 0.05;
 
   /** The container for the robot. Contains subsystems, OI devices, and commands. */
   public RobotContainer() {
@@ -282,7 +282,7 @@ public class RobotContainer {
             Commands.runOnce(
                     () ->
                         ShotCalculator.getInstance()
-                            .incrementHoodAngleOffsetPercent(shooterFudgeFactorPercent))
+                            .incrementHoodAngleOffsetPercent(shooterFudgeFactorFraction))
                 .withName("IncreaseShooterFudgeFactor")
                 .ignoringDisable(true));
     controller
@@ -291,7 +291,7 @@ public class RobotContainer {
             Commands.runOnce(
                     () ->
                         ShotCalculator.getInstance()
-                            .incrementHoodAngleOffsetPercent(-shooterFudgeFactorPercent))
+                            .incrementHoodAngleOffsetPercent(-shooterFudgeFactorFraction))
                 .withName("DecreaseShooterFudgeFactor")
                 .ignoringDisable(true));
 
