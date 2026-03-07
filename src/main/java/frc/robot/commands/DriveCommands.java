@@ -260,7 +260,7 @@ public class DriveCommands extends Command {
         driveFieldCentric(
             MetersPerSecond.of(linearVelocity.getX()),
             MetersPerSecond.of(linearVelocity.getY()),
-            maxRotSpeed.times(-omega));
+            maxRotSpeed.times(omega));
         break;
       case TRENCH_LOCK:
         trenchYController.setSetpoint(getTrenchY().in(Meters));
@@ -340,7 +340,7 @@ public class DriveCommands extends Command {
       driveFieldCentric(
           MetersPerSecond.of(linearVelocity.getX()),
           MetersPerSecond.of(linearVelocity.getY()),
-          RadiansPerSecond.of(-headingCorrection));
+          RadiansPerSecond.of(headingCorrection));
     }
   }
 

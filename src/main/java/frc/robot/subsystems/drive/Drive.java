@@ -112,12 +112,12 @@ public class Drive extends SubsystemBase {
   private static final TunableControls.TunableControlConstants TRANSLATION_CONTROLLER_CONSTANTS =
       new TunableControls.TunableControlConstants(
           "Drive/TranslationController",
-          new TunableControls.ControlConstants().withPID(5.0, 0.0, 0.0));
+          new TunableControls.ControlConstants().withPID(5, 0.0, 0.05));
   private static final TunableControls.TunableControlConstants HEADING_CONTROLLER_CONSTANTS =
       new TunableControls.TunableControlConstants(
           "Drive/HeadingController",
           new TunableControls.ControlConstants()
-              .withPID(5.0, 0.0, 0.0)
+              .withPID(10.0, 0.0, 0.5)
               .withContinuous(-Math.PI, Math.PI));
 
   private final TunableControls.TunablePIDController xController =
@@ -255,6 +255,13 @@ public class Drive extends SubsystemBase {
    * @param speeds Speeds in meters/sec
    */
   public void runVelocity(ChassisSpeeds speeds) {
+    // Translation is correct with the current module inversions, but commanded rotation is
+    // physically inverted. Flip omega once here so teleop, heading hold, DriveToPose, and Choreo
+    // all use the same corrected convention.
+    speeds =
+        new ChassisSpeeds(
+            speeds.vxMetersPerSecond, speeds.vyMetersPerSecond, -speeds.omegaRadiansPerSecond);
+
     // Swerve setpoint generator
     previousSetpoint = setpointGenerator.generateSetpoint(previousSetpoint, speeds, 0.02);
     SwerveModuleState[] setpointStates = previousSetpoint.moduleStates();
