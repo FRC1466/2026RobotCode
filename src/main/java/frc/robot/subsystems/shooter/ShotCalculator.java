@@ -33,7 +33,8 @@ import org.littletonrobotics.junction.Logger;
 public class ShotCalculator {
   private static ShotCalculator instance;
 
-  private double hoodAngleOffsetDeg = 0.0;
+  private double flywheelSpeedOffsetRPS = 0.0;
+  private double flywheelSpeedOffsetPercent = 0.0;
 
   private static final Transform3d robotToShooter =
       new Transform3d(0, 0, 0, new Rotation3d(0.0, 0.0, 0.0));
@@ -51,9 +52,14 @@ public class ShotCalculator {
     return instance;
   }
 
-  @AutoLogOutput(key = "ShotCalculator/HoodAngleOffsetDeg")
-  public double getHoodAngleOffsetDeg() {
-    return hoodAngleOffsetDeg;
+  @AutoLogOutput(key = "ShotCalculator/FlywheelSpeedOffsetRPS")
+  public double getFlywheelSpeedOffsetRPS() {
+    return flywheelSpeedOffsetRPS;
+  }
+
+  @AutoLogOutput(key = "ShotCalculator/FlywheelSpeedOffsetPercent")
+  public double getFlywheelSpeedOffsetPercent() {
+    return flywheelSpeedOffsetPercent;
   }
 
   public record ShootingParameters(
@@ -230,6 +236,10 @@ public class ShotCalculator {
     }
   }
 
+  double applyFlywheelSpeedOffsets(double baseFlywheelSpeedRPS) {
+    return (baseFlywheelSpeedRPS * (1.0 + flywheelSpeedOffsetPercent)) + flywheelSpeedOffsetRPS;
+  }
+
   public ShootingParameters getParameters() {
     boolean passing =
         AllianceFlipUtil.applyX(RobotState.getInstance().getEstimatedPose().getX())
@@ -248,9 +258,9 @@ public class ShotCalculator {
               true,
               currentHeading,
               0.0,
-              hubPreset.hoodAngleDeg().get() + hoodAngleOffsetDeg,
+              hubPreset.hoodAngleDeg().get(),
               0.0,
-              hubPreset.flywheelSpeed().get(),
+              applyFlywheelSpeedOffsets(hubPreset.flywheelSpeed().get()),
               d,
               d,
               timeOfFlightMap.get(d),
@@ -325,6 +335,11 @@ public class ShotCalculator {
         driveAngleFilter.calculate(
             driveAngle.minus(lastDriveAngle).getRadians() / Constants.loopPeriodSecs);
     lastDriveAngle = driveAngle;
+    double flywheelSpeedRPS =
+        applyFlywheelSpeedOffsets(
+            passing
+                ? passingFlywheelSpeedMap.get(lookaheadShooterToTargetDistance)
+                : flywheelSpeedMap.get(lookaheadShooterToTargetDistance));
 
     latestParameters =
         new ShootingParameters(
@@ -332,11 +347,9 @@ public class ShotCalculator {
                 && lookaheadShooterToTargetDistance <= (passing ? passingMaxDistance : maxDistance),
             driveAngle,
             driveVelocity,
-            hoodAngleDeg + hoodAngleOffsetDeg,
+            hoodAngleDeg,
             hoodVelocityDegPerSec,
-            passing
-                ? passingFlywheelSpeedMap.get(lookaheadShooterToTargetDistance)
-                : flywheelSpeedMap.get(lookaheadShooterToTargetDistance),
+            flywheelSpeedRPS,
             lookaheadShooterToTargetDistance,
             shooterToTargetDistance,
             timeOfFlight,
@@ -394,19 +407,20 @@ public class ShotCalculator {
     latestParameters = null;
   }
 
-  /** Adjusts the hood angle offset up or down the specified amount. */
-  public void incrementHoodAngleOffset(double incrementDegrees) {
-    hoodAngleOffsetDeg += incrementDegrees;
+  /** Adjusts the flywheel speed offset up or down the specified amount. */
+  public void incrementFlywheelSpeedOffset(double incrementRPS) {
+    flywheelSpeedOffsetRPS += incrementRPS;
   }
 
-  /** Adjusts the hood angle offset by the given percentage of the current base target angle. */
-  public void incrementHoodAngleOffsetPercent(double percent) {
-    ShootingParameters parameters = getParameters();
-    if (parameters == null) {
-      return;
-    }
-    double baseHoodAngleDeg = parameters.hoodAngleDeg() - hoodAngleOffsetDeg;
-    incrementHoodAngleOffset(baseHoodAngleDeg * percent);
+  /**
+   * Adjusts the flywheel speed offset percentage, which is applied as a scalar to calculated target
+   * speeds.
+   *
+   * <p>The {@code percent} value is a fractional scalar, where {@code 0.05} represents a +5%
+   * increase and {@code -0.05} represents a -5% decrease in the calculated target speed.
+   */
+  public void incrementFlywheelSpeedOffsetPercent(double percent) {
+    flywheelSpeedOffsetPercent += percent;
   }
 
   /**
