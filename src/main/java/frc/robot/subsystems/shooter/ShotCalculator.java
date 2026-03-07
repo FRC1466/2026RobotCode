@@ -397,7 +397,6 @@ public class ShotCalculator {
   /** Adjusts the hood angle offset up or down the specified amount. */
   public void incrementHoodAngleOffset(double incrementDegrees) {
     hoodAngleOffsetDeg += incrementDegrees;
-    Logger.recordOutput("ShotCalculator/HoodAngleOffsetDeg", hoodAngleOffsetDeg);
     SmartDashboard.putNumber("ShotCalculator/HoodAngleOffsetDeg", hoodAngleOffsetDeg);
   }
 
