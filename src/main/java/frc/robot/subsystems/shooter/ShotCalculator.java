@@ -401,7 +401,11 @@ public class ShotCalculator {
 
   /** Adjusts the hood angle offset by the given percentage of the current base target angle. */
   public void incrementHoodAngleOffsetPercent(double percent) {
-    double baseHoodAngleDeg = getParameters().hoodAngleDeg() - hoodAngleOffsetDeg;
+    ShootingParameters parameters = getParameters();
+    if (parameters == null) {
+      return;
+    }
+    double baseHoodAngleDeg = parameters.hoodAngleDeg() - hoodAngleOffsetDeg;
     incrementHoodAngleOffset(baseHoodAngleDeg * percent);
   }
 

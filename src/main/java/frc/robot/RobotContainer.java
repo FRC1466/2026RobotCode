@@ -283,7 +283,7 @@ public class RobotContainer {
                     () ->
                         ShotCalculator.getInstance()
                             .incrementHoodAngleOffsetPercent(hoodAngleOffsetPercentStep))
-                .withName("IncreaseShooterFudgeFactor")
+                .withName("IncreaseHoodAngleOffset")
                 .ignoringDisable(true));
     controller
         .povDown()
@@ -292,7 +292,7 @@ public class RobotContainer {
                     () ->
                         ShotCalculator.getInstance()
                             .incrementHoodAngleOffsetPercent(-hoodAngleOffsetPercentStep))
-                .withName("DecreaseShooterFudgeFactor")
+                .withName("DecreaseHoodAngleOffset")
                 .ignoringDisable(true));
 
     // Start + Back: reset gyro heading to alliance-forward
