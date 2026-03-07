@@ -208,8 +208,8 @@ public class Choreographer extends SubsystemBase {
 
   @AutoLogOutput(key = "Choreographer/ReadyToShoot")
   public boolean isReadyToShoot() {
-    return currentState == State.SHOOTING
-        || (currentState == State.READY_TO_SHOOT && cachedDriveAlignedForHubShot);
+    return (currentState == State.READY_TO_SHOOT || currentState == State.SHOOTING)
+        && cachedDriveAlignedForHubShot;
   }
 
   public void setCoastOverride(BooleanSupplier shouldCoast) {
