@@ -236,7 +236,7 @@ public class ShotCalculator {
     }
   }
 
-  private double applyFlywheelSpeedOffsets(double baseFlywheelSpeedRPS) {
+  double applyFlywheelSpeedOffsets(double baseFlywheelSpeedRPS) {
     return (baseFlywheelSpeedRPS * (1.0 + flywheelSpeedOffsetPercent)) + flywheelSpeedOffsetRPS;
   }
 
@@ -412,7 +412,10 @@ public class ShotCalculator {
     flywheelSpeedOffsetRPS += incrementRPS;
   }
 
-  /** Adjusts the flywheel speed offset by the given percentage of the calculated target speed. */
+  /**
+   * Adjusts the flywheel speed offset percentage, which is applied as a scalar to calculated target
+   * speeds.
+   */
   public void incrementFlywheelSpeedOffsetPercent(double percent) {
     flywheelSpeedOffsetPercent += percent;
   }
