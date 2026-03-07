@@ -65,18 +65,26 @@ public class Choreographer extends SubsystemBase {
   private final Indexer indexer;
   private final Kicker kicker;
   private final Intake intake;
+  private final BooleanSupplier driveAlignedForHubShot;
 
   private ShootingParameters cachedShotParams = null;
   private final LoggedNetworkBoolean useHubShiftUtil;
 
   public Choreographer(
-      Drive drive, Flywheel flywheel, Hood hood, Indexer indexer, Kicker kicker, Intake intake) {
+      Drive drive,
+      Flywheel flywheel,
+      Hood hood,
+      Indexer indexer,
+      Kicker kicker,
+      Intake intake,
+      BooleanSupplier driveAlignedForHubShot) {
     this.drive = drive;
     this.flywheel = flywheel;
     this.hood = hood;
     this.indexer = indexer;
     this.kicker = kicker;
     this.intake = intake;
+    this.driveAlignedForHubShot = driveAlignedForHubShot;
     this.useHubShiftUtil = new LoggedNetworkBoolean("UseHubShiftUtil", false);
   }
 
@@ -150,7 +158,7 @@ public class Choreographer extends SubsystemBase {
 
     boolean flywheelReady = flywheel.atGoal();
     boolean hoodReady = hood.isAtGoal();
-    boolean driveAligned = true; // DriveCommands.atLaunchGoal();
+    boolean driveAligned = driveAlignedForHubShot.getAsBoolean();
 
     if (flywheelReady && hoodReady && driveAligned) {
       indexer.run();
@@ -198,7 +206,8 @@ public class Choreographer extends SubsystemBase {
 
   @AutoLogOutput(key = "Choreographer/ReadyToShoot")
   public boolean isReadyToShoot() {
-    return currentState == State.READY_TO_SHOOT || currentState == State.SHOOTING;
+    return currentState == State.SHOOTING
+        || (currentState == State.READY_TO_SHOOT && driveAlignedForHubShot.getAsBoolean());
   }
 
   public void setCoastOverride(BooleanSupplier shouldCoast) {
@@ -212,6 +221,8 @@ public class Choreographer extends SubsystemBase {
   private void logOutputs() {
     Logger.recordOutput("Choreographer/FlywheelReady", flywheel.atGoal());
     Logger.recordOutput("Choreographer/HoodReady", hood.isAtGoal());
+    Logger.recordOutput(
+        "Choreographer/DriveAlignedForHubShot", driveAlignedForHubShot.getAsBoolean());
     Logger.recordOutput("Choreographer/IndexerRunning", indexer.isRunning());
     Logger.recordOutput("Choreographer/IndexerStalled", indexer.isStalled());
     Logger.recordOutput("Choreographer/KickerRunning", kicker.isRunning());
