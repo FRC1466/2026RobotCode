@@ -413,8 +413,8 @@ public class ShotCalculator {
   }
 
   /**
-   * Adjusts the flywheel speed offset percentage, which is applied as a scalar to calculated
-   * target speeds.
+   * Adjusts the flywheel speed offset percentage, which is applied as a scalar to calculated target
+   * speeds.
    *
    * <p>The {@code percent} value is a fractional scalar, where {@code 0.05} represents a +5%
    * increase and {@code -0.05} represents a -5% decrease in the calculated target speed.
