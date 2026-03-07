@@ -68,6 +68,7 @@ public class Choreographer extends SubsystemBase {
   private final BooleanSupplier driveAlignedForHubShot;
 
   private ShootingParameters cachedShotParams = null;
+  private boolean cachedDriveAlignedForHubShot = false;
   private final LoggedNetworkBoolean useHubShiftUtil;
 
   public Choreographer(
@@ -97,6 +98,7 @@ public class Choreographer extends SubsystemBase {
     Logger.recordOutput("Choreographer/DistanceFromHubMeters", distanceFromHub);
 
     cachedShotParams = ShotCalculator.getInstance().getParameters();
+    cachedDriveAlignedForHubShot = driveAlignedForHubShot.getAsBoolean();
 
     if (!enabled) {
       currentState = State.IDLE;
@@ -158,7 +160,7 @@ public class Choreographer extends SubsystemBase {
 
     boolean flywheelReady = flywheel.atGoal();
     boolean hoodReady = hood.isAtGoal();
-    boolean driveAligned = driveAlignedForHubShot.getAsBoolean();
+    boolean driveAligned = cachedDriveAlignedForHubShot;
 
     if (flywheelReady && hoodReady && driveAligned) {
       indexer.run();
@@ -207,7 +209,7 @@ public class Choreographer extends SubsystemBase {
   @AutoLogOutput(key = "Choreographer/ReadyToShoot")
   public boolean isReadyToShoot() {
     return currentState == State.SHOOTING
-        || (currentState == State.READY_TO_SHOOT && driveAlignedForHubShot.getAsBoolean());
+        || (currentState == State.READY_TO_SHOOT && cachedDriveAlignedForHubShot);
   }
 
   public void setCoastOverride(BooleanSupplier shouldCoast) {
@@ -221,8 +223,7 @@ public class Choreographer extends SubsystemBase {
   private void logOutputs() {
     Logger.recordOutput("Choreographer/FlywheelReady", flywheel.atGoal());
     Logger.recordOutput("Choreographer/HoodReady", hood.isAtGoal());
-    Logger.recordOutput(
-        "Choreographer/DriveAlignedForHubShot", driveAlignedForHubShot.getAsBoolean());
+    Logger.recordOutput("Choreographer/DriveAlignedForHubShot", cachedDriveAlignedForHubShot);
     Logger.recordOutput("Choreographer/IndexerRunning", indexer.isRunning());
     Logger.recordOutput("Choreographer/IndexerStalled", indexer.isStalled());
     Logger.recordOutput("Choreographer/KickerRunning", kicker.isRunning());
