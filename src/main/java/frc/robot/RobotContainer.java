@@ -111,6 +111,7 @@ public class RobotContainer {
 
           flywheel = new Flywheel(new FlywheelIOTalonFX());
           hood = new Hood(new HoodIOTalonFX());
+          // uncomment to enable indexer
           // indexer = new Indexer(new IndexerIOTalonFX());
           kicker = new Kicker(new KickerIOTalonFX());
           intake = new Intake(new IntakePivotIOSlamTalonFX(), new IntakeRollersIOTalonFX());
@@ -243,16 +244,12 @@ public class RobotContainer {
    * <pre>
    *  RIGHT TRIGGER  — Choreographer SCORE_HUB + auto-rotate drive
    *  LEFT TRIGGER   — Intake rollers
-   *  LEFT BUMPER    — Speed boost (hold)
-   *  RIGHT BUMPER   — (reserved / future climb)
-   *  A              — Emergency stop → Choreographer IDLE
+   *  LEFT BUMPER    — Slow mode (hold)
+   *  RIGHT BUMPER   — Toggle hub-preset override (bypasses vision/pose)
+   *  A              — Auto-Align just the Drive
    *  B              — Toggle intake deploy/stow
-   *  X              — Tuning: spin flywheel at manualFlywheelSpeed (hold, Choreographer disabled)
+   *  X              — Tuning: spin flywheel at manualFlywheelSpeed + kicker (hold, Choreographer disabled)
    *  Y              — Tuning: move hood to manualHoodAngle (hold, Choreographer disabled)
-   *  POV LEFT/RIGHT — Tuning: adjust flywheel speed ±1 RPS
-   *  POV UP/DOWN    — Tuning: adjust hood angle ±1°
-   *  POV UP+RIGHT   — Tuning: intake deploy angle +1°
-   *  POV DOWN+LEFT  — Tuning: intake deploy angle -1°
    *  BACK (solo)    — Toggle Choreographer enabled/disabled (enter/exit tuning mode)
    *  START + BACK   — Reset gyro to forward
    * </pre>
