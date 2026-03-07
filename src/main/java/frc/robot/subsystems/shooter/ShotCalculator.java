@@ -34,6 +34,7 @@ public class ShotCalculator {
   private static ShotCalculator instance;
 
   private double flywheelSpeedOffsetRPS = 0.0;
+  private double flywheelSpeedOffsetPercent = 0.0;
 
   private static final Transform3d robotToShooter =
       new Transform3d(0, 0, 0, new Rotation3d(0.0, 0.0, 0.0));
@@ -54,6 +55,11 @@ public class ShotCalculator {
   @AutoLogOutput(key = "ShotCalculator/FlywheelSpeedOffsetRPS")
   public double getFlywheelSpeedOffsetRPS() {
     return flywheelSpeedOffsetRPS;
+  }
+
+  @AutoLogOutput(key = "ShotCalculator/FlywheelSpeedOffsetPercent")
+  public double getFlywheelSpeedOffsetPercent() {
+    return flywheelSpeedOffsetPercent;
   }
 
   public record ShootingParameters(
@@ -230,6 +236,10 @@ public class ShotCalculator {
     }
   }
 
+  double applyFlywheelSpeedOffsets(double baseFlywheelSpeedRPS) {
+    return (baseFlywheelSpeedRPS * (1.0 + flywheelSpeedOffsetPercent)) + flywheelSpeedOffsetRPS;
+  }
+
   public ShootingParameters getParameters() {
     boolean passing =
         AllianceFlipUtil.applyX(RobotState.getInstance().getEstimatedPose().getX())
@@ -250,7 +260,7 @@ public class ShotCalculator {
               0.0,
               hubPreset.hoodAngleDeg().get(),
               0.0,
-              hubPreset.flywheelSpeed().get() + flywheelSpeedOffsetRPS,
+              applyFlywheelSpeedOffsets(hubPreset.flywheelSpeed().get()),
               d,
               d,
               timeOfFlightMap.get(d),
@@ -326,10 +336,10 @@ public class ShotCalculator {
             driveAngle.minus(lastDriveAngle).getRadians() / Constants.loopPeriodSecs);
     lastDriveAngle = driveAngle;
     double flywheelSpeedRPS =
-        (passing
+        applyFlywheelSpeedOffsets(
+            passing
                 ? passingFlywheelSpeedMap.get(lookaheadShooterToTargetDistance)
-                : flywheelSpeedMap.get(lookaheadShooterToTargetDistance))
-            + flywheelSpeedOffsetRPS;
+                : flywheelSpeedMap.get(lookaheadShooterToTargetDistance));
 
     latestParameters =
         new ShootingParameters(
@@ -402,14 +412,15 @@ public class ShotCalculator {
     flywheelSpeedOffsetRPS += incrementRPS;
   }
 
-  /** Adjusts the flywheel speed offset by the given percentage of the current base target speed. */
+  /**
+   * Adjusts the flywheel speed offset percentage, which is applied as a scalar to calculated target
+   * speeds.
+   *
+   * <p>The {@code percent} value is a fractional scalar, where {@code 0.05} represents a +5%
+   * increase and {@code -0.05} represents a -5% decrease in the calculated target speed.
+   */
   public void incrementFlywheelSpeedOffsetPercent(double percent) {
-    ShootingParameters parameters = getParameters();
-    if (parameters == null) {
-      return;
-    }
-    double baseFlywheelSpeedRPS = parameters.flywheelSpeedRPS() - flywheelSpeedOffsetRPS;
-    incrementFlywheelSpeedOffset(baseFlywheelSpeedRPS * percent);
+    flywheelSpeedOffsetPercent += percent;
   }
 
   /**
