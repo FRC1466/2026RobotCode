@@ -95,6 +95,7 @@ public class RobotContainer {
       new LoggedTunableNumber("Shooter/ManualFlywheelSpeedRPS", 45.0);
   private static final LoggedTunableNumber manualHoodAngle =
       new LoggedTunableNumber("Shooter/ManualHoodAngleDeg", 0.1);
+  private static final double shooterFudgeFactorPercent = 0.05;
 
   /** The container for the robot. Contains subsystems, OI devices, and commands. */
   public RobotContainer() {
@@ -250,6 +251,7 @@ public class RobotContainer {
    *  B              — Toggle intake deploy/stow
    *  X              — Tuning: spin flywheel at manualFlywheelSpeed + kicker (hold, Choreographer disabled)
    *  Y              — Tuning: move hood to manualHoodAngle (hold, Choreographer disabled)
+   *  POV UP/DOWN    — Raise/lower shot height by 5%
    *  BACK (solo)    — Toggle Choreographer enabled/disabled (enter/exit tuning mode)
    *  START + BACK   — Reset gyro to forward
    * </pre>
@@ -271,6 +273,26 @@ public class RobotContainer {
         .onTrue(
             Commands.runOnce(() -> ShotCalculator.getInstance().toggleHubPresetOverride())
                 .withName("ToggleHubPresetOverride")
+                .ignoringDisable(true));
+
+    // D-pad Up/Down: nudge the shot slightly higher/lower to compensate for consistent misses.
+    controller
+        .povUp()
+        .onTrue(
+            Commands.runOnce(
+                    () ->
+                        ShotCalculator.getInstance()
+                            .incrementHoodAngleOffsetPercent(shooterFudgeFactorPercent))
+                .withName("IncreaseShooterFudgeFactor")
+                .ignoringDisable(true));
+    controller
+        .povDown()
+        .onTrue(
+            Commands.runOnce(
+                    () ->
+                        ShotCalculator.getInstance()
+                            .incrementHoodAngleOffsetPercent(-shooterFudgeFactorPercent))
+                .withName("DecreaseShooterFudgeFactor")
                 .ignoringDisable(true));
 
     // Start + Back: reset gyro heading to alliance-forward

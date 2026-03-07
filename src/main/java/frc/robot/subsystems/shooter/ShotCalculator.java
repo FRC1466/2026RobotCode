@@ -25,15 +25,15 @@ import frc.robot.subsystems.shooter.hood.Hood;
 import frc.robot.util.AllianceFlipUtil;
 import frc.robot.util.GeomUtil;
 import frc.robot.util.LoggedTunableNumber;
-import lombok.Getter;
 import lombok.experimental.ExtensionMethod;
+import org.littletonrobotics.junction.AutoLogOutput;
 import org.littletonrobotics.junction.Logger;
 
 @ExtensionMethod({GeomUtil.class})
 public class ShotCalculator {
   private static ShotCalculator instance;
 
-  @Getter private double hoodAngleOffsetDeg = 0.0;
+  private double hoodAngleOffsetDeg = 0.0;
 
   private static final Transform3d robotToShooter =
       new Transform3d(0, 0, 0, new Rotation3d(0.0, 0.0, 0.0));
@@ -49,6 +49,11 @@ public class ShotCalculator {
   public static ShotCalculator getInstance() {
     if (instance == null) instance = new ShotCalculator();
     return instance;
+  }
+
+  @AutoLogOutput(key = "ShotCalculator/HoodAngleOffsetDeg")
+  public double getHoodAngleOffsetDeg() {
+    return hoodAngleOffsetDeg;
   }
 
   public record ShootingParameters(
@@ -392,6 +397,14 @@ public class ShotCalculator {
   /** Adjusts the hood angle offset up or down the specified amount. */
   public void incrementHoodAngleOffset(double incrementDegrees) {
     hoodAngleOffsetDeg += incrementDegrees;
+    Logger.recordOutput("ShotCalculator/HoodAngleOffsetDeg", hoodAngleOffsetDeg);
+    SmartDashboard.putNumber("ShotCalculator/HoodAngleOffsetDeg", hoodAngleOffsetDeg);
+  }
+
+  /** Adjusts the hood angle offset by the given percentage of the current base target angle. */
+  public void incrementHoodAngleOffsetPercent(double percent) {
+    double baseHoodAngleDeg = getParameters().hoodAngleDeg() - hoodAngleOffsetDeg;
+    incrementHoodAngleOffset(baseHoodAngleDeg * percent);
   }
 
   /**
