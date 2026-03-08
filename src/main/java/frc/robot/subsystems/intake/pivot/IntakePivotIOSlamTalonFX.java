@@ -206,8 +206,7 @@ public class IntakePivotIOSlamTalonFX implements IntakePivotIO {
       return targetVolts;
     }
 
-    double brakeProgress =
-        MathUtil.clamp((elapsedSec - brakeStartSec) / brakeWindowSec, 0.0, 1.0);
+    double brakeProgress = MathUtil.clamp((elapsedSec - brakeStartSec) / brakeWindowSec, 0.0, 1.0);
     return targetVolts * (1.0 - brakeProgress);
   }
 }
