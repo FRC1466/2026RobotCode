@@ -256,10 +256,15 @@ public class Flywheel extends FullSubsystem {
     return sysId.dynamic(direction);
   }
 
+  /** Converts a current-average window in seconds to the moving-average sample count. */
   static int getShotDetectionCurrentAverageWindowSamples(double windowSecs) {
     return Math.max(1, (int) Math.round(windowSecs / Constants.loopPeriodSecs));
   }
 
+  /**
+   * Returns whether a shot-like event has been detected from a current drop while the flywheel is
+   * up to speed.
+   */
   static boolean shouldRecordShotFromCurrentDrop(
       double currentAmps,
       double averageCurrentAmps,
@@ -275,6 +280,7 @@ public class Flywheel extends FullSubsystem {
         getShotDetectionCurrentAverageWindowSamples(shotDetectionCurrentAverageWindowSecs.get()));
   }
 
+  /** Resets the current-drop detector when the flywheel stops or its averaging window changes. */
   private void resetShotDetection() {
     shotDetectionCurrentAverageFilter = createShotDetectionCurrentAverageFilter();
     shotDetectionAverageCurrentAmps = 0.0;
