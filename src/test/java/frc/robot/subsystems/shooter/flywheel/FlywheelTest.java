@@ -12,13 +12,13 @@ import org.junit.jupiter.api.Test;
 
 class FlywheelTest {
   @Test
-  void shotIsDetectedWhenCurrentDropsBelowAverageAtSpeed() {
-    assertTrue(Flywheel.shouldRecordShotFromCurrentDrop(10.0, 18.0, 30.0, 25.0, 5.0));
+  void shotIsDetectedWhenCurrentSpikesAboveAverageAtSpeed() {
+    assertTrue(Flywheel.shouldRecordShotFromCurrentSpike(18.0, 10.0, 30.0, 25.0, 5.0));
   }
 
   @Test
   void shotIsNotDetectedWhenVelocityIsTooLow() {
-    assertFalse(Flywheel.shouldRecordShotFromCurrentDrop(10.0, 18.0, 20.0, 25.0, 5.0));
+    assertFalse(Flywheel.shouldRecordShotFromCurrentSpike(18.0, 10.0, 20.0, 25.0, 5.0));
   }
 
   @Test

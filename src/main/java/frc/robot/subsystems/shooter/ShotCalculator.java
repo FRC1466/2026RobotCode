@@ -236,6 +236,11 @@ public class ShotCalculator {
     lastShotTimestamp = timestampSupplier.getAsDouble();
   }
 
+  /** Returns the timestamp of the last recorded shot, or -∞ if none has occurred. */
+  public double getLastShotTimestampSeconds() {
+    return lastShotTimestamp;
+  }
+
   /** Returns the elapsed time in seconds since the last recorded shot, or +∞ if none has occurred. */
   @AutoLogOutput(key = "ShotCalculator/TimeSinceLastShotSecs")
   public double getTimeSinceLastShotSeconds() {
