@@ -17,6 +17,7 @@ import edu.wpi.first.wpilibj2.command.button.CommandXboxController;
 import edu.wpi.first.wpilibj2.command.button.RobotModeTriggers;
 import edu.wpi.first.wpilibj2.command.sysid.SysIdRoutine;
 import frc.robot.commands.DriveCommands;
+import frc.robot.commands.DriveToPose;
 import frc.robot.generated.TunerConstants;
 import frc.robot.subsystems.Choreographer;
 import frc.robot.subsystems.drive.Drive;
@@ -231,6 +232,29 @@ public class RobotContainer {
         "Test: Indexer", indexer.runCommand().withTimeout(3.0).withName("Test Indexer"));
     autoChooser.addOption(
         "Test: Kicker", kicker.runCommand().withTimeout(3.0).withName("Test Kicker"));
+
+    // Tuning: drive to a fixed shot distance and hold — useful for quickly verifying map values.
+    // Robot positions itself directly in front of the hub at each preset distance.
+    autoChooser.addOption(
+        "Tune: Drive to Hub Distance ("
+            + ShotCalculator.hubPresetDistance
+            + "m)",
+        new DriveToPose(drive, () -> ShotCalculator.getAimedPoseAtDistance(ShotCalculator.hubPresetDistance)));
+    autoChooser.addOption(
+        "Tune: Drive to Tower Distance ("
+            + ShotCalculator.towerPresetDistance
+            + "m)",
+        new DriveToPose(drive, () -> ShotCalculator.getAimedPoseAtDistance(ShotCalculator.towerPresetDistance)));
+    autoChooser.addOption(
+        "Tune: Drive to Trench Distance ("
+            + ShotCalculator.trenchPresetDistance
+            + "m)",
+        new DriveToPose(drive, () -> ShotCalculator.getAimedPoseAtDistance(ShotCalculator.trenchPresetDistance)));
+    autoChooser.addOption(
+        "Tune: Drive to Outpost Distance ("
+            + ShotCalculator.outpostPresetDistance
+            + "m)",
+        new DriveToPose(drive, () -> ShotCalculator.getAimedPoseAtDistance(ShotCalculator.outpostPresetDistance)));
 
     // Configure the button bindings
     configureButtonBindings();
