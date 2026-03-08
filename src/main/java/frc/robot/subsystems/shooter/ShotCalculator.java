@@ -133,6 +133,19 @@ public class ShotCalculator {
   public static record LaunchPreset(
       LoggedTunableNumber hoodAngleDeg, LoggedTunableNumber flywheelSpeed) {}
 
+  // Shooting map data — distances (m), default hood angles (deg), flywheel speeds (RPS), and
+  // time-of-flight (s). Hood angles and flywheel speeds are exposed as LoggedTunableNumbers so
+  // they can be edited live in tuning mode without redeploying.
+  private static final double[] mapDistances = {1.969, 2.185, 2.452, 3.701, 4.06, 4.68};
+  private static final double[] defaultMapHoodAngles = {
+    Hood.minAngleDeg, Hood.minAngleDeg, Hood.minAngleDeg, 5.0, 8.0, 10.0
+  };
+  private static final double[] defaultMapFlywheelSpeeds = {31.0, 32.0, 33.0, 36.0, 37.75, 39.0};
+  private static final double[] mapTimeOfFlights = {1.2, 1.2, 1.0, 1.61, 1.4, 1.1};
+  private static final LoggedTunableNumber[] mapHoodAnglesDeg;
+  private static final LoggedTunableNumber[] mapFlywheelSpeedsRPS;
+  private static final int MAP_CONSUMER_ID = ShotCalculator.class.hashCode();
+
   static {
     minDistance = 1.34;
     maxDistance = 5.60;
@@ -140,26 +153,20 @@ public class ShotCalculator {
     passingMinDistance = 0.0;
     passingMaxDistance = 100000;
 
-    hoodAngleMap.put(1.969, Rotation2d.fromDegrees(Hood.minAngleDeg));
-    hoodAngleMap.put(2.185, Rotation2d.fromDegrees(Hood.minAngleDeg));
-    hoodAngleMap.put(2.452, Rotation2d.fromDegrees(Hood.minAngleDeg));
-    hoodAngleMap.put(3.701, Rotation2d.fromDegrees(5.0));
-    hoodAngleMap.put(4.06, Rotation2d.fromDegrees(8.0));
-    hoodAngleMap.put(4.68, Rotation2d.fromDegrees(10.0));
-
-    flywheelSpeedMap.put(1.969, 31.0);
-    flywheelSpeedMap.put(2.185, 32.0);
-    flywheelSpeedMap.put(2.452, 33.0);
-    flywheelSpeedMap.put(3.701, 36.0);
-    flywheelSpeedMap.put(4.06, 37.75);
-    flywheelSpeedMap.put(4.68, 39.0);
-
-    timeOfFlightMap.put(1.969, 1.2);
-    timeOfFlightMap.put(2.185, 1.2);
-    timeOfFlightMap.put(2.452, 1.0);
-    timeOfFlightMap.put(3.701, 1.61);
-    timeOfFlightMap.put(4.06, 1.4);
-    timeOfFlightMap.put(4.68, 1.1);
+    mapHoodAnglesDeg = new LoggedTunableNumber[mapDistances.length];
+    mapFlywheelSpeedsRPS = new LoggedTunableNumber[mapDistances.length];
+    for (int i = 0; i < mapDistances.length; i++) {
+      mapHoodAnglesDeg[i] =
+          new LoggedTunableNumber(
+              String.format("ShotCalculator/Map/%.3fm/HoodAngleDeg", mapDistances[i]),
+              defaultMapHoodAngles[i]);
+      mapFlywheelSpeedsRPS[i] =
+          new LoggedTunableNumber(
+              String.format("ShotCalculator/Map/%.3fm/FlywheelSpeedRPS", mapDistances[i]),
+              defaultMapFlywheelSpeeds[i]);
+      timeOfFlightMap.put(mapDistances[i], mapTimeOfFlights[i]);
+    }
+    rebuildShootingMaps();
 
     // TODO: tune passing maps
     passingHoodAngleMap.put(passingMinDistance, Rotation2d.fromDegrees(0.0));
@@ -207,6 +214,30 @@ public class ShotCalculator {
     return timeOfFlightMap.get(maxDistance);
   }
 
+  /** Rebuilds the hood-angle and flywheel-speed interpolation maps from the current tunable values. */
+  private static void rebuildShootingMaps() {
+    hoodAngleMap.clear();
+    flywheelSpeedMap.clear();
+    for (int i = 0; i < mapDistances.length; i++) {
+      hoodAngleMap.put(mapDistances[i], Rotation2d.fromDegrees(mapHoodAnglesDeg[i].get()));
+      flywheelSpeedMap.put(mapDistances[i], mapFlywheelSpeedsRPS[i].get());
+    }
+  }
+
+  /**
+   * Returns a Pose2d positioned {@code distance} metres in front of the alliance hub, aimed
+   * directly at it. Useful for driving to a known shot distance during tuning.
+   *
+   * @param distance shooter-to-hub distance in metres
+   * @return aimed Pose2d at the requested distance
+   */
+  public static Pose2d getAimedPoseAtDistance(double distance) {
+    Translation2d hubCenterBlue = FieldConstants.Hub.topCenterPoint.toTranslation2d();
+    Translation2d robotBlue =
+        new Translation2d(hubCenterBlue.getX() - distance, hubCenterBlue.getY());
+    return getStationaryAimedPose(AllianceFlipUtil.apply(robotBlue));
+  }
+
   /** Toggles hub-preset override on/off. Returns the new state. */
   public boolean toggleHubPresetOverride() {
     hubPresetOverride = !hubPresetOverride;
@@ -247,6 +278,12 @@ public class ShotCalculator {
     if (latestParameters != null) {
       return latestParameters;
     }
+
+    // Rebuild interpolation maps if any tunable map values have changed.
+    boolean mapChanged = false;
+    for (LoggedTunableNumber n : mapHoodAnglesDeg) mapChanged |= n.hasChanged(MAP_CONSUMER_ID);
+    for (LoggedTunableNumber n : mapFlywheelSpeedsRPS) mapChanged |= n.hasChanged(MAP_CONSUMER_ID);
+    if (mapChanged) rebuildShootingMaps();
 
     // Hub-preset override: ignore vision/pose, use preset values at hubPresetDistance and keep
     // the robot's current heading so there is no auto-rotation.
