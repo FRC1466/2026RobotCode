@@ -104,13 +104,17 @@ public class Flywheel extends FullSubsystem {
   @Accessors(fluent = true)
   @AutoLogOutput(key = "Flywheel/AtGoal")
   private boolean atGoal = false;
-  private LinearFilter shotDetectionCurrentAverageFilter = createShotDetectionCurrentAverageFilter();
+  // Shot detection tracks a rolling current baseline while the shooter is spun up. The average is
+  // considered initialized after the first high-speed sample, and shotDetectedFromCurrentDrop
+  // stores the previous cycle's detection state so we only record new rising edges.
+  private LinearFilter shotDetectionCurrentAverageFilter;
   private double shotDetectionAverageCurrentAmps = 0.0;
   private boolean shotDetectionAverageInitialized = false;
   private boolean shotDetectedFromCurrentDrop = false;
 
   public Flywheel(FlywheelIO io) {
     this.io = io;
+    shotDetectionCurrentAverageFilter = createShotDetectionCurrentAverageFilter();
 
     disconnected = new Alert("Flywheel motor disconnected!", Alert.AlertType.kWarning);
     followerDisconnected =
@@ -289,15 +293,20 @@ public class Flywheel extends FullSubsystem {
   }
 
   private void updateShotDetection() {
+    boolean shotDetectionModeActive =
+        outputs.mode == FlywheelIOOutputMode.VELOCITY_VOLTAGE
+            || outputs.mode == FlywheelIOOutputMode.VELOCITY_TORQUE_CURRENT;
     boolean flywheelSpunUp =
-        outputs.mode != FlywheelIOOutputMode.COAST
+        shotDetectionModeActive
             && Math.abs(inputs.velocityRotationsPerSec) >= shotDetectionMinVelocityRPS.get();
-    double averageCurrentAmps = 0.0;
     double currentAmps = 0.0;
+    double averageCurrentAmps = 0.0;
 
     if (flywheelSpunUp) {
       currentAmps =
           Math.abs(inputs.supplyCurrentMasterAmps) + Math.abs(inputs.supplyCurrentFollowerAmps);
+      // Compare against the moving average from prior spun-up cycles before folding in the latest
+      // current sample.
       averageCurrentAmps = shotDetectionAverageCurrentAmps;
       boolean currentDropDetected =
           shotDetectionAverageInitialized
@@ -307,12 +316,13 @@ public class Flywheel extends FullSubsystem {
                   inputs.velocityRotationsPerSec,
                   shotDetectionMinVelocityRPS.get(),
                   shotDetectionCurrentDropThresholdAmps.get());
-      if (currentDropDetected && !shotDetectedFromCurrentDrop) {
+      boolean shotWasAlreadyDetected = shotDetectedFromCurrentDrop;
+      shotDetectedFromCurrentDrop = currentDropDetected;
+      if (currentDropDetected && !shotWasAlreadyDetected) {
         ShotCalculator.getInstance().recordShot();
       }
       shotDetectionAverageCurrentAmps = shotDetectionCurrentAverageFilter.calculate(currentAmps);
       shotDetectionAverageInitialized = true;
-      shotDetectedFromCurrentDrop = currentDropDetected;
     } else {
       resetShotDetection();
     }
