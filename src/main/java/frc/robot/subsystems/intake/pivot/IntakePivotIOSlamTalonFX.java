@@ -30,10 +30,8 @@ public class IntakePivotIOSlamTalonFX implements IntakePivotIO {
       new LoggedTunableNumber("IntakePivotSlam/DeployDurationSec", 0.75);
   private static final LoggedTunableNumber retractDurationSec =
       new LoggedTunableNumber("IntakePivotSlam/RetractDurationSec", 0.5);
-  private static final LoggedTunableNumber deployRampTimeSec =
-      new LoggedTunableNumber("IntakePivotSlam/DeployRampTimeSec", 0.2);
-  private static final LoggedTunableNumber retractRampTimeSec =
-      new LoggedTunableNumber("IntakePivotSlam/RetractRampTimeSec", 0.1);
+  private static final LoggedTunableNumber brakeWindowScale =
+      new LoggedTunableNumber("IntakePivotSlam/BrakeWindowScale", 0.2);
   private static final LoggedTunableNumber holdPulseIntervalSec =
       new LoggedTunableNumber("IntakePivotSlam/HoldPulseIntervalSec", 0.3);
   private static final LoggedTunableNumber holdPulseDurationSec =
@@ -144,8 +142,11 @@ public class IntakePivotIOSlamTalonFX implements IntakePivotIO {
         if (slamTimer.get() < deployDurationSec.get()) {
           talon.setControl(
               voltageRequest.withOutput(
-                  calculateRampedVoltage(
-                      deployVolts.get(), slamTimer.get(), deployRampTimeSec.get())));
+                  calculateBrakedVoltage(
+                      deployVolts.get(),
+                      slamTimer.get(),
+                      deployDurationSec.get(),
+                      brakeWindowScale.get())));
         } else {
           talon.setControl(voltageRequest.withOutput(0.0));
           state = SlamState.IDLE;
@@ -156,8 +157,11 @@ public class IntakePivotIOSlamTalonFX implements IntakePivotIO {
         if (slamTimer.get() < retractDurationSec.get()) {
           talon.setControl(
               voltageRequest.withOutput(
-                  calculateRampedVoltage(
-                      retractVolts.get(), slamTimer.get(), retractRampTimeSec.get())));
+                  calculateBrakedVoltage(
+                      retractVolts.get(),
+                      slamTimer.get(),
+                      retractDurationSec.get(),
+                      brakeWindowScale.get())));
         } else {
           talon.setControl(voltageRequest.withOutput(0.0));
           state = SlamState.IDLE;
@@ -185,11 +189,22 @@ public class IntakePivotIOSlamTalonFX implements IntakePivotIO {
     }
   }
 
-  static double calculateRampedVoltage(double targetVolts, double elapsedSec, double rampTimeSec) {
-    if (rampTimeSec <= 0.0) {
+  static double calculateBrakedVoltage(
+      double targetVolts, double elapsedSec, double durationSec, double brakeWindowScale) {
+    if (brakeWindowScale <= 0.0) {
       return targetVolts;
     }
-    double rampProgress = MathUtil.clamp(elapsedSec / rampTimeSec, 0.0, 1.0);
-    return targetVolts * rampProgress;
+    double brakeWindowSec = durationSec * MathUtil.clamp(brakeWindowScale, 0.0, 1.0);
+    if (brakeWindowSec <= 0.0) {
+      return targetVolts;
+    }
+
+    double brakeStartSec = durationSec - brakeWindowSec;
+    if (elapsedSec <= brakeStartSec) {
+      return targetVolts;
+    }
+
+    double brakeProgress = MathUtil.clamp((elapsedSec - brakeStartSec) / brakeWindowSec, 0.0, 1.0);
+    return targetVolts * (1.0 - brakeProgress);
   }
 }

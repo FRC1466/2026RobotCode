@@ -9,22 +9,32 @@ import org.junit.jupiter.api.Test;
 
 class IntakePivotIOSlamTalonFXTest {
   @Test
-  void calculateRampedVoltageStartsAtZeroAndReachesTarget() {
-    assertEquals(0.0, IntakePivotIOSlamTalonFX.calculateRampedVoltage(2.0, 0.0, 0.2), 1e-9);
-    assertEquals(1.0, IntakePivotIOSlamTalonFX.calculateRampedVoltage(2.0, 0.1, 0.2), 1e-9);
-    assertEquals(2.0, IntakePivotIOSlamTalonFX.calculateRampedVoltage(2.0, 0.2, 0.2), 1e-9);
-    assertEquals(2.0, IntakePivotIOSlamTalonFX.calculateRampedVoltage(2.0, 0.5, 0.2), 1e-9);
-  }
-
-  @Test
-  void calculateRampedVoltagePreservesRetractDirection() {
+  void calculateBrakedVoltageStaysAtTargetUntilBrakeWindow() {
     assertEquals(
-        -1.25, IntakePivotIOSlamTalonFX.calculateRampedVoltage(-2.5, 0.05, 0.1), 1e-9);
+        2.0, IntakePivotIOSlamTalonFX.calculateBrakedVoltage(2.0, 0.0, 0.75, 0.2), 1e-9);
+    assertEquals(
+        2.0, IntakePivotIOSlamTalonFX.calculateBrakedVoltage(2.0, 0.59, 0.75, 0.2), 1e-9);
   }
 
   @Test
-  void calculateRampedVoltageBypassesRampWhenDisabled() {
-    assertEquals(2.0, IntakePivotIOSlamTalonFX.calculateRampedVoltage(2.0, 0.0, 0.0), 1e-9);
-    assertEquals(2.0, IntakePivotIOSlamTalonFX.calculateRampedVoltage(2.0, 0.0, -1.0), 1e-9);
+  void calculateBrakedVoltageRampsDownToZeroAtEnd() {
+    assertEquals(
+        1.0, IntakePivotIOSlamTalonFX.calculateBrakedVoltage(2.0, 0.675, 0.75, 0.2), 1e-9);
+    assertEquals(
+        0.0, IntakePivotIOSlamTalonFX.calculateBrakedVoltage(2.0, 0.75, 0.75, 0.2), 1e-9);
+  }
+
+  @Test
+  void calculateBrakedVoltagePreservesRetractDirection() {
+    assertEquals(
+        -1.25, IntakePivotIOSlamTalonFX.calculateBrakedVoltage(-2.5, 0.45, 0.5, 0.2), 1e-9);
+  }
+
+  @Test
+  void calculateBrakedVoltageBypassesBrakingWhenDisabled() {
+    assertEquals(
+        2.0, IntakePivotIOSlamTalonFX.calculateBrakedVoltage(2.0, 0.74, 0.75, 0.0), 1e-9);
+    assertEquals(
+        2.0, IntakePivotIOSlamTalonFX.calculateBrakedVoltage(2.0, 0.74, 0.75, -1.0), 1e-9);
   }
 }
