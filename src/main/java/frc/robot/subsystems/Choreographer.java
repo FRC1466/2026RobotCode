@@ -39,7 +39,7 @@ public class Choreographer extends SubsystemBase {
     IDLE,
     INTAKING,
     SPINNING_UP,
-    READY_TO_SHOOT,
+    WAITING_FOR_ALIGNMENT,
     SHOOTING,
     CLIMB_EXTENDING,
     CLIMB_RETRACTING
@@ -65,18 +65,27 @@ public class Choreographer extends SubsystemBase {
   private final Indexer indexer;
   private final Kicker kicker;
   private final Intake intake;
+  private final BooleanSupplier driveAlignedForHubShot;
 
   private ShootingParameters cachedShotParams = null;
+  private boolean cachedDriveAlignedForHubShot = false;
   private final LoggedNetworkBoolean useHubShiftUtil;
 
   public Choreographer(
-      Drive drive, Flywheel flywheel, Hood hood, Indexer indexer, Kicker kicker, Intake intake) {
+      Drive drive,
+      Flywheel flywheel,
+      Hood hood,
+      Indexer indexer,
+      Kicker kicker,
+      Intake intake,
+      BooleanSupplier driveAlignedForHubShot) {
     this.drive = drive;
     this.flywheel = flywheel;
     this.hood = hood;
     this.indexer = indexer;
     this.kicker = kicker;
     this.intake = intake;
+    this.driveAlignedForHubShot = driveAlignedForHubShot;
     this.useHubShiftUtil = new LoggedNetworkBoolean("UseHubShiftUtil", false);
   }
 
@@ -89,6 +98,7 @@ public class Choreographer extends SubsystemBase {
     Logger.recordOutput("Choreographer/DistanceFromHubMeters", distanceFromHub);
 
     cachedShotParams = ShotCalculator.getInstance().getParameters();
+    cachedDriveAlignedForHubShot = driveAlignedForHubShot.getAsBoolean();
 
     if (!enabled) {
       currentState = State.IDLE;
@@ -150,16 +160,16 @@ public class Choreographer extends SubsystemBase {
 
     boolean flywheelReady = flywheel.atGoal();
     boolean hoodReady = hood.isAtGoal();
-    boolean driveAligned = true; // DriveCommands.atLaunchGoal();
+    boolean driveAlignedForHubShot = cachedDriveAlignedForHubShot;
 
-    if (flywheelReady && hoodReady && driveAligned) {
+    if (flywheelReady && hoodReady && driveAlignedForHubShot) {
       indexer.run();
       kicker.run();
       currentState = State.SHOOTING;
     } else if (flywheelReady && hoodReady) {
       indexer.stop();
       kicker.stop();
-      currentState = State.READY_TO_SHOOT;
+      currentState = State.WAITING_FOR_ALIGNMENT;
     } else {
       indexer.stop();
       kicker.stop();
@@ -198,7 +208,7 @@ public class Choreographer extends SubsystemBase {
 
   @AutoLogOutput(key = "Choreographer/ReadyToShoot")
   public boolean isReadyToShoot() {
-    return currentState == State.READY_TO_SHOOT || currentState == State.SHOOTING;
+    return currentState == State.SHOOTING;
   }
 
   public void setCoastOverride(BooleanSupplier shouldCoast) {
@@ -212,6 +222,7 @@ public class Choreographer extends SubsystemBase {
   private void logOutputs() {
     Logger.recordOutput("Choreographer/FlywheelReady", flywheel.atGoal());
     Logger.recordOutput("Choreographer/HoodReady", hood.isAtGoal());
+    Logger.recordOutput("Choreographer/DriveAlignedForHubShot", cachedDriveAlignedForHubShot);
     Logger.recordOutput("Choreographer/IndexerRunning", indexer.isRunning());
     Logger.recordOutput("Choreographer/IndexerStalled", indexer.isStalled());
     Logger.recordOutput("Choreographer/KickerRunning", kicker.isRunning());

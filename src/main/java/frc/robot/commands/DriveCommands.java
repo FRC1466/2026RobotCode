@@ -382,15 +382,14 @@ public class DriveCommands extends Command {
         });
   }
 
-  /** Returns true when the robot is aimed within tolerance at the shot target. */
-  @AutoLogOutput
+  /** Returns true when the drivetrain is rotationally aligned to the hub shot target. */
+  @AutoLogOutput(key = "DriveCommands/HubRotationAligned")
   public boolean atLaunchGoal() {
+    var shotParams = ShotCalculator.getInstance().getParameters();
     return DriverStation.isEnabled()
-        && Math.abs(
-                drive
-                    .getRotation()
-                    .minus(ShotCalculator.getInstance().getParameters().driveAngle())
-                    .getRadians())
+        && shotParams != null
+        && shotParams.isValid()
+        && Math.abs(drive.getRotation().minus(shotParams.driveAngle()).getRadians())
             <= edu.wpi.first.math.util.Units.degreesToRadians(driveLaunchToleranceDeg.get());
   }
 

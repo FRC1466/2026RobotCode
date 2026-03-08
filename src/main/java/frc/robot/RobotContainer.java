@@ -186,8 +186,12 @@ public class RobotContainer {
       intake = new Intake(new IntakePivotIO() {}, new IntakeRollersIO() {});
     }
 
+    driveCommand = new DriveCommands(drive, controller);
+
     // Instantiate Choreographer
-    choreographer = new Choreographer(drive, flywheel, hood, indexer, kicker, intake);
+    choreographer =
+        new Choreographer(
+            drive, flywheel, hood, indexer, kicker, intake, driveCommand::atLaunchGoal);
 
     // Set up Autos
     autos = new Autos(drive, flywheel, hood, choreographer);
@@ -227,8 +231,6 @@ public class RobotContainer {
         "Test: Indexer", indexer.runCommand().withTimeout(3.0).withName("Test Indexer"));
     autoChooser.addOption(
         "Test: Kicker", kicker.runCommand().withTimeout(3.0).withName("Test Kicker"));
-
-    driveCommand = new DriveCommands(drive, controller);
 
     // Configure the button bindings
     configureButtonBindings();
