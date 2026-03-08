@@ -16,6 +16,7 @@ import edu.wpi.first.math.interpolation.InterpolatingTreeMap;
 import edu.wpi.first.math.interpolation.InverseInterpolator;
 import edu.wpi.first.math.kinematics.ChassisSpeeds;
 import edu.wpi.first.math.util.Units;
+import edu.wpi.first.wpilibj.Timer;
 import edu.wpi.first.wpilibj.smartdashboard.SmartDashboard;
 import frc.robot.Constants;
 import frc.robot.FieldConstants;
@@ -25,6 +26,7 @@ import frc.robot.subsystems.shooter.hood.Hood;
 import frc.robot.util.AllianceFlipUtil;
 import frc.robot.util.GeomUtil;
 import frc.robot.util.LoggedTunableNumber;
+import java.util.function.DoubleSupplier;
 import lombok.experimental.ExtensionMethod;
 import org.littletonrobotics.junction.AutoLogOutput;
 import org.littletonrobotics.junction.Logger;
@@ -43,9 +45,19 @@ public class ShotCalculator {
       LinearFilter.movingAverage((int) (0.1 / Constants.loopPeriodSecs));
   private final LinearFilter driveAngleFilter =
       LinearFilter.movingAverage((int) (0.8 / Constants.loopPeriodSecs));
+  private final DoubleSupplier timestampSupplier;
 
   private double lastHoodAngle = Double.NaN;
   private Rotation2d lastDriveAngle;
+  private double lastShotTimestamp = Double.NEGATIVE_INFINITY;
+
+  public ShotCalculator() {
+    this(Timer::getTimestamp);
+  }
+
+  ShotCalculator(DoubleSupplier timestampSupplier) {
+    this.timestampSupplier = timestampSupplier;
+  }
 
   public static ShotCalculator getInstance() {
     if (instance == null) instance = new ShotCalculator();
@@ -217,6 +229,17 @@ public class ShotCalculator {
 
   public boolean isHubPresetOverride() {
     return hubPresetOverride;
+  }
+
+  /** Records that a ball has just been fed through the shooter. */
+  public void recordShot() {
+    lastShotTimestamp = timestampSupplier.getAsDouble();
+  }
+
+  /** Returns the elapsed time in seconds since the last recorded shot, or +∞ if none has occurred. */
+  @AutoLogOutput(key = "ShotCalculator/TimeSinceLastShotSecs")
+  public double getTimeSinceLastShotSeconds() {
+    return timestampSupplier.getAsDouble() - lastShotTimestamp;
   }
 
   public void dropHood() {

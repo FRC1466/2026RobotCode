@@ -8,6 +8,7 @@ import edu.wpi.first.wpilibj.Alert;
 import edu.wpi.first.wpilibj.DriverStation;
 import edu.wpi.first.wpilibj2.command.Command;
 import frc.robot.Robot;
+import frc.robot.subsystems.shooter.ShotCalculator;
 import frc.robot.subsystems.kicker.KickerIO.KickerIOOutputs;
 import frc.robot.util.FullSubsystem;
 import frc.robot.util.LoggedTunableNumber;
@@ -75,6 +76,9 @@ public class Kicker extends FullSubsystem {
 
   /** Run the kicker forward at the default voltage. */
   public void run() {
+    if (!running) {
+      ShotCalculator.getInstance().recordShot();
+    }
     running = true;
   }
 
