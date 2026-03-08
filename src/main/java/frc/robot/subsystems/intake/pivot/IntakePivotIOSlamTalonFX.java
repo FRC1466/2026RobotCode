@@ -12,9 +12,9 @@ import com.ctre.phoenix6.controls.VoltageOut;
 import com.ctre.phoenix6.hardware.TalonFX;
 import com.ctre.phoenix6.signals.InvertedValue;
 import com.ctre.phoenix6.signals.NeutralModeValue;
+import edu.wpi.first.math.MathUtil;
 import edu.wpi.first.units.measure.*;
 import edu.wpi.first.wpilibj.Timer;
-import edu.wpi.first.math.MathUtil;
 import frc.robot.generated.TunerConstants;
 import frc.robot.util.LoggedTunableNumber;
 import frc.robot.util.PhoenixUtil;
@@ -139,14 +139,15 @@ public class IntakePivotIOSlamTalonFX implements IntakePivotIO {
 
     switch (state) {
       case DEPLOYING -> {
-        if (slamTimer.get() < deployDurationSec.get()) {
+        double elapsedSec = slamTimer.get();
+        double durationSec = deployDurationSec.get();
+        double targetVolts = deployVolts.get();
+        double brakeScale = brakeWindowScale.get();
+
+        if (elapsedSec < durationSec) {
           talon.setControl(
               voltageRequest.withOutput(
-                  calculateBrakedVoltage(
-                      deployVolts.get(),
-                      slamTimer.get(),
-                      deployDurationSec.get(),
-                      brakeWindowScale.get())));
+                  calculateBrakedVoltage(targetVolts, elapsedSec, durationSec, brakeScale)));
         } else {
           talon.setControl(voltageRequest.withOutput(0.0));
           state = SlamState.IDLE;
@@ -154,14 +155,15 @@ public class IntakePivotIOSlamTalonFX implements IntakePivotIO {
         }
       }
       case RETRACTING -> {
-        if (slamTimer.get() < retractDurationSec.get()) {
+        double elapsedSec = slamTimer.get();
+        double durationSec = retractDurationSec.get();
+        double targetVolts = retractVolts.get();
+        double brakeScale = brakeWindowScale.get();
+
+        if (elapsedSec < durationSec) {
           talon.setControl(
               voltageRequest.withOutput(
-                  calculateBrakedVoltage(
-                      retractVolts.get(),
-                      slamTimer.get(),
-                      retractDurationSec.get(),
-                      brakeWindowScale.get())));
+                  calculateBrakedVoltage(targetVolts, elapsedSec, durationSec, brakeScale)));
         } else {
           talon.setControl(voltageRequest.withOutput(0.0));
           state = SlamState.IDLE;
