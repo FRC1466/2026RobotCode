@@ -39,7 +39,7 @@ public class Choreographer extends SubsystemBase {
     IDLE,
     INTAKING,
     SPINNING_UP,
-    READY_TO_SHOOT,
+    WAITING_FOR_ALIGNMENT,
     SHOOTING,
     CLIMB_EXTENDING,
     CLIMB_RETRACTING
@@ -169,7 +169,7 @@ public class Choreographer extends SubsystemBase {
     } else if (flywheelReady && hoodReady) {
       indexer.stop();
       kicker.stop();
-      currentState = State.READY_TO_SHOOT;
+      currentState = State.WAITING_FOR_ALIGNMENT;
     } else {
       indexer.stop();
       kicker.stop();
@@ -208,8 +208,7 @@ public class Choreographer extends SubsystemBase {
 
   @AutoLogOutput(key = "Choreographer/ReadyToShoot")
   public boolean isReadyToShoot() {
-    return (currentState == State.READY_TO_SHOOT || currentState == State.SHOOTING)
-        && cachedDriveAlignedForHubShot;
+    return currentState == State.SHOOTING;
   }
 
   public void setCoastOverride(BooleanSupplier shouldCoast) {
