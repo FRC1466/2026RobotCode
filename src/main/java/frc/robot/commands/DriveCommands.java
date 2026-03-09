@@ -99,6 +99,8 @@ public class DriveCommands extends Command {
 
   @AutoLogOutput private DriveMode currentDriveMode = DriveMode.NORMAL;
   private boolean launchRequested = false;
+  @AutoLogOutput(key = "DriveCommands/ZoneAutoLockEnabled")
+  private boolean zoneAutoLockEnabled = true;
 
   /** Creates a new DriveCommands. */
   public DriveCommands(Drive drive, CommandXboxController controller) {
@@ -182,7 +184,45 @@ public class DriveCommands extends Command {
   }
 
   private Command updateDriveMode(DriveMode driveMode) {
-    return Commands.runOnce(() -> currentDriveMode = driveMode);
+    return Commands.runOnce(
+        () -> currentDriveMode = sanitizeRequestedDriveMode(driveMode, zoneAutoLockEnabled));
+  }
+
+  static DriveMode sanitizeRequestedDriveMode(
+      DriveMode requestedDriveMode, boolean zoneAutoLockEnabled) {
+    if (!zoneAutoLockEnabled
+        && (requestedDriveMode == DriveMode.TRENCH_LOCK
+            || requestedDriveMode == DriveMode.BUMP_LOCK)) {
+      return DriveMode.NORMAL;
+    }
+    return requestedDriveMode;
+  }
+
+  static DriveMode getZoneDriveMode(
+      boolean zoneAutoLockEnabled, boolean inTrenchZone, boolean inBumpZone) {
+    if (!zoneAutoLockEnabled) {
+      return DriveMode.NORMAL;
+    }
+    if (inTrenchZone) {
+      return DriveMode.TRENCH_LOCK;
+    }
+    if (inBumpZone) {
+      return DriveMode.BUMP_LOCK;
+    }
+    return DriveMode.NORMAL;
+  }
+
+  static DriveMode resolveEffectiveMode(
+      DriveMode currentDriveMode,
+      boolean launchRequested,
+      boolean zoneAutoLockEnabled,
+      boolean inTrenchZone,
+      boolean inBumpZone) {
+    if (!launchRequested) {
+      return currentDriveMode;
+    }
+    DriveMode zoneDriveMode = getZoneDriveMode(zoneAutoLockEnabled, inTrenchZone, inBumpZone);
+    return zoneDriveMode != DriveMode.NORMAL ? zoneDriveMode : DriveMode.LAUNCH_LOCK;
   }
 
   private void setHeadingLock(DriveMode driveMode, Rotation2d heading) {
@@ -231,16 +271,9 @@ public class DriveCommands extends Command {
 
     // Resolve effective mode: trench/bump zones override launch lock heading,
     // but ShotCalculator keeps running so the solution stays fresh
-    DriveMode effectiveMode = currentDriveMode;
-    if (launchRequested) {
-      if (inTrenchZone()) {
-        effectiveMode = DriveMode.TRENCH_LOCK;
-      } else if (inBumpZone()) {
-        effectiveMode = DriveMode.BUMP_LOCK;
-      } else {
-        effectiveMode = DriveMode.LAUNCH_LOCK;
-      }
-    }
+    DriveMode effectiveMode =
+        resolveEffectiveMode(
+            currentDriveMode, launchRequested, zoneAutoLockEnabled, inTrenchZone(), inBumpZone());
 
     // Keep shot solution fresh whenever the driver wants to launch,
     // even if trench/bump heading lock is active
@@ -401,6 +434,22 @@ public class DriveCommands extends Command {
     return Commands.startEnd(() -> launchRequested = true, () -> launchRequested = false);
   }
 
+  /** Toggles whether trench and bump zone auto-locks are allowed to engage. */
+  public boolean toggleZoneAutoLockEnabled() {
+    zoneAutoLockEnabled = !zoneAutoLockEnabled;
+    currentDriveMode = getZoneDriveMode(zoneAutoLockEnabled, inTrenchZone(), inBumpZone());
+    if (!zoneAutoLockEnabled
+        && (activeHeadingLockMode == DriveMode.TRENCH_LOCK
+            || activeHeadingLockMode == DriveMode.BUMP_LOCK)) {
+      clearHeadingLock();
+    }
+    return zoneAutoLockEnabled;
+  }
+
+  public boolean isZoneAutoLockEnabled() {
+    return zoneAutoLockEnabled;
+  }
+
   // Called once the command ends or is interrupted.
   @Override
   public void end(boolean interrupted) {}
@@ -411,7 +460,7 @@ public class DriveCommands extends Command {
     return false;
   }
 
-  private enum DriveMode {
+  enum DriveMode {
     NORMAL,
     TRENCH_LOCK,
     BUMP_LOCK,

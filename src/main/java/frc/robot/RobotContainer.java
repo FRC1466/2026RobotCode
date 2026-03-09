@@ -248,7 +248,7 @@ public class RobotContainer {
    *  RIGHT TRIGGER  — Choreographer SCORE_HUB + auto-rotate drive
    *  LEFT TRIGGER   — Intake rollers
    *  LEFT BUMPER    — Slow mode (hold)
-   *  RIGHT BUMPER   — Toggle hub-preset override (bypasses vision/pose)
+   *  RIGHT BUMPER   — Toggle manual-only hub shooting and disable trench/bump auto-align
    *  A              — Auto-Align just the Drive
    *  B              — Toggle intake deploy/stow
    *  X              — Tuning: spin flywheel at manualFlywheelSpeed + kicker (hold, Choreographer disabled)
@@ -267,14 +267,18 @@ public class RobotContainer {
     // Left Bumper: slow mode (hold) — default is 4.5 m/s, slow to 3 m/s
     controller.leftBumper().whileTrue(driveCommand.slowDownCommand());
 
-    // Right Bumper: toggle hub-preset override — bypasses vision/pose, uses hubPreset values and
-    // the robot's current heading (no auto-rotation). Visible on SmartDashboard as
-    // "ShotCalculator/HubPresetOverride". Use when vision is unreliable and you know your position.
+    // Right Bumper: toggle manual-only hub shooting — bypasses vision/pose, uses hubPreset values
+    // and the robot's current heading (no auto-rotation), and also disables automatic trench/bump
+    // alignment while active.
     controller
         .rightBumper()
         .onTrue(
-            Commands.runOnce(() -> ShotCalculator.getInstance().toggleHubPresetOverride())
-                .withName("ToggleHubPresetOverride")
+            Commands.runOnce(
+                    () -> {
+                      ShotCalculator.getInstance().toggleHubPresetOverride();
+                      driveCommand.toggleZoneAutoLockEnabled();
+                    })
+                .withName("ToggleManualOnlyShooting")
                 .ignoringDisable(true));
 
     // D-pad Up/Down: nudge the flywheel setpoint slightly higher/lower to compensate for misses.
