@@ -4,7 +4,6 @@ on:
   push:
     branches-ignore:
       - 'event**'
-  pull_request:
 
 jobs:
   build-and-test:
@@ -28,6 +27,9 @@ jobs:
       - name: Grant execute permission
         run: chmod +x gradlew
       
+      - name: Apply formatting
+        run: ./gradlew spotlessApply
+
       - name: Check formatting
         run: ./gradlew spotlessCheck
       
