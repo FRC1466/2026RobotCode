@@ -22,7 +22,7 @@ public class IntakePivotIOSlamTalonFX implements IntakePivotIO {
   private static final int motorId = 20;
 
   private static final LoggedTunableNumber deployVolts =
-      new LoggedTunableNumber("IntakePivotSlam/DeployVolts", 2.0);
+      new LoggedTunableNumber("IntakePivotSlam/DeployVolts", 1.75);
   private static final LoggedTunableNumber retractVolts =
       new LoggedTunableNumber("IntakePivotSlam/RetractVolts", -2.5);
   private static final LoggedTunableNumber deployDurationSec =

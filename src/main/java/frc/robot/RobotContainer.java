@@ -28,6 +28,7 @@ import frc.robot.subsystems.drive.ModuleIOTalonFX;
 import frc.robot.subsystems.indexer.Indexer;
 import frc.robot.subsystems.indexer.IndexerIO;
 import frc.robot.subsystems.indexer.IndexerIOSim;
+import frc.robot.subsystems.indexer.IndexerIOTalonFX;
 import frc.robot.subsystems.intake.Intake;
 import frc.robot.subsystems.intake.pivot.IntakePivotIO;
 import frc.robot.subsystems.intake.pivot.IntakePivotIOSim;
@@ -113,7 +114,7 @@ public class RobotContainer {
           flywheel = new Flywheel(new FlywheelIOTalonFX());
           hood = new Hood(new HoodIOTalonFX());
           // uncomment to enable indexer
-          // indexer = new Indexer(new IndexerIOTalonFX());
+          indexer = new Indexer(new IndexerIOTalonFX());
           kicker = new Kicker(new KickerIOTalonFX());
           intake = new Intake(new IntakePivotIOSlamTalonFX(), new IntakeRollersIOTalonFX());
           vision =
