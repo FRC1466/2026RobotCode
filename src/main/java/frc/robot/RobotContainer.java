@@ -369,8 +369,8 @@ public class RobotContainer {
 
   /** Update dashboard outputs. */
   public void updateDashboardOutputs() {
-    ShotCalculator.getInstance().updateDashboardOutputs();
-    driveCommand.updateDashboardOutputs();
+    ShotCalculator.getInstance().syncDashboardOverride();
+    driveCommand.syncDashboardOverrides();
 
     // Publish match time
     SmartDashboard.putNumber("Match Time", DriverStation.getMatchTime());

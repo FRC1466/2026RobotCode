@@ -101,7 +101,7 @@ public class DriveCommands extends Command {
 
   @AutoLogOutput private DriveMode currentDriveMode = DriveMode.NORMAL;
   private boolean launchRequested = false;
-  private boolean zoneAutoLockEnabled = true;
+  private boolean zoneAutoLockDisabled = false;
 
   /** Creates a new DriveCommands. */
   public DriveCommands(Drive drive, CommandXboxController controller) {
@@ -187,12 +187,12 @@ public class DriveCommands extends Command {
 
   private Command updateDriveMode(DriveMode driveMode) {
     return Commands.runOnce(
-        () -> currentDriveMode = sanitizeRequestedDriveMode(driveMode, zoneAutoLockEnabled));
+        () -> currentDriveMode = sanitizeRequestedDriveMode(driveMode, zoneAutoLockDisabled));
   }
 
   private static DriveMode sanitizeRequestedDriveMode(
-      DriveMode requestedDriveMode, boolean zoneAutoLockEnabled) {
-    if (!zoneAutoLockEnabled
+      DriveMode requestedDriveMode, boolean zoneAutoLockDisabled) {
+    if (zoneAutoLockDisabled
         && (requestedDriveMode == DriveMode.TRENCH_LOCK
             || requestedDriveMode == DriveMode.BUMP_LOCK)) {
       return DriveMode.NORMAL;
@@ -201,8 +201,8 @@ public class DriveCommands extends Command {
   }
 
   private static DriveMode getZoneDriveMode(
-      boolean zoneAutoLockEnabled, boolean inTrenchZone, boolean inBumpZone) {
-    if (!zoneAutoLockEnabled) {
+      boolean zoneAutoLockDisabled, boolean inTrenchZone, boolean inBumpZone) {
+    if (zoneAutoLockDisabled) {
       return DriveMode.NORMAL;
     }
     if (inTrenchZone) {
@@ -217,19 +217,19 @@ public class DriveCommands extends Command {
   private static DriveMode resolveEffectiveMode(
       DriveMode currentDriveMode,
       boolean launchRequested,
-      boolean zoneAutoLockEnabled,
+      boolean zoneAutoLockDisabled,
       boolean inTrenchZone,
       boolean inBumpZone) {
     if (!launchRequested) {
       return currentDriveMode;
     }
-    DriveMode zoneDriveMode = getZoneDriveMode(zoneAutoLockEnabled, inTrenchZone, inBumpZone);
+    DriveMode zoneDriveMode = getZoneDriveMode(zoneAutoLockDisabled, inTrenchZone, inBumpZone);
     return zoneDriveMode != DriveMode.NORMAL ? zoneDriveMode : DriveMode.LAUNCH_LOCK;
   }
 
   private void publishZoneAutoLockDisabled() {
-    SmartDashboard.putBoolean(ZONE_AUTO_LOCK_DISABLED_KEY, isZoneAutoLockDisabled());
-    Logger.recordOutput(ZONE_AUTO_LOCK_DISABLED_KEY, isZoneAutoLockDisabled());
+    SmartDashboard.putBoolean(ZONE_AUTO_LOCK_DISABLED_KEY, zoneAutoLockDisabled);
+    Logger.recordOutput(ZONE_AUTO_LOCK_DISABLED_KEY, zoneAutoLockDisabled);
   }
 
   private void setHeadingLock(DriveMode driveMode, Rotation2d heading) {
@@ -280,7 +280,7 @@ public class DriveCommands extends Command {
     // but ShotCalculator keeps running so the solution stays fresh
     DriveMode effectiveMode =
         resolveEffectiveMode(
-            currentDriveMode, launchRequested, zoneAutoLockEnabled, inTrenchZone(), inBumpZone());
+            currentDriveMode, launchRequested, zoneAutoLockDisabled, inTrenchZone(), inBumpZone());
 
     // Keep shot solution fresh whenever the driver wants to launch,
     // even if trench/bump heading lock is active
@@ -442,14 +442,12 @@ public class DriveCommands extends Command {
   }
 
   public void setZoneAutoLockDisabled(boolean zoneAutoLockDisabled) {
-    boolean zoneAutoLockEnabled = !zoneAutoLockDisabled;
-    if (this.zoneAutoLockEnabled == zoneAutoLockEnabled) {
-      publishZoneAutoLockDisabled();
+    if (this.zoneAutoLockDisabled == zoneAutoLockDisabled) {
       return;
     }
-    this.zoneAutoLockEnabled = zoneAutoLockEnabled;
-    currentDriveMode = getZoneDriveMode(this.zoneAutoLockEnabled, inTrenchZone(), inBumpZone());
-    if (!this.zoneAutoLockEnabled
+    this.zoneAutoLockDisabled = zoneAutoLockDisabled;
+    currentDriveMode = getZoneDriveMode(this.zoneAutoLockDisabled, inTrenchZone(), inBumpZone());
+    if (this.zoneAutoLockDisabled
         && (activeHeadingLockMode == DriveMode.TRENCH_LOCK
             || activeHeadingLockMode == DriveMode.BUMP_LOCK)) {
       clearHeadingLock();
@@ -458,10 +456,10 @@ public class DriveCommands extends Command {
   }
 
   public boolean isZoneAutoLockDisabled() {
-    return !zoneAutoLockEnabled;
+    return zoneAutoLockDisabled;
   }
 
-  public void updateDashboardOutputs() {
+  public void syncDashboardOverrides() {
     setZoneAutoLockDisabled(
         SmartDashboard.getBoolean(ZONE_AUTO_LOCK_DISABLED_KEY, isZoneAutoLockDisabled()));
   }

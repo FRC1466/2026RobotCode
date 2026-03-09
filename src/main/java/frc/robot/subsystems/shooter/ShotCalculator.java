@@ -219,7 +219,6 @@ public class ShotCalculator {
 
   public void setHubPresetOverride(boolean hubPresetOverride) {
     if (this.hubPresetOverride == hubPresetOverride) {
-      publishHubPresetOverride();
       return;
     }
     this.hubPresetOverride = hubPresetOverride;
@@ -230,7 +229,7 @@ public class ShotCalculator {
     return hubPresetOverride;
   }
 
-  public void updateDashboardOutputs() {
+  public void syncDashboardOverride() {
     setHubPresetOverride(SmartDashboard.getBoolean(HUB_PRESET_OVERRIDE_KEY, hubPresetOverride));
   }
 
