@@ -71,7 +71,7 @@ public class IntakePivotIOSlamTalonFX implements IntakePivotIO {
     config.CurrentLimits.SupplyCurrentLimitEnable = true;
     config.MotorOutput.Inverted = InvertedValue.Clockwise_Positive;
     config.MotorOutput.NeutralMode = NeutralModeValue.Brake;
-    config.Feedback.SensorToMechanismRatio = 1.0;
+    config.Feedback.SensorToMechanismRatio = 40.0;
 
     PhoenixUtil.tryUntilOk(5, () -> talon.getConfigurator().apply(config));
 
