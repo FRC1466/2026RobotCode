@@ -43,9 +43,15 @@ public class HubShiftUtil {
   private static final double approachingActiveFudge = -1 * (minTimeOfFlight + minFuelCountDelay);
   private static final double endingActiveFudge =
       shiftEndFuelCountExtension + -1 * (maxTimeOfFlight + maxFuelCountDelay);
+  // Conservative estimate: drivers generally cannot hold top speed while manually routing back
+  // around the hub, so plan around roughly 60% of max speed plus extra slack.
   private static final double returnDriveSpeedFraction = 0.6;
+  // Extra slack for imperfect driving lines and the final settle-in before reaching the scoring
+  // side of the alliance zone.
   private static final double returnDriveFudgeSeconds = 1.0;
   private static final double minimumReturnDriveSpeedMetersPerSec = 0.1;
+  // Use the midpoint of the open trench-side lanes so the estimate does not assume the robot can
+  // pass through the hub or bump geometry.
   private static final Translation2d[] returnTargets = {
     new Translation2d(
         FieldConstants.LinesVertical.allianceZone,
@@ -217,6 +223,8 @@ public class HubShiftUtil {
 
     double shortestReturnDistance = Double.POSITIVE_INFINITY;
     for (Translation2d returnTarget : returnTargets) {
+      // Approximate the manual path as a lateral move into the nearest open lane followed by a
+      // straight drive back across the alliance-zone line.
       double returnDistance =
           Math.abs(allianceRelativePose.getY() - returnTarget.getY())
               + Math.max(0.0, allianceRelativePose.getX() - returnTarget.getX());

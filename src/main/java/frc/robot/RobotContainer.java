@@ -104,6 +104,7 @@ public class RobotContainer {
   private static final String hubTimeRemainingKey = "HubShift/TimeUntilHubActiveSec";
   private static final double returnWarningRumbleStrength = 1.0;
   private static final double returnWarningRumblePulsePeriodSec = 0.5;
+  private static final long returnWarningRumblePulseCyclePhases = 2;
 
   /** The container for the robot. Contains subsystems, OI devices, and commands. */
   public RobotContainer() {
@@ -399,10 +400,11 @@ public class RobotContainer {
     Logger.recordOutput(estimatedReturnTimeKey, estimatedReturnTime);
     Logger.recordOutput(hubTimeRemainingKey, timeUntilHubActive);
 
+    long currentPulsePhase =
+        (long) (Timer.getFPGATimestamp() / returnWarningRumblePulsePeriodSec);
+    // Create a simple 0.5s on / 0.5s off buzz once it is time to head back.
     boolean rumbleEnabled =
-        returnWarningActive
-            && (Timer.getTimestamp() % returnWarningRumblePulsePeriodSec)
-                < (returnWarningRumblePulsePeriodSec / 2.0);
+        returnWarningActive && currentPulsePhase % returnWarningRumblePulseCyclePhases == 0;
     controller
         .getHID()
         .setRumble(
