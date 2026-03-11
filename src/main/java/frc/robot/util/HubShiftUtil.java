@@ -3,9 +3,12 @@
 
 package frc.robot.util;
 
+import edu.wpi.first.math.geometry.Pose2d;
+import edu.wpi.first.math.geometry.Translation2d;
 import edu.wpi.first.wpilibj.DriverStation;
 import edu.wpi.first.wpilibj.DriverStation.Alliance;
 import edu.wpi.first.wpilibj.Timer;
+import frc.robot.FieldConstants;
 import frc.robot.subsystems.shooter.ShotCalculator;
 import java.util.Optional;
 import java.util.function.Supplier;
@@ -40,6 +43,21 @@ public class HubShiftUtil {
   private static final double approachingActiveFudge = -1 * (minTimeOfFlight + minFuelCountDelay);
   private static final double endingActiveFudge =
       shiftEndFuelCountExtension + -1 * (maxTimeOfFlight + maxFuelCountDelay);
+  private static final double returnDriveSpeedFraction = 0.6;
+  private static final double returnDriveFudgeSeconds = 1.0;
+  private static final double minimumReturnDriveSpeedMetersPerSec = 0.1;
+  private static final Translation2d[] returnTargets = {
+    new Translation2d(
+        FieldConstants.LinesVertical.allianceZone,
+        (FieldConstants.LinesHorizontal.rightTrenchOpenStart
+                + FieldConstants.LinesHorizontal.rightTrenchOpenEnd)
+            / 2.0),
+    new Translation2d(
+        FieldConstants.LinesVertical.allianceZone,
+        (FieldConstants.LinesHorizontal.leftTrenchOpenStart
+                + FieldConstants.LinesHorizontal.leftTrenchOpenEnd)
+            / 2.0)
+  };
 
   public static final double autoEndTime = 20.0;
   public static final double teleopDuration = 140.0;
@@ -188,5 +206,42 @@ public class HubShiftUtil {
     };
     return getShiftInfo(shiftSchedule, shiftedShiftStartTimes, shiftedShiftEndTimes);
     // }
+  }
+
+  public static double getEstimatedReturnToAllianceZoneTime(
+      Pose2d robotPose, double maxDriveSpeedMetersPerSec) {
+    Pose2d allianceRelativePose = AllianceFlipUtil.apply(robotPose);
+    if (allianceRelativePose.getX() <= FieldConstants.LinesVertical.allianceZone) {
+      return 0.0;
+    }
+
+    double shortestReturnDistance = Double.POSITIVE_INFINITY;
+    for (Translation2d returnTarget : returnTargets) {
+      double returnDistance =
+          Math.abs(allianceRelativePose.getY() - returnTarget.getY())
+              + Math.max(0.0, allianceRelativePose.getX() - returnTarget.getX());
+      shortestReturnDistance = Math.min(shortestReturnDistance, returnDistance);
+    }
+
+    double returnDriveSpeedMetersPerSec =
+        Math.max(
+            minimumReturnDriveSpeedMetersPerSec,
+            maxDriveSpeedMetersPerSec * returnDriveSpeedFraction);
+    return shortestReturnDistance / returnDriveSpeedMetersPerSec + returnDriveFudgeSeconds;
+  }
+
+  public static boolean shouldWarnReturnToAllianceZone(
+      Pose2d robotPose, double maxDriveSpeedMetersPerSec) {
+    if (!DriverStation.isTeleopEnabled()) {
+      return false;
+    }
+
+    ShiftInfo shiftInfo = getShiftedShiftInfo();
+    if (shiftInfo.active()) {
+      return false;
+    }
+
+    return shiftInfo.remainingTime()
+        <= getEstimatedReturnToAllianceZoneTime(robotPose, maxDriveSpeedMetersPerSec);
   }
 }
