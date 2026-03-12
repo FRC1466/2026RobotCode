@@ -216,7 +216,7 @@ public class Autos {
     // Register all autonomous routines here.
     // Use method references so routines are lazily constructed only when selected.
     autoChooser.addRoutine("Depot Auto", this::depotAuto);
-
+    autoChooser.addRoutine("Shoot Preload Auto", this::shootFromAnywhereAuto);
     autoChooser.addCmd("Do Nothing", Commands::none);
   }
 
