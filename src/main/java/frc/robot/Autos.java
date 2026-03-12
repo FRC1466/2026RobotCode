@@ -230,21 +230,24 @@ public class Autos {
   }
 
   public AutoRoutine shootFromAnywhereAuto() {
-    AutoRoutine routine = autoFactory.newRoutine("Preload Auto");
+  AutoRoutine routine = autoFactory.newRoutine("Shoot From Anywhere");
 
-    // No Trajectory
-    // No odometry reset, just call the choreographer shoot command
-    routine
-        .active()
-        .whileTrue(
-            Commands.sequence(
-                choreographer.setGoalCommand(Choreographer.Goal.SCORE_HUB),
-                Commands.waitUntil(choreographer::isReadyToShoot),
-                Commands.waitUntil(choreographer::isDoneShooting).withTimeout(10.0),
-                choreographer.setGoalCommand(Choreographer.Goal.IDLE)));
+  Command shootSequence =
+      Commands.sequence(
+          choreographer.setGoalCommand(Choreographer.Goal.SCORE_HUB),
+          Commands.waitUntil(choreographer::isReadyToShoot),
+          Commands.waitUntil(choreographer::isDoneShooting).withTimeout(10.0),
+          choreographer.setGoalCommand(Choreographer.Goal.IDLE)
+      );
 
-    return routine;
-  }
+  // Run shooting once when auto starts
+  routine.active().onTrue(shootSequence);
+
+  // Drive command must be continuously called
+  routine.active().whileTrue(drive.launchCommand());
+
+  return routine;
+}
 
   public AutoRoutine depotAuto() {
     AutoRoutine routine = autoFactory.newRoutine("Depot Auto");
