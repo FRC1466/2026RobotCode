@@ -201,16 +201,17 @@ import frc.robot.subsystems.shooter.hood.Hood;
  * @see <a href="https://choreo.autos/choreolib/auto-routines">ChoreoLib Auto Routine Docs</a>
  */
 public class Autos {
-  private final RobotContainer robotContainer;
+  private final Drive drive;
   private final Choreographer choreographer;
   private final AutoFactory autoFactory;
   private final AutoChooser autoChooser;
 
-  public Autos(RobotContainer robotContainer, Choreographer choreographer) {
-    this.robotContainer = robotContainer;
+  public Autos(Drive drive, Flywheel flywheel, Hood hood, Choreographer choreographer) {
+    this.drive = drive;
     this.choreographer = choreographer;
 
-    autoFactory = new AutoFactory(robotContainer.drive::getPose, robotContainer.drive::setPose, robotContainer.drive::followTrajectory, true, robotContainer.drive);
+    autoFactory =
+        new AutoFactory(drive::getPose, drive::setPose, drive::followTrajectory, true, drive);
 
     autoChooser = new AutoChooser();
 
@@ -218,7 +219,7 @@ public class Autos {
     // Use method references so routines are lazily constructed only when selected.
     autoChooser.addRoutine("Depot Auto", this::depotAuto);
 
-    autoChooser.addCmd("Do Nothing", () - >Commands.none());
+    autoChooser.addCmd("Do Nothing", Commands::none);
   }
 
   /**
@@ -235,9 +236,14 @@ public class Autos {
 
     // No Trajectory
     // No odometry reset, just call the choreographer shoot command
-    routine.active().whileTrue(
-    Commands.parallel(robotContainer.driveCommand.launchModeCommand(), Commands.sequence(
-    choreographer.setGoalCommand(Choreographer.Goal.SCORE_HUB), Commands.waitUntil(choreographer::isReadyToShoot), Commands.waitUntil(choreographer::isDoneShooting).withTimeout(10.0), choreographer.setGoalCommand(Choreographer.Goal.IDLE))));
+    routine
+        .active()
+        .whileTrue(
+            Commands.sequence(
+                choreographer.setGoalCommand(Choreographer.Goal.SCORE_HUB),
+                Commands.waitUntil(choreographer::isReadyToShoot),
+                Commands.waitUntil(choreographer::isDoneShooting).withTimeout(10.0),
+                choreographer.setGoalCommand(Choreographer.Goal.IDLE)));
 
     return routine;
   }
@@ -253,14 +259,22 @@ public class Autos {
 
     // Hold the depot end pose while waiting for the human player to load, then drive to score.
     // DriveToPose runs until toScore.cmd() interrupts it (drive is a shared requirement).
-    toDepot.done().onTrue(Commands.sequence(holdFinalPose(toDepot).withTimeout(5.0), toScore.cmd()));
+    toDepot
+        .done()
+        .onTrue(Commands.sequence(holdFinalPose(toDepot).withTimeout(5.0), toScore.cmd()));
 
     // Once the score trajectory finishes, hold the score pose while the shooting sequence runs.
     // DriveToPose is cancelled automatically when the routine ends or drive is re-required.
-    toScore.done().onTrue(
-    Commands.parallel(
-    holdFinalPose(toScore), Commands.sequence(
-    choreographer.setGoalCommand(Choreographer.Goal.SCORE_HUB), Commands.waitUntil(choreographer::isReadyToShoot), Commands.waitUntil(choreographer::isDoneShooting).withTimeout(10.0), choreographer.setGoalCommand(Choreographer.Goal.IDLE)));
+    toScore
+        .done()
+        .onTrue(
+            Commands.parallel(
+                holdFinalPose(toScore),
+                Commands.sequence(
+                    choreographer.setGoalCommand(Choreographer.Goal.SCORE_HUB),
+                    Commands.waitUntil(choreographer::isReadyToShoot),
+                    Commands.waitUntil(choreographer::isDoneShooting).withTimeout(10.0),
+                    choreographer.setGoalCommand(Choreographer.Goal.IDLE))));
 
     return routine;
   }
@@ -271,6 +285,6 @@ public class Autos {
    */
   private DriveToPose holdFinalPose(AutoTrajectory trajectory) {
     var finalPose = trajectory.getFinalPose();
-    return new DriveToPose(drive, () - >finalPose.orElseThrow());
+    return new DriveToPose(drive, () -> finalPose.orElseThrow());
   }
 }
