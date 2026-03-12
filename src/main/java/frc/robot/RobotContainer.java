@@ -363,7 +363,7 @@ public class RobotContainer {
         .whileTrue(hood.runFixedCommand(manualHoodAngle).withName("TuneHoodAngle"))
         .onFalse(hood.stowCommand());
 
-    // Mode init
+    // Mode Init
     RobotModeTriggers.teleop().onTrue(Commands.runOnce(HubShiftUtil::initialize));
     RobotModeTriggers.autonomous().onTrue(Commands.runOnce(HubShiftUtil::initialize));
   }
