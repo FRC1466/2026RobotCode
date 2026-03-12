@@ -1,6 +1,5 @@
 // Copyright (c) 2025-2026 Webb Robotics
 // http://github.com/FRC1466
-
 package frc.robot;
 
 import choreo.auto.AutoChooser;
@@ -211,8 +210,7 @@ public class Autos {
     this.robotContainer = robotContainer;
     this.choreographer = choreographer;
 
-    autoFactory =
-        new AutoFactory(robotContainer.drive::getPose, robotContainer.drive::setPose, robotContainer.drive::followTrajectory, true, robotContainer.drive);
+    autoFactory = new AutoFactory(robotContainer.drive::getPose, robotContainer.drive::setPose, robotContainer.drive::followTrajectory, true, robotContainer.drive);
 
     autoChooser = new AutoChooser();
 
@@ -220,7 +218,7 @@ public class Autos {
     // Use method references so routines are lazily constructed only when selected.
     autoChooser.addRoutine("Depot Auto", this::depotAuto);
 
-    autoChooser.addCmd("Do Nothing", () -> Commands.none());
+    autoChooser.addCmd("Do Nothing", () - >Commands.none());
   }
 
   /**
@@ -236,15 +234,10 @@ public class Autos {
     AutoRoutine routine = autoFactory.newRoutine("Preload Auto");
 
     // No Trajectory
-
     // No odometry reset, just call the choreographer shoot command
     routine.active().whileTrue(
-      Commands.parallel(robotContainer.driveCommand.launchModeCommand(),
-      Commands.sequence(
-                    choreographer.setGoalCommand(Choreographer.Goal.SCORE_HUB),
-                    Commands.waitUntil(choreographer::isReadyToShoot),
-                    Commands.waitUntil(choreographer::isDoneShooting).withTimeout(10.0),
-                    choreographer.setGoalCommand(Choreographer.Goal.IDLE))));
+    Commands.parallel(robotContainer.driveCommand.launchModeCommand(), Commands.sequence(
+    choreographer.setGoalCommand(Choreographer.Goal.SCORE_HUB), Commands.waitUntil(choreographer::isReadyToShoot), Commands.waitUntil(choreographer::isDoneShooting).withTimeout(10.0), choreographer.setGoalCommand(Choreographer.Goal.IDLE))));
 
     return routine;
   }
@@ -255,28 +248,19 @@ public class Autos {
     // Load the two split segments from SimpleShoot.traj
     AutoTrajectory toDepot = routine.trajectory("SimpleShoot", 0); // start → depot
     AutoTrajectory toScore = routine.trajectory("SimpleShoot", 1); // depot → score
-
     // When the routine starts, reset odometry and drive to the depot
     routine.active().onTrue(Commands.sequence(toDepot.resetOdometry(), toDepot.cmd()));
 
     // Hold the depot end pose while waiting for the human player to load, then drive to score.
     // DriveToPose runs until toScore.cmd() interrupts it (drive is a shared requirement).
-    toDepot
-        .done()
-        .onTrue(Commands.sequence(holdFinalPose(toDepot).withTimeout(5.0), toScore.cmd()));
+    toDepot.done().onTrue(Commands.sequence(holdFinalPose(toDepot).withTimeout(5.0), toScore.cmd()));
 
     // Once the score trajectory finishes, hold the score pose while the shooting sequence runs.
     // DriveToPose is cancelled automatically when the routine ends or drive is re-required.
-    toScore
-        .done()
-        .onTrue(
-            Commands.parallel(
-                holdFinalPose(toScore),
-                Commands.sequence(
-                    choreographer.setGoalCommand(Choreographer.Goal.SCORE_HUB),
-                    Commands.waitUntil(choreographer::isReadyToShoot),
-                    Commands.waitUntil(choreographer::isDoneShooting).withTimeout(10.0),
-                    choreographer.setGoalCommand(Choreographer.Goal.IDLE)));
+    toScore.done().onTrue(
+    Commands.parallel(
+    holdFinalPose(toScore), Commands.sequence(
+    choreographer.setGoalCommand(Choreographer.Goal.SCORE_HUB), Commands.waitUntil(choreographer::isReadyToShoot), Commands.waitUntil(choreographer::isDoneShooting).withTimeout(10.0), choreographer.setGoalCommand(Choreographer.Goal.IDLE)));
 
     return routine;
   }
@@ -287,6 +271,6 @@ public class Autos {
    */
   private DriveToPose holdFinalPose(AutoTrajectory trajectory) {
     var finalPose = trajectory.getFinalPose();
-    return new DriveToPose(drive, () -> finalPose.orElseThrow());
+    return new DriveToPose(drive, () - >finalPose.orElseThrow());
   }
 }
