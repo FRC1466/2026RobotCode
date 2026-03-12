@@ -296,7 +296,7 @@ public class Autos {
                 Commands.sequence(
                     choreographer.setGoalCommand(Choreographer.Goal.SCORE_HUB),
                     Commands.waitUntil(choreographer::isReadyToShoot),
-                    Commands.waitSeconds(15),
+                    Commands.waitUntil(choreographer::isDoneShooting).withTimeout(2.0),
                     choreographer.setGoalCommand(Choreographer.Goal.IDLE))));
 
     return routine;

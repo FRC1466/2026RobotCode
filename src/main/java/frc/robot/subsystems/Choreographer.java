@@ -18,6 +18,7 @@ import frc.robot.subsystems.shooter.flywheel.Flywheel;
 import frc.robot.subsystems.shooter.hood.Hood;
 import frc.robot.util.AllianceFlipUtil;
 import frc.robot.util.HubShiftUtil;
+import frc.robot.util.LoggedTunableNumber;
 import java.util.function.BooleanSupplier;
 import lombok.Getter;
 import lombok.Setter;
@@ -70,6 +71,10 @@ public class Choreographer extends SubsystemBase {
   private ShootingParameters cachedShotParams = null;
   private boolean cachedDriveAlignedForHubShot = false;
   private final LoggedNetworkBoolean useHubShiftUtil;
+  private double scoreHubStartShotTimestamp = Double.NEGATIVE_INFINITY;
+
+  private static final LoggedTunableNumber shootingDoneDelaySecs =
+      new LoggedTunableNumber("Choreographer/ShootingDoneDelaySecs", 0.25);
 
   public Choreographer(
       Drive drive,
@@ -197,8 +202,15 @@ public class Choreographer extends SubsystemBase {
     return hasShotParams() ? cachedShotParams.driveAngle() : drive.getRotation();
   }
 
+  private void setGoal(Goal goal) {
+    if (goal == Goal.SCORE_HUB && currentGoal != Goal.SCORE_HUB) {
+      scoreHubStartShotTimestamp = ShotCalculator.getInstance().getLastShotTimestampSeconds();
+    }
+    currentGoal = goal;
+  }
+
   public Command setGoalCommand(Goal goal) {
-    return runOnce(() -> this.currentGoal = goal).withName("Choreographer.setGoal(" + goal + ")");
+    return runOnce(() -> setGoal(goal)).withName("Choreographer.setGoal(" + goal + ")");
   }
 
   /** Toggles whether the Choreographer controls subsystems. */
@@ -209,6 +221,28 @@ public class Choreographer extends SubsystemBase {
   @AutoLogOutput(key = "Choreographer/ReadyToShoot")
   public boolean isReadyToShoot() {
     return currentState == State.SHOOTING;
+  }
+
+  @AutoLogOutput(key = "Choreographer/DoneShooting")
+  public boolean isDoneShooting() {
+    if (currentGoal != Goal.SCORE_HUB) {
+      return false;
+    }
+
+    return isDoneShooting(
+        scoreHubStartShotTimestamp,
+        ShotCalculator.getInstance().getLastShotTimestampSeconds(),
+        ShotCalculator.getInstance().getTimeSinceLastShotSeconds(),
+        shootingDoneDelaySecs.get());
+  }
+
+  static boolean isDoneShooting(
+      double scoreHubStartShotTimestamp,
+      double lastShotTimestamp,
+      double timeSinceLastShotSeconds,
+      double shootingDoneDelaySeconds) {
+    return lastShotTimestamp > scoreHubStartShotTimestamp
+        && timeSinceLastShotSeconds >= shootingDoneDelaySeconds;
   }
 
   public void setCoastOverride(BooleanSupplier shouldCoast) {

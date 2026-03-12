@@ -90,7 +90,7 @@ public class RobotContainer {
   // Dashboard inputs
   private final LoggedDashboardChooser<Command> autoChooser;
 
-  // Tuning values — editable live via NetworkTables when tuningMode=true, otherwise fixed defaults.
+  // Tuning values - editable live via NetworkTables when tuningMode=true, otherwise fixed defaults.
   // Visible under /Tuning/ in AdvantageScope / NT explorer.
   private static final LoggedTunableNumber manualFlywheelSpeed =
       new LoggedTunableNumber("Shooter/ManualFlywheelSpeedRPS", 45.0);
@@ -216,7 +216,7 @@ public class RobotContainer {
     autoChooser.addOption(
         "Drive SysId (Dynamic Reverse)", drive.sysIdDynamic(SysIdRoutine.Direction.kReverse));
 
-    // Subsystem bring-up tests — run each motor at a fixed voltage for verification
+    // Subsystem bring-up tests - run each motor at a fixed voltage for verification
     autoChooser.addOption(
         "Test: Flywheel 3V",
         flywheel.runVolts(() -> 3.0).withTimeout(5.0).withName("Test Flywheel 3V"));
@@ -246,29 +246,29 @@ public class RobotContainer {
    * <p>Layout:
    *
    * <pre>
-   *  RIGHT TRIGGER  — Choreographer SCORE_HUB + auto-rotate drive
-   *  LEFT TRIGGER   — Intake rollers
-   *  LEFT BUMPER    — Slow mode (hold)
-   *  RIGHT BUMPER   — Set manual-only hub shooting and trench/bump disable together on/off
-   *  A              — Auto-Align just the Drive
-   *  B              — Toggle intake deploy/stow
-   *  X              — Tuning: spin flywheel at manualFlywheelSpeed + kicker (hold, Choreographer disabled)
-   *  Y              — Tuning: move hood to manualHoodAngle (hold, Choreographer disabled)
-   *  POV UP/DOWN    — Adjust flywheel setpoint by ±5% of the current base speed
-   *  BACK (solo)    — Toggle Choreographer enabled/disabled (enter/exit tuning mode)
-   *  START + BACK   — Reset gyro to forward
+   *  RIGHT TRIGGER  - Choreographer SCORE_HUB + auto-rotate drive
+   *  LEFT TRIGGER   - Intake rollers
+   *  LEFT BUMPER    - Slow mode (hold)
+   *  RIGHT BUMPER   - Set manual-only hub shooting and trench/bump disable together on/off
+   *  A              - Auto-Align just the Drive
+   *  B              - Toggle intake deploy/stow
+   *  X              - Tuning: spin flywheel at manualFlywheelSpeed + kicker (hold, Choreographer disabled)
+   *  Y              - Tuning: move hood to manualHoodAngle (hold, Choreographer disabled)
+   *  POV UP/DOWN    - Adjust flywheel setpoint by +/-5% of the current base speed
+   *  BACK (solo)    - Toggle Choreographer enabled/disabled (enter/exit tuning mode)
+   *  START + BACK   - Reset gyro to forward
    * </pre>
    */
   private void configureButtonBindings() {
-    // Default command — normal field-relative drive
+    // Default command - normal field-relative drive
     drive.setDefaultCommand(driveCommand);
 
-    // ── Drive overrides ──────────────────────────────────────────────────────
+    // Drive overrides
 
-    // Left Bumper: slow mode (hold) — default is 4.5 m/s, slow to 3 m/s
+    // Left Bumper: slow mode (hold) - default is 4.5 m/s, slow to 3 m/s
     controller.leftBumper().whileTrue(driveCommand.slowDownCommand());
 
-    // Right Bumper: keep the two dashboard overrides in sync — hub preset override for manual-only
+    // Right Bumper: keep the two dashboard overrides in sync - hub preset override for manual-only
     // shooting, plus disabling trench/bump auto-align. If either is off, the button turns both on;
     // if both are already on, the button turns both off.
     controller
@@ -311,9 +311,9 @@ public class RobotContainer {
         .and(controller.back())
         .onTrue(driveCommand.resetGyroCommand().ignoringDisable(true));
 
-    // ── Primary scoring (Choreographer) ──────────────────────────────────────
+    // Primary scoring (Choreographer)
 
-    // Right Trigger: SCORE_HUB — Choreographer handles flywheel, hood, indexer, kicker.
+    // Right Trigger: SCORE_HUB - Choreographer handles flywheel, hood, indexer, kicker.
     // Drive auto-rotates to target while held.
     controller
         .rightTrigger()
@@ -327,14 +327,14 @@ public class RobotContainer {
         .whileTrue(intake.runCommand().withName("IntakeRollers"))
         .onFalse(intake.stopCommand());
 
-    // ── Emergency stop ────────────────────────────────────────────────────────
+    // Emergency stop
 
-    // A Button: cancel everything → Choreographer IDLE (stows intake, stops shooter)
+    // A Button: cancel everything -> Choreographer IDLE (stows intake, stops shooter)
     controller.a().whileTrue(driveCommand.launchModeCommand());
 
-    // ── Tuning mode (active only when Choreographer is disabled via Back button) ──
+    // Tuning mode (active only when Choreographer is disabled via Back button)
 
-    // Back (solo): toggle Choreographer enabled — when disabled, X/Y + POV tune directly
+    // Back (solo): toggle Choreographer enabled - when disabled, X/Y + POV tune directly
     controller
         .back()
         .and(controller.start().negate())
@@ -363,7 +363,7 @@ public class RobotContainer {
         .whileTrue(hood.runFixedCommand(manualHoodAngle).withName("TuneHoodAngle"))
         .onFalse(hood.stowCommand());
 
-    // ── Mode init ────────────────────────────────────────────────────────────
+    // Mode init
     RobotModeTriggers.teleop().onTrue(Commands.runOnce(HubShiftUtil::initialize));
     RobotModeTriggers.autonomous().onTrue(Commands.runOnce(HubShiftUtil::initialize));
   }
