@@ -66,10 +66,6 @@ public class ShotCalculator {
     return instance;
   }
 
-  private ShotCalculator() {
-    publishHubPresetOverride();
-  }
-
   @AutoLogOutput(key = "ShotCalculator/FlywheelSpeedOffsetRPS")
   public double getFlywheelSpeedOffsetRPS() {
     return flywheelSpeedOffsetRPS;
@@ -228,14 +224,6 @@ public class ShotCalculator {
   private void publishHubPresetOverride() {
     SmartDashboard.putBoolean(HUB_PRESET_OVERRIDE_KEY, hubPresetOverride);
     Logger.recordOutput(HUB_PRESET_OVERRIDE_KEY, hubPresetOverride);
-  }
-
-  public void setHubPresetOverride(boolean hubPresetOverride) {
-    if (this.hubPresetOverride == hubPresetOverride) {
-      return;
-    }
-    this.hubPresetOverride = hubPresetOverride;
-    publishHubPresetOverride();
   }
 
   public void setHubPresetOverride(boolean hubPresetOverride) {

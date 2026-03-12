@@ -195,7 +195,7 @@ public class RobotContainer {
             drive, flywheel, hood, indexer, kicker, intake, driveCommand::atLaunchGoal);
 
     // Set up Autos
-    autos = new Autos(drive, flywheel, hood, choreographer);
+    autos = new Autos(drive, choreographer);
 
     // Set up auto routines
     autoChooser = new LoggedDashboardChooser<>("Auto Choices");
@@ -363,7 +363,7 @@ public class RobotContainer {
         .whileTrue(hood.runFixedCommand(manualHoodAngle).withName("TuneHoodAngle"))
         .onFalse(hood.stowCommand());
 
-    // Mode init
+    // Mode Init
     RobotModeTriggers.teleop().onTrue(Commands.runOnce(HubShiftUtil::initialize));
     RobotModeTriggers.autonomous().onTrue(Commands.runOnce(HubShiftUtil::initialize));
   }
