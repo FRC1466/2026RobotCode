@@ -33,6 +33,7 @@ import org.littletonrobotics.junction.Logger;
 
 @ExtensionMethod({GeomUtil.class})
 public class ShotCalculator {
+  private static final String HUB_PRESET_OVERRIDE_KEY = "ShotCalculator/HubPresetOverride";
   private static ShotCalculator instance;
 
   private double flywheelSpeedOffsetRPS = 0.0;
@@ -51,12 +52,13 @@ public class ShotCalculator {
   private Rotation2d lastDriveAngle;
   private double lastShotTimestamp = Double.NEGATIVE_INFINITY;
 
-  public ShotCalculator() {
+  private ShotCalculator() {
     this(Timer::getTimestamp);
   }
 
   ShotCalculator(DoubleSupplier timestampSupplier) {
     this.timestampSupplier = timestampSupplier;
+    publishHubPresetOverride();
   }
 
   public static ShotCalculator getInstance() {
@@ -91,8 +93,8 @@ public class ShotCalculator {
 
   /**
    * When true, getParameters() ignores vision/pose and returns hub-preset values at
-   * hubPresetDistance with the robot's current heading — no auto-rotation. Toggle via right bumper
-   * on controller or the SmartDashboard key "ShotCalculator/HubPresetOverride".
+   * hubPresetDistance with the robot's current heading — no auto-rotation. Settable from the
+   * controller or the SmartDashboard key "ShotCalculator/HubPresetOverride".
    */
   private boolean hubPresetOverride = false;
 
@@ -219,16 +221,30 @@ public class ShotCalculator {
     return timeOfFlightMap.get(maxDistance);
   }
 
-  /** Toggles hub-preset override on/off. Returns the new state. */
+  private void publishHubPresetOverride() {
+    SmartDashboard.putBoolean(HUB_PRESET_OVERRIDE_KEY, hubPresetOverride);
+    Logger.recordOutput(HUB_PRESET_OVERRIDE_KEY, hubPresetOverride);
+  }
+
   public boolean toggleHubPresetOverride() {
-    hubPresetOverride = !hubPresetOverride;
-    SmartDashboard.putBoolean("ShotCalculator/HubPresetOverride", hubPresetOverride);
-    Logger.recordOutput("ShotCalculator/HubPresetOverride", hubPresetOverride);
+    setHubPresetOverride(!hubPresetOverride);
     return hubPresetOverride;
+  }
+
+  public void setHubPresetOverride(boolean hubPresetOverride) {
+    if (this.hubPresetOverride == hubPresetOverride) {
+      return;
+    }
+    this.hubPresetOverride = hubPresetOverride;
+    publishHubPresetOverride();
   }
 
   public boolean isHubPresetOverride() {
     return hubPresetOverride;
+  }
+
+  public void syncDashboardOverride() {
+    setHubPresetOverride(SmartDashboard.getBoolean(HUB_PRESET_OVERRIDE_KEY, hubPresetOverride));
   }
 
   /** Records that a ball has just been fed through the shooter. */
@@ -293,7 +309,7 @@ public class ShotCalculator {
               d,
               timeOfFlightMap.get(d),
               false);
-      Logger.recordOutput("ShotCalculator/HubPresetOverride", true);
+      publishHubPresetOverride();
       return latestParameters;
     }
 
