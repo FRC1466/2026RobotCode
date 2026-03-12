@@ -28,6 +28,7 @@ import frc.robot.subsystems.drive.ModuleIOTalonFX;
 import frc.robot.subsystems.indexer.Indexer;
 import frc.robot.subsystems.indexer.IndexerIO;
 import frc.robot.subsystems.indexer.IndexerIOSim;
+import frc.robot.subsystems.indexer.IndexerIOTalonFX;
 import frc.robot.subsystems.intake.Intake;
 import frc.robot.subsystems.intake.pivot.IntakePivotIO;
 import frc.robot.subsystems.intake.pivot.IntakePivotIOSim;
@@ -113,7 +114,7 @@ public class RobotContainer {
           flywheel = new Flywheel(new FlywheelIOTalonFX());
           hood = new Hood(new HoodIOTalonFX());
           // uncomment to enable indexer
-          // indexer = new Indexer(new IndexerIOTalonFX());
+          indexer = new Indexer(new IndexerIOTalonFX());
           kicker = new Kicker(new KickerIOTalonFX());
           intake = new Intake(new IntakePivotIOSlamTalonFX(), new IntakeRollersIOTalonFX());
           vision =
@@ -248,7 +249,7 @@ public class RobotContainer {
    *  RIGHT TRIGGER  — Choreographer SCORE_HUB + auto-rotate drive
    *  LEFT TRIGGER   — Intake rollers
    *  LEFT BUMPER    — Slow mode (hold)
-   *  RIGHT BUMPER   — Toggle hub-preset override (bypasses vision/pose)
+   *  RIGHT BUMPER   — Set manual-only hub shooting and trench/bump disable together on/off
    *  A              — Auto-Align just the Drive
    *  B              — Toggle intake deploy/stow
    *  X              — Tuning: spin flywheel at manualFlywheelSpeed + kicker (hold, Choreographer disabled)
@@ -267,14 +268,21 @@ public class RobotContainer {
     // Left Bumper: slow mode (hold) — default is 4.5 m/s, slow to 3 m/s
     controller.leftBumper().whileTrue(driveCommand.slowDownCommand());
 
-    // Right Bumper: toggle hub-preset override — bypasses vision/pose, uses hubPreset values and
-    // the robot's current heading (no auto-rotation). Visible on SmartDashboard as
-    // "ShotCalculator/HubPresetOverride". Use when vision is unreliable and you know your position.
+    // Right Bumper: keep the two dashboard overrides in sync — hub preset override for manual-only
+    // shooting, plus disabling trench/bump auto-align. If either is off, the button turns both on;
+    // if both are already on, the button turns both off.
     controller
         .rightBumper()
         .onTrue(
-            Commands.runOnce(() -> ShotCalculator.getInstance().toggleHubPresetOverride())
-                .withName("ToggleHubPresetOverride")
+            Commands.runOnce(
+                    () -> {
+                      boolean manualOnlyEnabled =
+                          !(ShotCalculator.getInstance().isHubPresetOverride()
+                              && driveCommand.isZoneAutoLockDisabled());
+                      ShotCalculator.getInstance().setHubPresetOverride(manualOnlyEnabled);
+                      driveCommand.setZoneAutoLockDisabled(manualOnlyEnabled);
+                    })
+                .withName("SetManualOnlyShooting")
                 .ignoringDisable(true));
 
     // D-pad Up/Down: nudge the flywheel setpoint slightly higher/lower to compensate for misses.
@@ -362,6 +370,9 @@ public class RobotContainer {
 
   /** Update dashboard outputs. */
   public void updateDashboardOutputs() {
+    ShotCalculator.getInstance().syncDashboardOverride();
+    driveCommand.syncDashboardOverrides();
+
     // Publish match time
     SmartDashboard.putNumber("Match Time", DriverStation.getMatchTime());
 
