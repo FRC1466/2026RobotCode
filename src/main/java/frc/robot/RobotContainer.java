@@ -195,7 +195,7 @@ public class RobotContainer {
             drive, flywheel, hood, indexer, kicker, intake, driveCommand::atLaunchGoal);
 
     // Set up Autos
-    autos = new Autos(drive, flywheel, hood, choreographer);
+    autos = new Autos(drive, choreographer);
 
     // Set up auto routines
     autoChooser = new LoggedDashboardChooser<>("Auto Choices");

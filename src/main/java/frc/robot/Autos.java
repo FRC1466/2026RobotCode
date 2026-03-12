@@ -10,8 +10,6 @@ import edu.wpi.first.wpilibj2.command.Commands;
 import frc.robot.commands.DriveToPose;
 import frc.robot.subsystems.Choreographer;
 import frc.robot.subsystems.drive.Drive;
-import frc.robot.subsystems.shooter.flywheel.Flywheel;
-import frc.robot.subsystems.shooter.hood.Hood;
 
 /**
  * Centralized autonomous routine factory for all auto modes.
@@ -206,7 +204,7 @@ public class Autos {
   private final AutoFactory autoFactory;
   private final AutoChooser autoChooser;
 
-  public Autos(Drive drive, Flywheel flywheel, Hood hood, Choreographer choreographer) {
+  public Autos(Drive drive, Choreographer choreographer) {
     this.drive = drive;
     this.choreographer = choreographer;
 
