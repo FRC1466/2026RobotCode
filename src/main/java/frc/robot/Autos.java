@@ -202,32 +202,17 @@ import frc.robot.subsystems.shooter.hood.Hood;
  * @see <a href="https://choreo.autos/choreolib/auto-routines">ChoreoLib Auto Routine Docs</a>
  */
 public class Autos {
-  private final Drive drive;
-  private final Flywheel flywheel;
-  private final Hood hood;
+  private final RobotContainer robotContainer;
   private final Choreographer choreographer;
   private final AutoFactory autoFactory;
   private final AutoChooser autoChooser;
 
-  /**
-   * Creates the Autos manager and registers all available autonomous routines.
-   *
-   * <p>The {@link AutoFactory} is constructed here with alliance flipping enabled, meaning all
-   * Choreo trajectories are automatically mirrored when on the Red alliance.
-   *
-   * @param drive the drive subsystem (owns the path-following controller)
-   * @param flywheel the flywheel subsystem
-   * @param hood the hood subsystem
-   * @param choreographer the superstructure coordinator
-   */
-  public Autos(Drive drive, Flywheel flywheel, Hood hood, Choreographer choreographer) {
-    this.drive = drive;
-    this.flywheel = flywheel;
-    this.hood = hood;
+  public Autos(RobotContainer robotContainer, Choreographer choreographer) {
+    this.robotContainer = robotContainer;
     this.choreographer = choreographer;
 
     autoFactory =
-        new AutoFactory(drive::getPose, drive::setPose, drive::followTrajectory, true, drive);
+        new AutoFactory(robotContainer.drive::getPose, robotContainer.drive::setPose, robotContainer.drive::followTrajectory, true, robotContainer.drive);
 
     autoChooser = new AutoChooser();
 
@@ -247,29 +232,23 @@ public class Autos {
     return autoChooser;
   }
 
-  /**
-   * Depot auto — drives to the depot (human player station), stops to collect, then drives to the
-   * scoring position and shoots.
-   *
-   * <p>Uses {@code SimpleShoot.traj} with a split at the depot waypoint, producing two segments:
-   *
-   * <ol>
-   *   <li>Segment 0: Start → Depot (stops at depot)
-   *   <li>Segment 1: Depot → Score position (stops at score)
-   * </ol>
-   *
-   * <p>Order of operations:
-   *
-   * <ol>
-   *   <li>Reset odometry and drive to depot
-   *   <li>At depot, wait 5 seconds for human player to load fuel
-   *   <li>Drive to the scoring position
-   *   <li>Once stopped at the score position, set Choreographer to SCORE_HUB
-   *   <li>Wait until the shooter is ready, hold for a brief moment, then go IDLE
-   * </ol>
-   *
-   * @return the configured auto routine
-   */
+  public AutoRoutine shootFromAnywhereAuto() {
+    AutoRoutine routine = autoFactory.newRoutine("Preload Auto");
+
+    // No Trajectory
+
+    // No odometry reset, just call the choreographer shoot command
+    routine.active().whileTrue(
+      Commands.parallel(robotContainer.driveCommand.launchModeCommand(),
+      Commands.sequence(
+                    choreographer.setGoalCommand(Choreographer.Goal.SCORE_HUB),
+                    Commands.waitUntil(choreographer::isReadyToShoot),
+                    Commands.waitUntil(choreographer::isDoneShooting).withTimeout(10.0),
+                    choreographer.setGoalCommand(Choreographer.Goal.IDLE))));
+
+    return routine;
+  }
+
   public AutoRoutine depotAuto() {
     AutoRoutine routine = autoFactory.newRoutine("Depot Auto");
 
@@ -296,8 +275,8 @@ public class Autos {
                 Commands.sequence(
                     choreographer.setGoalCommand(Choreographer.Goal.SCORE_HUB),
                     Commands.waitUntil(choreographer::isReadyToShoot),
-                    Commands.waitUntil(choreographer::isDoneShooting).withTimeout(2.0),
-                    choreographer.setGoalCommand(Choreographer.Goal.IDLE))));
+                    Commands.waitUntil(choreographer::isDoneShooting).withTimeout(10.0),
+                    choreographer.setGoalCommand(Choreographer.Goal.IDLE)));
 
     return routine;
   }
