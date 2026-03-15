@@ -225,6 +225,8 @@ public class Choreographer extends SubsystemBase {
 
   @AutoLogOutput(key = "Choreographer/DoneShooting")
   public boolean isDoneShooting() {
+    if (true) return false;
+
     if (currentGoal != Goal.SCORE_HUB) {
       return false;
     }

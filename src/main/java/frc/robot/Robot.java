@@ -230,14 +230,7 @@ public class Robot extends LoggedRobot {
 
   /** This autonomous runs the autonomous command selected by your {@link RobotContainer} class. */
   @Override
-  public void autonomousInit() {
-    autoStart = Timer.getTimestamp();
-    autonomousCommand = robotContainer.getAutonomousCommand();
-
-    if (autonomousCommand != null) {
-      CommandScheduler.getInstance().schedule(autonomousCommand);
-    }
-  }
+  public void autonomousInit() {}
 
   /** This function is called periodically during autonomous. */
   @Override
@@ -245,11 +238,7 @@ public class Robot extends LoggedRobot {
 
   /** This function is called once when teleop is enabled. */
   @Override
-  public void teleopInit() {
-    if (autonomousCommand != null) {
-      autonomousCommand.cancel();
-    }
-  }
+  public void teleopInit() {}
 
   /** This function is called periodically during operator control. */
   @Override

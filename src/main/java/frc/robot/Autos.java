@@ -1,15 +1,35 @@
 // Copyright (c) 2025-2026 Webb Robotics
 // http://github.com/FRC1466
+
 package frc.robot;
 
 import choreo.auto.AutoChooser;
 import choreo.auto.AutoFactory;
 import choreo.auto.AutoRoutine;
 import choreo.auto.AutoTrajectory;
+import com.pathplanner.lib.auto.AutoBuilder;
+import com.pathplanner.lib.path.PathConstraints;
+import edu.wpi.first.math.geometry.Pose2d;
+import edu.wpi.first.math.geometry.Rotation2d;
+import edu.wpi.first.math.geometry.Translation2d;
+import edu.wpi.first.wpilibj.DriverStation;
+import edu.wpi.first.wpilibj.smartdashboard.SmartDashboard;
+import edu.wpi.first.wpilibj2.command.Command;
 import edu.wpi.first.wpilibj2.command.Commands;
+import edu.wpi.first.wpilibj2.command.Subsystem;
+import edu.wpi.first.wpilibj2.command.button.RobotModeTriggers;
 import frc.robot.commands.DriveToPose;
 import frc.robot.subsystems.Choreographer;
 import frc.robot.subsystems.drive.Drive;
+import frc.robot.subsystems.intake.Intake;
+import frc.robot.subsystems.shooter.ShotCalculator;
+import frc.robot.util.AllianceFlipUtil;
+import java.util.Map;
+import java.util.Optional;
+import java.util.Set;
+import java.util.function.Function;
+import java.util.function.Supplier;
+import org.littletonrobotics.junction.Logger;
 
 /**
  * Centralized autonomous routine factory for all auto modes.
@@ -36,24 +56,6 @@ import frc.robot.subsystems.drive.Drive;
  * constructed only when selected.
  *
  * <h3>AutoTrajectory</h3>
- *
- * Represents a single trajectory (or split segment) loaded from a Choreo project file. Exposes
- * triggers for reacting to trajectory lifecycle events:
- *
- * <ul>
- *   <li>{@code active()} / {@code inactive()} — true while the trajectory is / isn't running
- *   <li>{@code done()} — pulses true for <b>one cycle</b> when the trajectory finishes
- *   <li>{@code atTime(double)} / {@code atTime(String)} — pulses at a timestamp or named event
- *       marker
- *   <li>{@code atTimeBeforeEnd(double)} — pulses N seconds before the trajectory ends
- *   <li>{@code atPose(String, m, rad)} — true when the robot is near an event marker's pose
- *   <li>{@code chain(other)} — shorthand for {@code done().onTrue(other.cmd())}
- * </ul>
- *
- * <h2>Trajectory Organization in Choreo</h2>
- *
- * There are two strategies for organizing trajectory segments. Choose based on whether you need
- * <b>branching</b> (runtime decisions about which path to follow next).
  *
  * <h3>Strategy 1: Split Waypoints (single .chor file, no branching)</h3>
  *
@@ -108,6 +110,13 @@ import frc.robot.subsystems.drive.Drive;
  * // ── Lifecycle triggers ──────────────────────────────────────────
  * // Run intake the ENTIRE time a trajectory is active
  * pickupTraj.active().whileTrue(choreographer.setGoalCommand(Goal.INTAKE));
+ * private void registerRoutine(
+ * String name,
+ * Supplier<AutoRoutine> routineSupplier,
+ * Supplier<Optional<Pose2d>> startPoseSupplier) {
+ * autoChooser.addRoutine(name, routineSupplier);
+ * autoStartPoseSuppliers.put(name, startPoseSupplier);
+ * }
  *
  * // ── Event marker triggers ───────────────────────────────────────
  * // In Choreo, place an event marker named "startIntake" on the path.
@@ -200,24 +209,66 @@ import frc.robot.subsystems.drive.Drive;
  */
 public class Autos {
   private final Drive drive;
+  private final RobotContainer robotContainer;
   private final Choreographer choreographer;
+  private final Intake intake;
   private final AutoFactory autoFactory;
   private final AutoChooser autoChooser;
+  private final Map<String, Supplier<Optional<Pose2d>>> autoStartPoseSuppliers;
+  private final Map<String, Supplier<Optional<Pose2d>>> autoStartPoseSuppliersByCommandName;
+  private final edu.wpi.first.wpilibj.smartdashboard.Field2d autoStartField;
 
-  public Autos(Drive drive, Choreographer choreographer) {
+  public Autos(Drive drive, RobotContainer robotContainer, Choreographer choreographer) {
     this.drive = drive;
+    this.robotContainer = robotContainer;
     this.choreographer = choreographer;
+    this.intake = robotContainer.getIntake();
 
     autoFactory =
         new AutoFactory(drive::getPose, drive::setPose, drive::followTrajectory, true, drive);
 
     autoChooser = new AutoChooser();
+    autoStartPoseSuppliers = new java.util.HashMap<>();
+    autoStartPoseSuppliersByCommandName = new java.util.HashMap<>();
+    autoStartPoseSuppliers.put(autoChooser.getDefaultName(), Optional::<Pose2d>empty);
+    autoStartPoseSuppliersByCommandName.put(autoChooser.getDefaultName(), Optional::<Pose2d>empty);
 
     // Register all autonomous routines here.
-    // Use method references so routines are lazily constructed only when selected.
-    autoChooser.addRoutine("Depot Auto", this::depotAuto);
-    autoChooser.addRoutine("Shoot Preload Auto", this::shootFromAnywhereAuto);
-    autoChooser.addCmd("Do Nothing", Commands::none);
+    // Use one registration path so chooser entries and start-pose metadata stay in sync.
+    registerRoutine(
+        "Depot Auto",
+        this::depotAuto,
+        () -> startPoseOf(this::depotAuto, routine -> routine.trajectory("DepotAuto", 0)));
+    registerRoutine(
+        "Ground Depot Auto",
+        this::groundDepotAuto,
+        () ->
+            startPoseOf(
+                this::groundDepotAuto, routine -> routine.trajectory("DepotAutoGround", 0)));
+    registerRoutine(
+        "Ground Auto",
+        this::groundAuto,
+        () -> startPoseOf(this::groundAuto, routine -> routine.trajectory("GrabFromGround", 0)));
+    registerRoutine(
+        "Rush To Center Auto",
+        this::rushToCenterAuto,
+        () ->
+            startPoseOf(this::rushToCenterAuto, routine -> routine.trajectory("RushToCenter", 0)));
+    registerRoutine("Shoot Preload Auto", this::shootFromAnywhereAuto, Optional::<Pose2d>empty);
+    registerRoutine(
+        "Drive Back Preload Auto",
+        this::driveBackPreloadAuto,
+        () ->
+            Optional.of(
+                AllianceFlipUtil.apply(
+                    new Pose2d(3.5, FieldConstants.fieldWidth / 2.0, Rotation2d.kZero))));
+
+    autoStartField = new edu.wpi.first.wpilibj.smartdashboard.Field2d();
+    SmartDashboard.putData("Auto Start Pose", autoStartField);
+
+    SmartDashboard.putData("Auto Chooser", autoChooser);
+
+    RobotModeTriggers.autonomous().whileTrue(autoChooser.selectedCommandScheduler());
   }
 
   /**
@@ -229,34 +280,127 @@ public class Autos {
     return autoChooser;
   }
 
+  public void updateDashboardOutputs() {
+    if (!DriverStation.isDisabled()) {
+      return;
+    }
+
+    String selectedCommandName = autoChooser.selectedCommand().getName();
+    Optional<Pose2d> startPose =
+        autoStartPoseSuppliersByCommandName
+            .getOrDefault(selectedCommandName, Optional::<Pose2d>empty)
+            .get();
+
+    startPose.ifPresentOrElse(
+        autoStartField::setRobotPose, () -> autoStartField.setRobotPose(new Pose2d()));
+
+    Logger.recordOutput("Autos/SelectedCommandName", selectedCommandName);
+    Logger.recordOutput("Autos/HasStartPose", startPose.isPresent());
+    Logger.recordOutput(
+        "Autos/StartPose",
+        startPose.map(pose -> new Pose2d[] {pose}).orElseGet(() -> new Pose2d[0]));
+  }
+
+  private void registerRoutine(
+      String name,
+      Supplier<AutoRoutine> routineSupplier,
+      Supplier<Optional<Pose2d>> startPoseSupplier) {
+    autoChooser.addRoutine(name, routineSupplier);
+    autoStartPoseSuppliers.put(name, startPoseSupplier);
+    autoStartPoseSuppliersByCommandName.put(name, startPoseSupplier);
+
+    AutoRoutine previewRoutine = routineSupplier.get();
+    autoStartPoseSuppliersByCommandName.put(previewRoutine.cmd().getName(), startPoseSupplier);
+  }
+
   public AutoRoutine shootFromAnywhereAuto() {
-  AutoRoutine routine = autoFactory.newRoutine("Shoot From Anywhere");
+    AutoRoutine routine = autoFactory.newRoutine("Shoot From Anywhere");
 
-  Command shootSequence =
-      Commands.sequence(
-          choreographer.setGoalCommand(Choreographer.Goal.SCORE_HUB),
-          Commands.waitUntil(choreographer::isReadyToShoot),
-          Commands.waitUntil(choreographer::isDoneShooting).withTimeout(10.0),
-          choreographer.setGoalCommand(Choreographer.Goal.IDLE)
-      );
+    Supplier<Pose2d> targetPoseSupplier =
+        () -> {
+          Pose2d currentPose = drive.getPose();
+          Translation2d hubCenter = FieldConstants.Hub.topCenterPoint.toTranslation2d();
+          Translation2d hubToRobot = currentPose.getTranslation().minus(hubCenter);
 
-  // Run shooting once when auto starts
-  routine.active().onTrue(shootSequence);
+          Translation2d targetTranslation =
+              hubToRobot.getNorm() > 1e-6
+                  ? hubCenter.plus(hubToRobot.times(2.5 / hubToRobot.getNorm()))
+                  : hubCenter.plus(new Translation2d(2.5, 0.0));
 
-  // Drive command must be continuously called
-  routine.active().whileTrue(drive.launchCommand());
+          Pose2d aimedPose = ShotCalculator.getStationaryAimedPose(targetTranslation);
+          Pose2d bluePose =
+              aimedPose.getX() <= 3.0
+                  ? aimedPose
+                  : ShotCalculator.getStationaryAimedPose(
+                      new Translation2d(3.0, targetTranslation.getY()));
 
-  return routine;
-}
+          return AllianceFlipUtil.apply(bluePose);
+        };
+
+    Pose2d targetPose = targetPoseSupplier.get();
+
+    Command pathfindCommand =
+        Commands.defer(
+            () ->
+                AutoBuilder.pathfindToPose(
+                    targetPose, new PathConstraints(3.0, 3.0, 2 * Math.PI, 4 * Math.PI), 0.0),
+            Set.<Subsystem>of(drive));
+
+    Command shootSequence =
+        Commands.sequence(
+            choreographer.setGoalCommand(Choreographer.Goal.SCORE_HUB),
+            Commands.waitUntil(choreographer::isReadyToShoot),
+            Commands.waitUntil(choreographer::isDoneShooting).withTimeout(10.0),
+            choreographer.setGoalCommand(Choreographer.Goal.IDLE));
+
+    // Run pathfinding and shooting once when auto starts.
+    routine
+        .active()
+        .onTrue(
+            Commands.sequence(
+                pathfindCommand.withTimeout(10.0),
+                new DriveToPose(drive, () -> targetPose),
+                shootSequence));
+
+    // Keep launch-mode heading assist active when the pathfinder is not using the drive subsystem.
+    routine.active().whileTrue(robotContainer.driveCommand.launchModeCommand());
+
+    return routine;
+  }
+
+  public AutoRoutine driveBackPreloadAuto() {
+    AutoRoutine routine = autoFactory.newRoutine("Drive Back Preload Auto");
+
+    Command shootSequence =
+        Commands.sequence(
+            choreographer.setGoalCommand(Choreographer.Goal.SCORE_HUB),
+            Commands.waitUntil(choreographer::isReadyToShoot),
+            Commands.waitUntil(choreographer::isDoneShooting).withTimeout(10.0),
+            choreographer.setGoalCommand(Choreographer.Goal.IDLE));
+
+    Command pathfindCommand =
+        Commands.defer(
+            () ->
+                AutoBuilder.pathfindToPose(
+                    AllianceFlipUtil.apply(
+                        new Pose2d(2.5, FieldConstants.fieldWidth / 2.0, Rotation2d.kZero)),
+                    new PathConstraints(3.0, 3.0, 2 * Math.PI, 4 * Math.PI),
+                    0.0),
+            Set.<Subsystem>of(drive));
+
+    routine.active().onTrue(Commands.sequence(pathfindCommand, shootSequence));
+
+    return routine;
+  }
 
   public AutoRoutine depotAuto() {
     AutoRoutine routine = autoFactory.newRoutine("Depot Auto");
 
     // Load the two split segments from SimpleShoot.traj
-    AutoTrajectory toDepot = routine.trajectory("SimpleShoot", 0); // start → depot
-    AutoTrajectory toScore = routine.trajectory("SimpleShoot", 1); // depot → score
-    // When the routine starts, reset odometry and drive to the depot
-    routine.active().onTrue(Commands.sequence(toDepot.resetOdometry(), toDepot.cmd()));
+    AutoTrajectory toDepot = routine.trajectory("DepotAuto", 0); // start → depot
+    AutoTrajectory toScore = routine.trajectory("DepotAuto", 1); // depot → score
+    // When the routine starts, drive from the robot's current estimated pose.
+    routine.active().onTrue(toDepot.cmd());
 
     // Hold the depot end pose while waiting for the human player to load, then drive to score.
     // DriveToPose runs until toScore.cmd() interrupts it (drive is a shared requirement).
@@ -269,15 +413,112 @@ public class Autos {
     toScore
         .done()
         .onTrue(
-            Commands.parallel(
-                holdFinalPose(toScore),
-                Commands.sequence(
-                    choreographer.setGoalCommand(Choreographer.Goal.SCORE_HUB),
-                    Commands.waitUntil(choreographer::isReadyToShoot),
-                    Commands.waitUntil(choreographer::isDoneShooting).withTimeout(10.0),
-                    choreographer.setGoalCommand(Choreographer.Goal.IDLE))));
+            Commands.parallel(scoreAtHubCommand(), delayedRetractIntakeAfterShotStartCommand()));
 
     return routine;
+  }
+
+  public AutoRoutine groundDepotAuto() {
+    AutoRoutine routine = autoFactory.newRoutine("Ground Depot Auto");
+
+    AutoTrajectory toDepot = routine.trajectory("DepotAutoGround", 0);
+    AutoTrajectory creepAtDepot = routine.trajectory("DepotAutoGround", 1);
+    AutoTrajectory toScore = routine.trajectory("DepotAutoGround", 2);
+
+    routine.active().onTrue(toDepot.cmd());
+
+    creepAtDepot.active().whileTrue(intake.runCommand());
+
+    toDepot.done().onTrue(intake.deployCommand());
+    toDepot.done().onTrue(creepAtDepot.cmd());
+
+    creepAtDepot.done().onTrue(toScore.cmd());
+
+    toScore
+        .done()
+        .onTrue(
+            Commands.parallel(scoreAtHubCommand(), delayedRetractIntakeAfterShotStartCommand()));
+
+    return routine;
+  }
+
+  public AutoRoutine groundAuto() {
+    AutoRoutine routine = autoFactory.newRoutine("Ground Auto");
+
+    AutoTrajectory toGround = routine.trajectory("GrabFromGround", 0);
+    AutoTrajectory creepAlongGround = routine.trajectory("GrabFromGround", 1);
+    AutoTrajectory toScore = routine.trajectory("GrabFromGround", 2);
+
+    routine.active().onTrue(toGround.cmd());
+
+    creepAlongGround.active().whileTrue(intake.runCommand());
+
+    toGround.done().onTrue(intake.deployCommand());
+    toGround.done().onTrue(creepAlongGround.cmd());
+
+    creepAlongGround.done().onTrue(toScore.cmd());
+
+    toScore
+        .done()
+        .onTrue(
+            Commands.parallel(scoreAtHubCommand(), delayedRetractIntakeAfterShotStartCommand()));
+
+    return routine;
+  }
+
+  public AutoRoutine rushToCenterAuto() {
+    AutoRoutine routine = autoFactory.newRoutine("Rush To Center Auto");
+
+    AutoTrajectory rushToCenter = routine.trajectory("RushToCenter", 0);
+    AutoTrajectory creepUpCenter = routine.trajectory("RushToCenter", 1);
+    AutoTrajectory rushAcrossCenter = routine.trajectory("RushToCenter", 2);
+    AutoTrajectory creepBackToScore = routine.trajectory("RushToCenter", 3);
+
+    routine.active().onTrue(rushToCenter.cmd());
+
+    creepUpCenter.active().whileTrue(intake.runCommand());
+    creepBackToScore.active().whileTrue(intake.runCommand());
+
+    rushToCenter.done().onTrue(intake.deployCommand());
+    rushToCenter.done().onTrue(creepUpCenter.cmd());
+
+    creepUpCenter.done().onTrue(rushAcrossCenter.cmd());
+
+    rushAcrossCenter.done().onTrue(creepBackToScore.cmd());
+
+    creepBackToScore
+        .done()
+        .onTrue(
+            Commands.parallel(scoreAtHubCommand(), delayedRetractIntakeAfterShotStartCommand()));
+
+    return routine;
+  }
+
+  private Command scoreAtHubCommand() {
+    Command scoreSequence =
+        Commands.sequence(
+            choreographer.setGoalCommand(Choreographer.Goal.SCORE_HUB),
+            Commands.waitUntil(choreographer::isReadyToShoot),
+            Commands.waitUntil(choreographer::isDoneShooting).withTimeout(10.0),
+            choreographer.setGoalCommand(Choreographer.Goal.IDLE));
+
+    return Commands.deadline(scoreSequence, robotContainer.driveCommand.launchModeCommand());
+  }
+
+  private Command delayedRetractIntakeAfterShotStartCommand() {
+    return Commands.sequence(
+        Commands.waitUntil(choreographer::isReadyToShoot),
+        Commands.waitSeconds(1.0),
+        intake.stowCommand(),
+        Commands.runOnce(intake::run),
+        Commands.waitSeconds(0.2),
+        intake.stopCommand());
+  }
+
+  private Optional<Pose2d> startPoseOf(
+      Supplier<AutoRoutine> routineSupplier,
+      Function<AutoRoutine, AutoTrajectory> trajectorySupplier) {
+    return trajectorySupplier.apply(routineSupplier.get()).getInitialPose();
   }
 
   /**

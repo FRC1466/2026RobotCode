@@ -11,11 +11,18 @@
      "val":4.0215
     }
    },
-   "StartLine":{
+   "StartLineClose":{
     "dimension":"Number",
     "var":{
-     "exp":"0.46",
-     "val":0.46
+     "exp":"3.6",
+     "val":3.6
+    }
+   },
+   "StartLineFar":{
+    "dimension":"Number",
+    "var":{
+     "exp":"4.4",
+     "val":4.4
     }
    }
   },
@@ -58,20 +65,20 @@
    }
   },
   "mass":{
-   "exp":"64 lb",
-   "val":29.02991168
+   "exp":"100 lb",
+   "val":45.359237
   },
   "inertia":{
-   "exp":"2.11 kg m ^ 2",
-   "val":2.11
+   "exp":"3.483 kg m ^ 2",
+   "val":3.483
   },
   "gearing":{
    "exp":"6.746031746",
    "val":6.746031746
   },
   "radius":{
-   "exp":"2 in",
-   "val":0.0508
+   "exp":"1.995 in",
+   "val":0.050673
   },
   "vmax":{
    "exp":"5800 RPM",
@@ -82,8 +89,8 @@
    "val":9.37
   },
   "cof":{
-   "exp":"1.916",
-   "val":1.916
+   "exp":"1.2",
+   "val":1.2
   },
   "bumper":{
    "front":{

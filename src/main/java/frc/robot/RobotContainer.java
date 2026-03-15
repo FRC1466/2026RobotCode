@@ -15,7 +15,6 @@ import edu.wpi.first.wpilibj2.command.Command;
 import edu.wpi.first.wpilibj2.command.Commands;
 import edu.wpi.first.wpilibj2.command.button.CommandXboxController;
 import edu.wpi.first.wpilibj2.command.button.RobotModeTriggers;
-import edu.wpi.first.wpilibj2.command.sysid.SysIdRoutine;
 import frc.robot.commands.DriveCommands;
 import frc.robot.generated.TunerConstants;
 import frc.robot.subsystems.Choreographer;
@@ -57,6 +56,7 @@ import frc.robot.subsystems.vision.VisionIOPhotonVisionSim;
 import frc.robot.util.HubShiftUtil;
 import frc.robot.util.LoggedTunableNumber;
 import frc.robot.util.TriggerUtil;
+import java.util.Optional;
 import lombok.experimental.ExtensionMethod;
 import org.littletonrobotics.junction.networktables.LoggedDashboardChooser;
 
@@ -76,19 +76,19 @@ public class RobotContainer {
   private Indexer indexer;
   private Kicker kicker;
   private Choreographer choreographer;
-  private Autos autos;
   private Intake intake;
+  private Autos autos;
 
   // Controller
   private final CommandXboxController controller = new CommandXboxController(0);
 
-  private DriveCommands driveCommand;
+  public DriveCommands driveCommand;
 
   private final Alert controllerDisconnected =
       new Alert("Controller disconnected (port 0).", AlertType.kWarning);
 
   // Dashboard inputs
-  private final LoggedDashboardChooser<Command> autoChooser;
+  // private final LoggedDashboardChooser<Command> autoChooser;
 
   // Tuning values - editable live via NetworkTables when tuningMode=true, otherwise fixed defaults.
   // Visible under /Tuning/ in AdvantageScope / NT explorer.
@@ -110,7 +110,6 @@ public class RobotContainer {
                   new ModuleIOTalonFX(TunerConstants.FrontRight),
                   new ModuleIOTalonFX(TunerConstants.BackLeft),
                   new ModuleIOTalonFX(TunerConstants.BackRight));
-
           flywheel = new Flywheel(new FlywheelIOTalonFX());
           hood = new Hood(new HoodIOTalonFX());
           // uncomment to enable indexer
@@ -194,16 +193,37 @@ public class RobotContainer {
         new Choreographer(
             drive, flywheel, hood, indexer, kicker, intake, driveCommand::atLaunchGoal);
 
-    // Set up Autos
-    autos = new Autos(drive, choreographer);
+    // Set up Autos (built in auto chooser)
+    autos = new Autos(drive, this, choreographer);
+
+    // Set up HubShiftUtil Overrides
+    LoggedDashboardChooser<Boolean> allianceOverrideChooser =
+        new LoggedDashboardChooser<>("HubShift Alliance Override");
+    allianceOverrideChooser.addDefaultOption("Auto", null);
+    allianceOverrideChooser.addOption("Blue", false);
+    allianceOverrideChooser.addOption("Red", true);
+    HubShiftUtil.setAllianceWinOverride(
+        () ->
+            DriverStation.getAlliance()
+                .map(
+                    alliance -> {
+                      Boolean override = allianceOverrideChooser.get();
+                      return override == null
+                          ? Optional.<Boolean>empty()
+                          : Optional.of(override == (alliance == DriverStation.Alliance.Red));
+                    })
+                .orElse(Optional.empty()));
 
     // Set up auto routines
-    autoChooser = new LoggedDashboardChooser<>("Auto Choices");
-    autoChooser.addDefaultOption("None", Commands.none());
+    // autoChooser = new LoggedDashboardChooser<>("Auto Choices");
+    // autoChooser.addDefaultOption("None", Commands.none());
 
     // Add Choreo autos
-    autoChooser.addOption("Depot Auto (Choreo)", autos.depotAuto().cmd());
+    // autoChooser.addOption("Depot Auto (Choreo)", autos.depotAuto().cmd());
+    // autoChooser.addOption("Shoot From Anywhere (Choreo)", autos.shootFromAnywhereAuto().cmd());
+    // autoChooser.addOption("Drive Back Preload Auto", autos.driveBackPreloadAuto().cmd());
 
+    /*
     // Set up SysId routines
     autoChooser.addOption(
         "Drive SysId (Quasistatic Forward)",
@@ -232,9 +252,14 @@ public class RobotContainer {
         "Test: Indexer", indexer.runCommand().withTimeout(3.0).withName("Test Indexer"));
     autoChooser.addOption(
         "Test: Kicker", kicker.runCommand().withTimeout(3.0).withName("Test Kicker"));
+    */
 
     // Configure the button bindings
     configureButtonBindings();
+  }
+
+  public Intake getIntake() {
+    return intake;
   }
 
   /**
@@ -372,6 +397,9 @@ public class RobotContainer {
   public void updateDashboardOutputs() {
     ShotCalculator.getInstance().syncDashboardOverride();
     driveCommand.syncDashboardOverrides();
+    if (autos != null) {
+      autos.updateDashboardOutputs();
+    }
 
     // Publish match time
     SmartDashboard.putNumber("Match Time", DriverStation.getMatchTime());
@@ -386,6 +414,6 @@ public class RobotContainer {
    * @return the command to run in autonomous
    */
   public Command getAutonomousCommand() {
-    return autoChooser.get();
+    return Commands.none(); // autoChooser.get();
   }
 }

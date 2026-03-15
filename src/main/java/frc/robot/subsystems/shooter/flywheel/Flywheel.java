@@ -104,6 +104,7 @@ public class Flywheel extends FullSubsystem {
   @Accessors(fluent = true)
   @AutoLogOutput(key = "Flywheel/AtGoal")
   private boolean atGoal = false;
+
   // Shot detection tracks a rolling current baseline while the shooter is spun up. The average is
   // considered initialized after the first high-speed sample, and shotDetectedFromCurrentSpike
   // stores the previous cycle's detection state so we only record new rising edges.
@@ -329,6 +330,7 @@ public class Flywheel extends FullSubsystem {
 
     Logger.recordOutput("Flywheel/ShotDetection/CurrentAmps", currentAmps);
     Logger.recordOutput("Flywheel/ShotDetection/AverageCurrentAmps", averageCurrentAmps);
-    Logger.recordOutput("Flywheel/ShotDetection/CurrentSpikeDetected", shotDetectedFromCurrentSpike);
+    Logger.recordOutput(
+        "Flywheel/ShotDetection/CurrentSpikeDetected", shotDetectedFromCurrentSpike);
   }
 }

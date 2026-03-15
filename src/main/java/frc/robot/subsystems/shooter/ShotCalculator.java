@@ -21,9 +21,9 @@ import edu.wpi.first.wpilibj.smartdashboard.SmartDashboard;
 import frc.robot.Constants;
 import frc.robot.FieldConstants;
 import frc.robot.RobotState;
-import frc.robot.subsystems.drive.Drive;
 import frc.robot.subsystems.shooter.hood.Hood;
 import frc.robot.util.AllianceFlipUtil;
+import frc.robot.util.Bounds;
 import frc.robot.util.GeomUtil;
 import frc.robot.util.LoggedTunableNumber;
 import java.util.function.DoubleSupplier;
@@ -45,7 +45,7 @@ public class ShotCalculator {
   private final LinearFilter hoodAngleFilter =
       LinearFilter.movingAverage((int) (0.1 / Constants.loopPeriodSecs));
   private final LinearFilter driveAngleFilter =
-      LinearFilter.movingAverage((int) (0.8 / Constants.loopPeriodSecs));
+      LinearFilter.movingAverage((int) (0.1 / Constants.loopPeriodSecs));
   private final DoubleSupplier timestampSupplier;
 
   private double lastHoodAngle = Double.NaN;
@@ -121,13 +121,27 @@ public class ShotCalculator {
       new InterpolatingDoubleTreeMap();
 
   // Passing target
-  private static final double hubPassLine =
-      FieldConstants.LinesHorizontal.rightBumpStart - Drive.DRIVE_BASE_RADIUS;
-  private static final double xPassTarget = Units.inchesToMeters(25);
-  private static final double yPassTarget = Units.inchesToMeters(50);
+  private static final double xPassTarget = Units.inchesToMeters(37);
+  private static final double yPassTarget = Units.inchesToMeters(65);
+
+  // Bad shot zones
+  private static final Bounds towerBound =
+      new Bounds(0, Units.inchesToMeters(46), Units.inchesToMeters(129), Units.inchesToMeters(168));
+  private static final Bounds nearHubBound =
+      new Bounds(
+          FieldConstants.LinesVertical.neutralZoneNear,
+          FieldConstants.LinesVertical.neutralZoneNear + Units.inchesToMeters(120),
+          FieldConstants.LinesHorizontal.rightBumpStart,
+          FieldConstants.LinesHorizontal.leftBumpEnd);
+  private static final Bounds farHubBound =
+      new Bounds(
+          FieldConstants.LinesVertical.oppAllianceZone,
+          FieldConstants.fieldLength,
+          FieldConstants.LinesHorizontal.rightBumpStart,
+          FieldConstants.LinesHorizontal.leftBumpEnd);
 
   // Presets
-  public static final double hubPresetDistance = 0.96;
+  public static final double hubPresetDistance = 2;
   public static final double towerPresetDistance = 2.5;
   public static final double trenchPresetDistance = 3.03;
   public static final double outpostPresetDistance = 4.84;
@@ -148,11 +162,11 @@ public class ShotCalculator {
       LoggedTunableNumber hoodAngleDeg, LoggedTunableNumber flywheelSpeed) {}
 
   static {
-    minDistance = 1.34;
-    maxDistance = 5.60;
+    minDistance = 1.969;
+    maxDistance = 5;
     phaseDelay = 0.03;
-    passingMinDistance = 0.0;
-    passingMaxDistance = 100000;
+    passingMinDistance = 5.4;
+    passingMaxDistance = 17.16;
 
     hoodAngleMap.put(1.969, Rotation2d.fromDegrees(Hood.minAngleDeg));
     hoodAngleMap.put(2.185, Rotation2d.fromDegrees(Hood.minAngleDeg));
@@ -185,8 +199,12 @@ public class ShotCalculator {
 
     hubPreset =
         new LaunchPreset(
-            new LoggedTunableNumber("ShotCalculator/Presets/Hub/HoodAngle", 0),
-            new LoggedTunableNumber("ShotCalculator/Presets/Hub/FlywheelSpeed", 33));
+            new LoggedTunableNumber(
+                "ShotCalculator/Presets/Hub/HoodAngle",
+                hoodAngleMap.get(hubPresetDistance).getDegrees()),
+            new LoggedTunableNumber(
+                "ShotCalculator/Presets/Hub/FlywheelSpeed",
+                flywheelSpeedMap.get(hubPresetDistance)));
     towerPreset =
         new LaunchPreset(
             new LoggedTunableNumber(
@@ -252,7 +270,9 @@ public class ShotCalculator {
     return lastShotTimestamp;
   }
 
-  /** Returns the elapsed time in seconds since the last recorded shot, or +∞ if none has occurred. */
+  /**
+   * Returns the elapsed time in seconds since the last recorded shot, or +∞ if none has occurred.
+   */
   @AutoLogOutput(key = "ShotCalculator/TimeSinceLastShotSecs")
   public double getTimeSinceLastShotSeconds() {
     return timestampSupplier.getAsDouble() - lastShotTimestamp;
@@ -380,9 +400,16 @@ public class ShotCalculator {
                 ? passingFlywheelSpeedMap.get(lookaheadShooterToTargetDistance)
                 : flywheelSpeedMap.get(lookaheadShooterToTargetDistance));
 
+    var flippedPose = AllianceFlipUtil.apply(estimatedPose);
+    boolean insideTowerBadBox = towerBound.contains(flippedPose.getTranslation());
+    boolean behindNearHub = nearHubBound.contains(flippedPose.getTranslation());
+    boolean behindFarHub = farHubBound.contains(flippedPose.getTranslation());
+    boolean outsideOfBadBoxes = !(insideTowerBadBox || behindNearHub || behindFarHub);
+
     latestParameters =
         new ShootingParameters(
-            lookaheadShooterToTargetDistance >= (passing ? passingMinDistance : minDistance)
+            outsideOfBadBoxes
+                && lookaheadShooterToTargetDistance >= (passing ? passingMinDistance : minDistance)
                 && lookaheadShooterToTargetDistance <= (passing ? passingMaxDistance : maxDistance),
             driveAngle,
             driveVelocity,
@@ -405,18 +432,6 @@ public class ShotCalculator {
   public Translation2d getPassingTarget() {
     double flippedY = AllianceFlipUtil.apply(RobotState.getInstance().getEstimatedPose()).getY();
     boolean mirror = flippedY > FieldConstants.LinesHorizontal.center;
-
-    if (FieldConstants.fieldWidth - hubPassLine > flippedY && flippedY > hubPassLine) {
-      double interpolateZoneAmount =
-          ((mirror ? FieldConstants.fieldWidth - flippedY : flippedY) - hubPassLine)
-              / (FieldConstants.LinesHorizontal.center - hubPassLine);
-      double unflippedPoseY =
-          mirror
-              ? FieldConstants.fieldWidth
-                  - MathUtil.interpolate(yPassTarget, passingMinDistance, interpolateZoneAmount)
-              : MathUtil.interpolate(yPassTarget, passingMinDistance, interpolateZoneAmount);
-      return AllianceFlipUtil.apply(new Translation2d(xPassTarget, unflippedPoseY));
-    }
 
     return AllianceFlipUtil.apply(
         new Translation2d(
