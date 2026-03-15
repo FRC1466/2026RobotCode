@@ -218,10 +218,10 @@ public class Autos {
   private final Map<String, Supplier<Optional<Pose2d>>> autoStartPoseSuppliersByCommandName;
   private final edu.wpi.first.wpilibj.smartdashboard.Field2d autoStartField;
 
-  public Autos(Drive drive, RobotContainer robotContainer, Choreographer choreographer) {
-    this.drive = drive;
+  public Autos(RobotContainer robotContainer) {
     this.robotContainer = robotContainer;
-    this.choreographer = choreographer;
+    this.drive = robotContainer.getDrive();
+    this.choreographer = robotContainer.getChoreographer();
     this.intake = robotContainer.getIntake();
 
     autoFactory =

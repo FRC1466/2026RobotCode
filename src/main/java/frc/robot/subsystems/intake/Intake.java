@@ -8,9 +8,11 @@ import edu.wpi.first.math.filter.Debouncer;
 import edu.wpi.first.math.geometry.Pose3d;
 import edu.wpi.first.wpilibj.Alert;
 import edu.wpi.first.wpilibj.DriverStation;
+import edu.wpi.first.wpilibj.Timer;
 import edu.wpi.first.wpilibj.util.Color;
 import edu.wpi.first.wpilibj.util.Color8Bit;
 import edu.wpi.first.wpilibj2.command.Command;
+import edu.wpi.first.wpilibj2.command.Commands;
 import frc.robot.Constants;
 import frc.robot.Robot;
 import frc.robot.subsystems.intake.pivot.IntakePivotIO;
@@ -43,6 +45,14 @@ public class Intake extends FullSubsystem {
       new LoggedTunableNumber("IntakePivot/ToleranceDeg");
   private static final LoggedTunableNumber runVolts =
       new LoggedTunableNumber("IntakeRollers/RunVolts", 5.5);
+  private static final LoggedTunableNumber homingRollerReverseVolts =
+      new LoggedTunableNumber("Intake/Homing/RollerReverseVolts", -2.0);
+  private static final LoggedTunableNumber homingPulseOnSec =
+      new LoggedTunableNumber("Intake/Homing/PulseOnSec", 0.2);
+  private static final LoggedTunableNumber homingPulseOffSec =
+      new LoggedTunableNumber("Intake/Homing/PulseOffSec", 0.1);
+  private static final LoggedTunableNumber homingDurationSec =
+      new LoggedTunableNumber("Intake/Homing/DurationSec", 0.75);
 
   static {
     switch (Constants.getMode()) {
@@ -56,6 +66,10 @@ public class Intake extends FullSubsystem {
       }
     }
     toleranceDeg.initDefault(2.0);
+    homingRollerReverseVolts.initDefault(-2.0);
+    homingPulseOnSec.initDefault(0.2);
+    homingPulseOffSec.initDefault(0.1);
+    homingDurationSec.initDefault(0.75);
   }
 
   private final IntakePivotIO pivotIO;
@@ -124,6 +138,7 @@ public class Intake extends FullSubsystem {
 
   private Boolean lastRollersBrakeMode = null;
   @Getter private boolean running = false;
+  @Getter private boolean homed = false;
 
   public Intake(IntakePivotIO pivotIO, IntakeRollersIO rollersIO) {
     this.pivotIO = pivotIO;
@@ -179,6 +194,7 @@ public class Intake extends FullSubsystem {
 
     Logger.recordOutput("IntakeRollers/Running", running);
     Logger.recordOutput("IntakeRollers/AppliedVolts", rollersOutputs.appliedVolts);
+    Logger.recordOutput("Intake/Homed", homed);
   }
 
   @Override
@@ -224,6 +240,7 @@ public class Intake extends FullSubsystem {
   }
 
   public void deploy() {
+    homed = false;
     setGoalAngleDeg(deployAngleDeg);
   }
 
@@ -269,6 +286,14 @@ public class Intake extends FullSubsystem {
     rollersOutputs.appliedVolts = 0.0;
   }
 
+  public void markHomed() {
+    homed = true;
+  }
+
+  public void clearHomed() {
+    homed = false;
+  }
+
   public Command runCommand() {
     return runEnd(this::run, this::stop).withName("IntakeRollers.run");
   }
@@ -311,6 +336,44 @@ public class Intake extends FullSubsystem {
               stop();
             })
         .withName("Intake.stowAndStop");
+  }
+
+  /**
+   * Stows the intake while pulsing the rollers in reverse to help clear and settle the mechanism.
+   */
+  public Command homeCommand() {
+    return Commands.defer(
+            () -> {
+              final Timer pulseTimer = new Timer();
+              double pulsePeriodSec = homingPulseOnSec.get() + homingPulseOffSec.get();
+              double pulseOnWindowSec = homingPulseOnSec.get();
+
+              return runEnd(
+                      () -> {
+                        stow();
+                        double timeInCycle = pulseTimer.get() % pulsePeriodSec;
+                        double reverseVolts =
+                            timeInCycle < pulseOnWindowSec ? homingRollerReverseVolts.get() : 0.0;
+                        runVolts(reverseVolts);
+                      },
+                      () -> {
+                        stop();
+                        stow();
+                        markHomed();
+                      })
+                  .beforeStarting(
+                      () -> {
+                        clearHomed();
+                        stop();
+                        stow();
+                        pulseTimer.restart();
+                      })
+                  .withTimeout(homingDurationSec.get())
+                  .withName("Intake.home");
+            },
+            java.util.Set.of(this))
+        .ignoringDisable(true)
+        .withName("Intake.home");
   }
 
   /**

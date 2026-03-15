@@ -57,7 +57,6 @@ import frc.robot.util.HubShiftUtil;
 import frc.robot.util.LoggedTunableNumber;
 import frc.robot.util.TriggerUtil;
 import java.util.Optional;
-
 import lombok.Getter;
 import lombok.experimental.ExtensionMethod;
 import org.littletonrobotics.junction.networktables.LoggedDashboardChooser;
@@ -85,6 +84,7 @@ public class RobotContainer {
   private final CommandXboxController controller = new CommandXboxController(0);
 
   public DriveCommands driveCommand;
+  private final Command intakeHomeCommand;
 
   private final Alert controllerDisconnected =
       new Alert("Controller disconnected (port 0).", AlertType.kWarning);
@@ -196,7 +196,7 @@ public class RobotContainer {
             drive, flywheel, hood, indexer, kicker, intake, driveCommand::atLaunchGoal);
 
     // Set up Autos (built in auto chooser)
-    autos = new Autos(drive, this, choreographer);
+    autos = new Autos(this);
 
     // Set up HubShiftUtil Overrides
     LoggedDashboardChooser<Boolean> allianceOverrideChooser =
@@ -257,7 +257,11 @@ public class RobotContainer {
     */
 
     // Configure the button bindings
+    intakeHomeCommand = intake.homeCommand();
+
     configureButtonBindings();
+
+    SmartDashboard.putData("Intake/Home", intakeHomeCommand);
   }
 
   /**
@@ -388,7 +392,10 @@ public class RobotContainer {
 
     // Mode Init
     RobotModeTriggers.teleop().onTrue(Commands.runOnce(HubShiftUtil::initialize));
-    RobotModeTriggers.autonomous().onTrue(Commands.runOnce(HubShiftUtil::initialize));
+    RobotModeTriggers.autonomous()
+        .onTrue(
+            Commands.sequence(Commands.runOnce(HubShiftUtil::initialize), intakeHomeCommand)
+                .withName("AutonomousInit"));
   }
 
   /** Update dashboard outputs. */
