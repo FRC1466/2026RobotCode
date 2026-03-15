@@ -31,7 +31,6 @@ import frc.robot.subsystems.indexer.IndexerIOTalonFX;
 import frc.robot.subsystems.intake.Intake;
 import frc.robot.subsystems.intake.pivot.IntakePivotIO;
 import frc.robot.subsystems.intake.pivot.IntakePivotIOSim;
-import frc.robot.subsystems.intake.pivot.IntakePivotIOSlamTalonFX;
 import frc.robot.subsystems.intake.pivot.IntakePivotIOTalonFX;
 import frc.robot.subsystems.intake.rollers.IntakeRollersIO;
 import frc.robot.subsystems.intake.rollers.IntakeRollersIOSim;
@@ -114,10 +113,9 @@ public class RobotContainer {
                   new ModuleIOTalonFX(TunerConstants.BackRight));
           flywheel = new Flywheel(new FlywheelIOTalonFX());
           hood = new Hood(new HoodIOTalonFX());
-          // uncomment to enable indexer
           indexer = new Indexer(new IndexerIOTalonFX());
           kicker = new Kicker(new KickerIOTalonFX());
-          intake = new Intake(new IntakePivotIOSlamTalonFX(), new IntakeRollersIOTalonFX());
+          intake = new Intake(new IntakePivotIOTalonFX(), new IntakeRollersIOTalonFX());
           vision =
               new Vision(
                   drive::addVisionMeasurement,
@@ -132,8 +130,8 @@ public class RobotContainer {
               new ModuleIOTalonFX(TunerConstants.FrontRight),
               new ModuleIOTalonFX(TunerConstants.BackLeft),
               new ModuleIOTalonFX(TunerConstants.BackRight));*/
-          flywheel = new Flywheel(new FlywheelIOTalonFX());
-          hood = new Hood(new HoodIOTalonFX());
+          // flywheel = new Flywheel(new FlywheelIOTalonFX());
+          // hood = new Hood(new HoodIOTalonFX());
           intake = new Intake(new IntakePivotIOTalonFX(), new IntakeRollersIOTalonFX());
           break;
         }
@@ -260,8 +258,6 @@ public class RobotContainer {
     intakeHomeCommand = intake.homeCommand();
 
     configureButtonBindings();
-
-    SmartDashboard.putData("Intake/Home", intakeHomeCommand);
   }
 
   /**
@@ -282,6 +278,7 @@ public class RobotContainer {
    *  X              - Tuning: spin flywheel at manualFlywheelSpeed + kicker (hold, Choreographer disabled)
    *  Y              - Tuning: move hood to manualHoodAngle (hold, Choreographer disabled)
    *  POV UP/DOWN    - Adjust flywheel setpoint by +/-5% of the current base speed
+   *  POV LEFT       - Intake home (zero pivot position)
    *  BACK (solo)    - Toggle Choreographer enabled/disabled (enter/exit tuning mode)
    *  START + BACK   - Reset gyro to forward
    * </pre>
@@ -331,6 +328,9 @@ public class RobotContainer {
                             .incrementFlywheelSpeedOffsetPercent(-flywheelSpeedOffsetPercentStep))
                 .withName("DecreaseFlywheelSpeedOffset")
                 .ignoringDisable(true));
+
+    // D-pad Left: intake home (zero pivot position)
+    controller.povLeft().onTrue(intake.homeCommand());
 
     // Start + Back: reset gyro heading to alliance-forward
     controller

@@ -8,11 +8,9 @@ import edu.wpi.first.math.filter.Debouncer;
 import edu.wpi.first.math.geometry.Pose3d;
 import edu.wpi.first.wpilibj.Alert;
 import edu.wpi.first.wpilibj.DriverStation;
-import edu.wpi.first.wpilibj.Timer;
 import edu.wpi.first.wpilibj.util.Color;
 import edu.wpi.first.wpilibj.util.Color8Bit;
 import edu.wpi.first.wpilibj2.command.Command;
-import edu.wpi.first.wpilibj2.command.Commands;
 import frc.robot.Constants;
 import frc.robot.Robot;
 import frc.robot.subsystems.intake.pivot.IntakePivotIO;
@@ -34,10 +32,14 @@ import org.littletonrobotics.junction.mechanism.LoggedMechanismLigament2d;
 import org.littletonrobotics.junction.mechanism.LoggedMechanismRoot2d;
 
 public class Intake extends FullSubsystem {
-  private static final double stowAngleDeg = 0.1;
-  private static final double deployAngleDeg = 105.0;
-  private static final double minAngleDeg = 0.0;
-  private static final double maxAngleDeg = 110.0;
+  private static final LoggedTunableNumber stowAngleDeg =
+      new LoggedTunableNumber("IntakePivot/StowAngleDeg", 8.0);
+  private static final LoggedTunableNumber deployAngleDeg =
+      new LoggedTunableNumber("IntakePivot/DeployAngleDeg", 80);
+  private static final LoggedTunableNumber minAngleDeg =
+      new LoggedTunableNumber("IntakePivot/MinAngleDeg", 0.0);
+  private static final LoggedTunableNumber maxAngleDeg =
+      new LoggedTunableNumber("IntakePivot/MaxAngleDeg", 85.0);
 
   private static final LoggedTunableNumber kP = new LoggedTunableNumber("IntakePivot/kP");
   private static final LoggedTunableNumber kD = new LoggedTunableNumber("IntakePivot/kD");
@@ -133,12 +135,14 @@ public class Intake extends FullSubsystem {
   @Setter private BooleanSupplier pivotCoastOverride = () -> false;
   @Setter private BooleanSupplier rollersCoastOverride = () -> true;
 
-  @Setter private double goalAngleDeg = stowAngleDeg;
+  @Setter private double goalAngleDeg = stowAngleDeg.get();
   private Boolean lastPivotBrakeMode = null;
 
   private Boolean lastRollersBrakeMode = null;
   @Getter private boolean running = false;
   @Getter private boolean homed = false;
+  private boolean zeroedThisCycle = false;
+  private double lastZeroedPositionRotations = Double.NaN;
 
   public Intake(IntakePivotIO pivotIO, IntakeRollersIO rollersIO) {
     this.pivotIO = pivotIO;
@@ -195,6 +199,9 @@ public class Intake extends FullSubsystem {
     Logger.recordOutput("IntakeRollers/Running", running);
     Logger.recordOutput("IntakeRollers/AppliedVolts", rollersOutputs.appliedVolts);
     Logger.recordOutput("Intake/Homed", homed);
+    Logger.recordOutput("Intake/HomingJustZeroed", zeroedThisCycle);
+    Logger.recordOutput("IntakePivot/LastZeroedPositionRotations", lastZeroedPositionRotations);
+    zeroedThisCycle = false;
   }
 
   @Override
@@ -202,7 +209,7 @@ public class Intake extends FullSubsystem {
     // Only set closed-loop if nothing else (runVolts) has taken control
     if (DriverStation.isEnabled()
         && pivotOutputs.mode != IntakePivotIO.IntakePivotIOOutputMode.OPEN_LOOP) {
-      double clampedGoalDeg = MathUtil.clamp(goalAngleDeg, minAngleDeg, maxAngleDeg);
+      double clampedGoalDeg = MathUtil.clamp(goalAngleDeg, minAngleDeg.get(), maxAngleDeg.get());
       pivotOutputs.positionRotations = clampedGoalDeg / 360.0;
       pivotOutputs.mode = IntakePivotIO.IntakePivotIOOutputMode.CLOSED_LOOP;
       pivotOutputs.volts = 0.0;
@@ -236,16 +243,16 @@ public class Intake extends FullSubsystem {
 
   @AutoLogOutput(key = "IntakePivot/IsDeployed")
   public boolean isDeployed() {
-    return goalAngleDeg > stowAngleDeg;
+    return goalAngleDeg > stowAngleDeg.get();
   }
 
   public void deploy() {
     homed = false;
-    setGoalAngleDeg(deployAngleDeg);
+    setGoalAngleDeg(deployAngleDeg.get());
   }
 
   public void stow() {
-    setGoalAngleDeg(stowAngleDeg);
+    setGoalAngleDeg(stowAngleDeg.get());
   }
 
   /** Command to move the pivot to a fixed angle. */
@@ -279,6 +286,12 @@ public class Intake extends FullSubsystem {
   public void runVolts(double volts) {
     running = true;
     rollersOutputs.appliedVolts = volts;
+  }
+
+  public void runVoltsPivot(double volts) {
+    running = false;
+    pivotOutputs.mode = IntakePivotIO.IntakePivotIOOutputMode.OPEN_LOOP;
+    pivotOutputs.volts = volts;
   }
 
   public void stop() {
@@ -342,36 +355,28 @@ public class Intake extends FullSubsystem {
    * Stows the intake while pulsing the rollers in reverse to help clear and settle the mechanism.
    */
   public Command homeCommand() {
-    return Commands.defer(
+    return runEnd(
             () -> {
-              final Timer pulseTimer = new Timer();
-              double pulsePeriodSec = homingPulseOnSec.get() + homingPulseOffSec.get();
-              double pulseOnWindowSec = homingPulseOnSec.get();
-
-              return runEnd(
-                      () -> {
-                        stow();
-                        double timeInCycle = pulseTimer.get() % pulsePeriodSec;
-                        double reverseVolts =
-                            timeInCycle < pulseOnWindowSec ? homingRollerReverseVolts.get() : 0.0;
-                        runVolts(reverseVolts);
-                      },
-                      () -> {
-                        stop();
-                        stow();
-                        markHomed();
-                      })
-                  .beforeStarting(
-                      () -> {
-                        clearHomed();
-                        stop();
-                        stow();
-                        pulseTimer.restart();
-                      })
-                  .withTimeout(homingDurationSec.get())
-                  .withName("Intake.home");
+              stow();
+              // Run the pivot at a negative voltage to push into the 0 position
+              runVoltsPivot(-2.0); // Consider making this a tunable number if needed
             },
-            java.util.Set.of(this))
+            () -> {
+              stop();
+              stow();
+              lastZeroedPositionRotations = 0.0;
+              pivotIO.resetPosition(lastZeroedPositionRotations);
+              zeroedThisCycle = true;
+              setGoalAngleDeg(stowAngleDeg.get());
+              markHomed();
+            })
+        .beforeStarting(
+            () -> {
+              clearHomed();
+              stop();
+              stow();
+            })
+        .withTimeout(homingDurationSec.get())
         .ignoringDisable(true)
         .withName("Intake.home");
   }

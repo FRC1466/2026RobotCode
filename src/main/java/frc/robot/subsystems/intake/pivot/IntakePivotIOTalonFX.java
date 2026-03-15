@@ -36,7 +36,7 @@ public class IntakePivotIOTalonFX implements IntakePivotIO {
 
   private final MotionMagicVoltage request = new MotionMagicVoltage(0).withSlot(0);
   private final MotionMagicConfigs motionMagicConfigs =
-      new MotionMagicConfigs().withMotionMagicAcceleration(120).withMotionMagicCruiseVelocity(120);
+      new MotionMagicConfigs().withMotionMagicAcceleration(3).withMotionMagicCruiseVelocity(1.0);
   private final VoltageOut voltageRequest = new VoltageOut(0);
 
   private double lastKp = 0.0;
@@ -48,7 +48,7 @@ public class IntakePivotIOTalonFX implements IntakePivotIO {
     var config = new TalonFXConfiguration();
     config.CurrentLimits.SupplyCurrentLimit = 40.0;
     config.CurrentLimits.SupplyCurrentLimitEnable = true;
-    config.MotorOutput.Inverted = InvertedValue.CounterClockwise_Positive;
+    config.MotorOutput.Inverted = InvertedValue.Clockwise_Positive;
     config.MotorOutput.NeutralMode = NeutralModeValue.Brake;
 
     config.Feedback.SensorToMechanismRatio = GEAR_RATIO;
@@ -93,6 +93,11 @@ public class IntakePivotIOTalonFX implements IntakePivotIO {
   @Override
   public void setBrakeMode(boolean enableBrake) {
     talon.setNeutralMode(enableBrake ? NeutralModeValue.Brake : NeutralModeValue.Coast);
+  }
+
+  @Override
+  public void resetPosition(double positionRotations) {
+    talon.setPosition(positionRotations);
   }
 
   @Override

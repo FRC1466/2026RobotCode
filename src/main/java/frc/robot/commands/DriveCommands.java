@@ -101,7 +101,7 @@ public class DriveCommands extends Command {
 
   @AutoLogOutput private DriveMode currentDriveMode = DriveMode.NORMAL;
   private boolean launchRequested = false;
-  private boolean zoneAutoLockDisabled = false;
+  private boolean zoneAutoLockDisabled = true;
 
   /** Creates a new DriveCommands. */
   public DriveCommands(Drive drive, CommandXboxController controller) {

@@ -24,6 +24,7 @@ public class IntakePivotIOSim implements IntakePivotIO {
   private final PIDController controller =
       new PIDController(0.0, 0.0, 0.0, Constants.loopPeriodSecs);
 
+  private double positionOffsetRad = 0.0;
   private double appliedVolts = 0.0;
   private boolean closedLoop = false;
 
@@ -37,14 +38,21 @@ public class IntakePivotIOSim implements IntakePivotIO {
     sim.update(Constants.loopPeriodSecs);
 
     double position = MathUtil.clamp(sim.getAngleRads(), minAngle, maxAngle);
+    double reportedPosition = position - positionOffsetRad;
 
     inputs.motorConnected = true;
-    inputs.positionRotations = position / (2 * Math.PI);
+    inputs.positionRotations = reportedPosition / (2 * Math.PI);
     inputs.velocityRotationsPerSec = sim.getVelocityRadPerSec() / (2 * Math.PI);
     inputs.appliedVolts = appliedVolts;
     inputs.supplyCurrentAmps = sim.getCurrentDrawAmps();
     inputs.torqueCurrentAmps = sim.getCurrentDrawAmps();
     inputs.tempCelsius = 0.0;
+  }
+
+  @Override
+  public void resetPosition(double positionRotations) {
+    positionOffsetRad =
+        MathUtil.clamp(sim.getAngleRads(), minAngle, maxAngle) - positionRotations * 2 * Math.PI;
   }
 
   @Override

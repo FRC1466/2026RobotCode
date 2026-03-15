@@ -36,4 +36,6 @@ public interface IntakePivotIO {
   default void applyOutputs(IntakePivotIOOutputs outputs) {}
 
   default void setBrakeMode(boolean enableBrake) {}
+
+  default void resetPosition(double positionRotations) {}
 }

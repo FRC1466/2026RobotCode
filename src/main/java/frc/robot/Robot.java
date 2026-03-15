@@ -19,6 +19,7 @@ import edu.wpi.first.wpilibj.simulation.RoboRioSim;
 import edu.wpi.first.wpilibj2.command.Command;
 import edu.wpi.first.wpilibj2.command.CommandScheduler;
 import frc.robot.Constants.RobotType;
+import frc.robot.subsystems.Choreographer;
 import frc.robot.subsystems.shooter.ShotCalculator;
 import frc.robot.util.FullSubsystem;
 import frc.robot.util.LoggedTracer;
@@ -236,9 +237,18 @@ public class Robot extends LoggedRobot {
   @Override
   public void autonomousPeriodic() {}
 
+  @Override
+  public void autonomousExit() {
+    CommandScheduler.getInstance().cancelAll();
+    robotContainer.getChoreographer().setGoalCommand(Choreographer.Goal.IDLE).ignoringDisable(true);
+  }
+
   /** This function is called once when teleop is enabled. */
   @Override
-  public void teleopInit() {}
+  public void teleopInit() {
+    CommandScheduler.getInstance().cancelAll();
+    robotContainer.getChoreographer().setGoalCommand(Choreographer.Goal.IDLE).ignoringDisable(true);
+  }
 
   /** This function is called periodically during operator control. */
   @Override

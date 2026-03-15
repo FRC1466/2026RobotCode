@@ -375,20 +375,32 @@ public class Autos {
         Commands.sequence(
             choreographer.setGoalCommand(Choreographer.Goal.SCORE_HUB),
             Commands.waitUntil(choreographer::isReadyToShoot),
-            Commands.waitUntil(choreographer::isDoneShooting).withTimeout(10.0),
+            Commands.deadline(
+                Commands.waitUntil(choreographer::isDoneShooting).withTimeout(10.0),
+                Commands.repeatingSequence(
+                    intake.deployCommand(),
+                    Commands.waitSeconds(1),
+                    intake.stowCommand(),
+                    Commands.waitSeconds(1))),
             choreographer.setGoalCommand(Choreographer.Goal.IDLE));
 
     Command pathfindCommand =
-        Commands.defer(
-            () ->
-                AutoBuilder.pathfindToPose(
-                    AllianceFlipUtil.apply(
-                        new Pose2d(2.5, FieldConstants.fieldWidth / 2.0, Rotation2d.kZero)),
-                    new PathConstraints(3.0, 3.0, 2 * Math.PI, 4 * Math.PI),
-                    0.0),
-            Set.<Subsystem>of(drive));
+        Commands.sequence(
+            Commands.defer(
+                () ->
+                    AutoBuilder.pathfindToPose(
+                        AllianceFlipUtil.apply(
+                            new Pose2d(2, FieldConstants.fieldWidth / 2.0, Rotation2d.kZero)),
+                        new PathConstraints(3.0, 3.0, 2 * Math.PI, 4 * Math.PI),
+                        0.0),
+                Set.<Subsystem>of(drive)),
+            Commands.run(drive::stopWithX).withTimeout(.1));
 
-    routine.active().onTrue(Commands.sequence(pathfindCommand, shootSequence));
+    routine
+        .active()
+        .onTrue(
+            Commands.sequence(
+                pathfindCommand, intake.homeCommand().withTimeout(0.5), shootSequence));
 
     return routine;
   }

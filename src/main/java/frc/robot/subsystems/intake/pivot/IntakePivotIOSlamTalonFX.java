@@ -113,6 +113,12 @@ public class IntakePivotIOSlamTalonFX implements IntakePivotIO {
   }
 
   @Override
+  public void resetPosition(double positionRotations) {
+    talon.setPosition(positionRotations);
+    lastGoalRotations = positionRotations;
+  }
+
+  @Override
   public void applyOutputs(IntakePivotIOOutputs outputs) {
     if (outputs.mode == IntakePivotIOOutputMode.OPEN_LOOP) {
       state = SlamState.IDLE;

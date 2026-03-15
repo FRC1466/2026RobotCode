@@ -191,23 +191,16 @@ public class Flywheel extends FullSubsystem {
 
   /** Run closed loop at the specified velocity. */
   public void runVelocity(double velocityRotationsPerSec) {
-    double kS;
-    double kV;
+
     switch (controlMode) {
       case VOLTAGE -> {
         outputs.mode = FlywheelIOOutputMode.VELOCITY_VOLTAGE;
-        kS = voltageKS.get();
-        kV = voltageKV.get();
       }
       case TORQUE_CURRENT -> {
         outputs.mode = FlywheelIOOutputMode.VELOCITY_TORQUE_CURRENT;
-        kS = torqueCurrentKS.get();
-        kV = torqueCurrentKV.get();
       }
       default -> {
         outputs.mode = FlywheelIOOutputMode.VELOCITY_VOLTAGE;
-        kS = voltageKS.get();
-        kV = voltageKV.get();
       }
     }
     outputs.velocityRotationsPerSec = velocityRotationsPerSec;

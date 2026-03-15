@@ -24,10 +24,10 @@ public class VisionConstants {
   // WPILib: X=forward(-cadY), Y=left(+cadX), Z=up(-cadZ)
   public static Transform3d robotToCamera0 =
       new Transform3d(
-          Units.inchesToMeters(3.466729),
-          Units.inchesToMeters(-9.009843),
-          Units.inchesToMeters(20.465837),
-          new Rotation3d(0.0, Units.degreesToRadians(-41), 0.0));
+          Units.inchesToMeters(3.977574),
+          Units.inchesToMeters(-9.194390),
+          Units.inchesToMeters(20.073830),
+          new Rotation3d(0.0, Units.degreesToRadians(-70), 0.0));
   public static Transform3d robotToCamera1 = new Transform3d();
 
   // Basic filtering thresholds
