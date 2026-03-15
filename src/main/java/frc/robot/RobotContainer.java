@@ -57,6 +57,8 @@ import frc.robot.util.HubShiftUtil;
 import frc.robot.util.LoggedTunableNumber;
 import frc.robot.util.TriggerUtil;
 import java.util.Optional;
+
+import lombok.Getter;
 import lombok.experimental.ExtensionMethod;
 import org.littletonrobotics.junction.networktables.LoggedDashboardChooser;
 
@@ -69,15 +71,15 @@ import org.littletonrobotics.junction.networktables.LoggedDashboardChooser;
 @ExtensionMethod({TriggerUtil.class})
 public class RobotContainer {
   // Subsystems
-  private Drive drive;
-  private Vision vision;
-  private Flywheel flywheel;
-  private Hood hood;
-  private Indexer indexer;
-  private Kicker kicker;
-  private Choreographer choreographer;
-  private Intake intake;
-  private Autos autos;
+  @Getter private Drive drive;
+  @Getter private Vision vision;
+  @Getter private Flywheel flywheel;
+  @Getter private Hood hood;
+  @Getter private Indexer indexer;
+  @Getter private Kicker kicker;
+  @Getter private Choreographer choreographer;
+  @Getter private Intake intake;
+  @Getter private Autos autos;
 
   // Controller
   private final CommandXboxController controller = new CommandXboxController(0);
@@ -256,10 +258,6 @@ public class RobotContainer {
 
     // Configure the button bindings
     configureButtonBindings();
-  }
-
-  public Intake getIntake() {
-    return intake;
   }
 
   /**
