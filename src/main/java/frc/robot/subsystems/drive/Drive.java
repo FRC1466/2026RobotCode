@@ -40,7 +40,6 @@ import edu.wpi.first.wpilibj.Alert;
 import edu.wpi.first.wpilibj.Alert.AlertType;
 import edu.wpi.first.wpilibj.DriverStation;
 import edu.wpi.first.wpilibj.DriverStation.Alliance;
-import edu.wpi.first.wpilibj.RobotBase;
 import edu.wpi.first.wpilibj2.command.Command;
 import edu.wpi.first.wpilibj2.command.SubsystemBase;
 import edu.wpi.first.wpilibj2.command.sysid.SysIdRoutine;
@@ -261,9 +260,7 @@ public class Drive extends SubsystemBase {
     // all use the same corrected convention.
     speeds =
         new ChassisSpeeds(
-            speeds.vxMetersPerSecond,
-            speeds.vyMetersPerSecond,
-            RobotBase.isReal() ? -speeds.omegaRadiansPerSecond : speeds.omegaRadiansPerSecond);
+            speeds.vxMetersPerSecond, speeds.vyMetersPerSecond, speeds.omegaRadiansPerSecond);
 
     // Swerve setpoint generator
     previousSetpoint = setpointGenerator.generateSetpoint(previousSetpoint, speeds, 0.02);
