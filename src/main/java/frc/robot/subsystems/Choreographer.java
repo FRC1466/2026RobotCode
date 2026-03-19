@@ -6,6 +6,7 @@ package frc.robot.subsystems;
 import edu.wpi.first.math.geometry.Rotation2d;
 import edu.wpi.first.math.geometry.Translation2d;
 import edu.wpi.first.wpilibj.DriverStation;
+import edu.wpi.first.wpilibj.smartdashboard.SmartDashboard;
 import edu.wpi.first.wpilibj2.command.Command;
 import edu.wpi.first.wpilibj2.command.SubsystemBase;
 import frc.robot.FieldConstants;
@@ -259,9 +260,13 @@ public class Choreographer extends SubsystemBase {
     Logger.recordOutput("Choreographer/IntakeRunning", intake.isRunning());
     Logger.recordOutput("Choreographer/HasShotParams", hasShotParams());
     Logger.recordOutput("Choreographer/Passing", hasShotParams() && cachedShotParams.passing());
+    SmartDashboard.putBoolean("Choreographer/Passing", hasShotParams() && cachedShotParams.passing());
     var shiftInfo = HubShiftUtil.getShiftedShiftInfo();
     Logger.recordOutput("Choreographer/HubActive", shiftInfo.active());
+    SmartDashboard.putBoolean("Choreographer/HubActive", shiftInfo.active());
     Logger.recordOutput("Choreographer/HubShift", shiftInfo.currentShift().name());
+    SmartDashboard.putString("Choreographer/HubShiftName", shiftInfo.currentShift().name());
     Logger.recordOutput("Choreographer/HubTimeRemaining", shiftInfo.remainingTime());
+    SmartDashboard.putNumber("Choreographer/HubTimeRemaining", shiftInfo.remainingTime());
   }
 }

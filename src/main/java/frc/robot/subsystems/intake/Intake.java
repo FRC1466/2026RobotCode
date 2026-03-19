@@ -35,7 +35,7 @@ public class Intake extends FullSubsystem {
   private static final LoggedTunableNumber stowAngleDeg =
       new LoggedTunableNumber("IntakePivot/StowAngleDeg", 8.0);
   private static final LoggedTunableNumber deployAngleDeg =
-      new LoggedTunableNumber("IntakePivot/DeployAngleDeg", 80);
+      new LoggedTunableNumber("IntakePivot/DeployAngleDeg", 78);
   private static final LoggedTunableNumber minAngleDeg =
       new LoggedTunableNumber("IntakePivot/MinAngleDeg", 0.0);
   private static final LoggedTunableNumber maxAngleDeg =
