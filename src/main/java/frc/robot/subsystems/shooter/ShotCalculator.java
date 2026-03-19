@@ -190,10 +190,10 @@ public class ShotCalculator {
     timeOfFlightMap.put(4.68, 1.1);
 
     // TODO: tune passing maps
-    passingHoodAngleMap.put(passingMinDistance, Rotation2d.fromDegrees(0.0));
-    passingHoodAngleMap.put(passingMaxDistance, Rotation2d.fromDegrees(0.0));
-    passingFlywheelSpeedMap.put(passingMinDistance, 0.0);
-    passingFlywheelSpeedMap.put(passingMaxDistance, 0.0);
+    passingHoodAngleMap.put(passingMinDistance, Rotation2d.fromDegrees(30));
+    passingHoodAngleMap.put(passingMaxDistance, Rotation2d.fromDegrees(30));
+    passingFlywheelSpeedMap.put(passingMinDistance, 45.0);
+    passingFlywheelSpeedMap.put(passingMaxDistance, 90.0);
     passingTimeOfFlightMap.put(passingMinDistance, 0.0);
     passingTimeOfFlightMap.put(passingMaxDistance, 0.0);
 
@@ -433,9 +433,8 @@ public class ShotCalculator {
     double flippedY = AllianceFlipUtil.apply(RobotState.getInstance().getEstimatedPose()).getY();
     boolean mirror = flippedY > FieldConstants.LinesHorizontal.center;
 
-    return AllianceFlipUtil.apply(
-        new Translation2d(
-            xPassTarget, mirror ? FieldConstants.fieldWidth - yPassTarget : yPassTarget));
+    return new Translation2d(
+        xPassTarget, mirror ? FieldConstants.fieldWidth - yPassTarget : yPassTarget);
   }
 
   private static Rotation2d getDriveAngleWithShooterOffset(Pose2d robotPose, Translation2d target) {

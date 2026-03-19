@@ -53,7 +53,6 @@ import frc.robot.subsystems.vision.VisionIO;
 import frc.robot.subsystems.vision.VisionIOPhotonVision;
 import frc.robot.subsystems.vision.VisionIOPhotonVisionSim;
 import frc.robot.util.HubShiftUtil;
-import frc.robot.util.LoggedTunableNumber;
 import frc.robot.util.TriggerUtil;
 import java.util.Optional;
 import lombok.Getter;
@@ -93,13 +92,13 @@ public class RobotContainer {
 
   // Tuning values - editable live via NetworkTables when tuningMode=true, otherwise fixed defaults.
   // Visible under /Tuning/ in AdvantageScope / NT explorer.
-  private static final LoggedTunableNumber manualFlywheelSpeed =
+  /* private static final LoggedTunableNumber manualFlywheelSpeed =
       new LoggedTunableNumber("Shooter/ManualFlywheelSpeedRPS", 45.0);
   private static final LoggedTunableNumber manualHoodAngle =
-      new LoggedTunableNumber("Shooter/ManualHoodAngleDeg", 0.1);
+      new LoggedTunableNumber("Shooter/ManualHoodAngleDeg", 0.1); */
   private static final double flywheelSpeedOffsetPercentStep = 0.05;
 
-  /** The container for the robot. Contains subsystems, OI devices, and commands. */
+  /** The container for the robot. Contains subsystems, IO devices, and commands. */
   public RobotContainer() {
     if (Constants.getMode() != Constants.Mode.REPLAY) {
       switch (Constants.robot) {
