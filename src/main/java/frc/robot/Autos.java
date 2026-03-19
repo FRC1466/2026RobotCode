@@ -370,6 +370,8 @@ public class Autos {
   public AutoRoutine driveBackPreloadAuto() {
     AutoRoutine routine = autoFactory.newRoutine("Drive Back Preload Auto");
 
+    AutoTrajectory trajectory = routine.trajectory("CentralAuto");
+
     Command shootSequence =
         Commands.sequence(
             choreographer.setGoalCommand(Choreographer.Goal.SCORE_HUB),
@@ -383,21 +385,12 @@ public class Autos {
                     Commands.waitSeconds(1))),
             choreographer.setGoalCommand(Choreographer.Goal.IDLE));
 
-    Command pathfindCommand =
-        Commands.defer(
-            () ->
-                AutoBuilder.pathfindToPose(
-                    AllianceFlipUtil.apply(
-                        new Pose2d(2, FieldConstants.fieldWidth / 2.0, Rotation2d.kZero)),
-                    new PathConstraints(3.0, 3.0, 2 * Math.PI, 4 * Math.PI),
-                    0.0),
-            Set.<Subsystem>of(drive));
-
-    routine
-        .active()
+    routine.active().onTrue(trajectory.cmd());
+    trajectory
+        .done()
         .onTrue(
             Commands.sequence(
-                pathfindCommand, intake.homeCommand().withTimeout(0.5), shootSequence));
+                shootSequence, Commands.sequence(intake.stowCommand(), intake.homeCommand())));
 
     return routine;
   }

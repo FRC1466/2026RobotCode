@@ -36,7 +36,7 @@ public class IntakePivotIOTalonFX implements IntakePivotIO {
 
   private final MotionMagicVoltage request = new MotionMagicVoltage(0).withSlot(0);
   private final MotionMagicConfigs motionMagicConfigs =
-      new MotionMagicConfigs().withMotionMagicAcceleration(1).withMotionMagicCruiseVelocity(.25);
+      new MotionMagicConfigs().withMotionMagicAcceleration(1.5).withMotionMagicCruiseVelocity(2);
   private final VoltageOut voltageRequest = new VoltageOut(0);
 
   private double lastKp = 0.0;
