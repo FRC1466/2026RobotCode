@@ -78,7 +78,7 @@ public class DriveCommands extends Command {
   public static final LinearVelocity SLOW_DRIVE_SPEED = MetersPerSecond.of(3);
   public static final AngularVelocity SLOW_ROT_SPEED = RotationsPerSecond.of(1);
 
-  public static final LinearAcceleration MAX_TELEOP_ACCEL = MetersPerSecondPerSecond.of(25);
+  public static final LinearAcceleration MAX_TELEOP_ACCEL = MetersPerSecondPerSecond.of(20);
 
   private int flipFactor = 1; // 1 for normal, -1 for flipped
   private boolean headingLocked = false;

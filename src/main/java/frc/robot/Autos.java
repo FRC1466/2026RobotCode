@@ -331,8 +331,7 @@ public class Autos {
           Pose2d bluePose =
               aimedPose.getX() <= 3.0
                   ? aimedPose
-                  : ShotCalculator.getStationaryAimedPose(
-                      new Translation2d(3.0, targetTranslation.getY()));
+                  : new Pose2d(3.0, targetTranslation.getY(), Rotation2d.kZero);
 
           return AllianceFlipUtil.apply(bluePose);
         };
@@ -385,16 +384,14 @@ public class Autos {
             choreographer.setGoalCommand(Choreographer.Goal.IDLE));
 
     Command pathfindCommand =
-        Commands.sequence(
-            Commands.defer(
-                () ->
-                    AutoBuilder.pathfindToPose(
-                        AllianceFlipUtil.apply(
-                            new Pose2d(2, FieldConstants.fieldWidth / 2.0, Rotation2d.kZero)),
-                        new PathConstraints(3.0, 3.0, 2 * Math.PI, 4 * Math.PI),
-                        0.0),
-                Set.<Subsystem>of(drive)),
-            Commands.run(drive::stopWithX).withTimeout(.1));
+        Commands.defer(
+            () ->
+                AutoBuilder.pathfindToPose(
+                    AllianceFlipUtil.apply(
+                        new Pose2d(2, FieldConstants.fieldWidth / 2.0, Rotation2d.kZero)),
+                    new PathConstraints(3.0, 3.0, 2 * Math.PI, 4 * Math.PI),
+                    0.0),
+            Set.<Subsystem>of(drive));
 
     routine
         .active()
