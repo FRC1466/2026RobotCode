@@ -216,6 +216,7 @@ public class Choreographer extends SubsystemBase {
     return currentState == State.SHOOTING;
   }
 
+  @SuppressWarnings("unused")
   @AutoLogOutput(key = "Choreographer/DoneShooting")
   public boolean isDoneShooting() {
     if (true) return false;
