@@ -289,22 +289,38 @@ public class RobotContainer {
 
     // Drive overrides
 
-    // Left Bumper: slow mode (hold) - default is 4.5 m/s, slow to 3 m/s
-    controller.leftBumper().whileTrue(driveCommand.slowDownCommand());
+    // Left Bumper: toggle drive assist
+    controller
+        .leftBumper()
+        .whileTrue(
+            Commands.startEnd(
+                () -> driveCommand.setZoneAutoLockDisabled(false),
+                () -> driveCommand.setZoneAutoLockDisabled(true)));
 
     // Right Bumper: keep the two dashboard overrides in sync - hub preset override for manual-only
     // shooting, plus disabling trench/bump auto-align. If either is off, the button turns both on;
     // if both are already on, the button turns both off.
+    /* controller
+    .rightBumper()
+    .onTrue(
+        Commands.runOnce(
+                () -> {
+                  boolean manualOnlyEnabled =
+                      !(ShotCalculator.getInstance().isHubPresetOverride()
+                          && driveCommand.isZoneAutoLockDisabled());
+                  ShotCalculator.getInstance().setHubPresetOverride(manualOnlyEnabled);
+                  driveCommand.setZoneAutoLockDisabled(manualOnlyEnabled);
+                })
+            .withName("SetManualOnlyShooting")
+            .ignoringDisable(true)); */
+
     controller
         .rightBumper()
         .onTrue(
             Commands.runOnce(
                     () -> {
-                      boolean manualOnlyEnabled =
-                          !(ShotCalculator.getInstance().isHubPresetOverride()
-                              && driveCommand.isZoneAutoLockDisabled());
-                      ShotCalculator.getInstance().setHubPresetOverride(manualOnlyEnabled);
-                      driveCommand.setZoneAutoLockDisabled(manualOnlyEnabled);
+                      boolean manualMode = !ShotCalculator.getInstance().isHubPresetOverride();
+                      ShotCalculator.getInstance().setHubPresetOverride(manualMode);
                     })
                 .withName("SetManualOnlyShooting")
                 .ignoringDisable(true));
@@ -362,10 +378,10 @@ public class RobotContainer {
     // Tuning mode (active only when Choreographer is disabled via Back button)
 
     // Back (solo): toggle Choreographer enabled - when disabled, X/Y + POV tune directly
-    controller
-        .back()
-        .and(controller.start().negate())
-        .onTrue(choreographer.toggleEnabledCommand().ignoringDisable(true));
+    /* controller
+    .back()
+    .and(controller.start().negate())
+    .onTrue(choreographer.toggleEnabledCommand().ignoringDisable(true));*/
 
     // B Button: toggle intake deploy/stow.
     controller
@@ -375,20 +391,20 @@ public class RobotContainer {
                 .withName("ToggleIntakeDeploy"));
 
     // X Button: hold to spin flywheel at manualFlywheelSpeed (tuning, Choreographer off)
-    controller
-        .x()
-        .whileTrue(
-            Commands.parallel(
-                    flywheel.runFixedCommand(manualFlywheelSpeed).withName("TuneFlywheelSpin"),
-                    kicker.runCommand())
-                .withName("TuneFlywheelAndKicker"))
-        .onFalse(Commands.parallel(flywheel.stopCommand(), kicker.stopCommand()));
+    /*controller
+    .x()
+    .whileTrue(
+        Commands.parallel(
+                flywheel.runFixedCommand(manualFlywheelSpeed).withName("TuneFlywheelSpin"),
+                kicker.runCommand())
+            .withName("TuneFlywheelAndKicker"))
+    .onFalse(Commands.parallel(flywheel.stopCommand(), kicker.stopCommand()));*/
 
     // Y Button: hold to move hood to manualHoodAngle (tuning, Choreographer off)
-    controller
-        .y()
-        .whileTrue(hood.runFixedCommand(manualHoodAngle).withName("TuneHoodAngle"))
-        .onFalse(hood.stowCommand());
+    /*controller
+    .y()
+    .whileTrue(hood.runFixedCommand(manualHoodAngle).withName("TuneHoodAngle"))
+    .onFalse(hood.stowCommand());*/
 
     // Mode Init
     RobotModeTriggers.teleop().onTrue(Commands.runOnce(HubShiftUtil::initialize));

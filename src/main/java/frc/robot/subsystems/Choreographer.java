@@ -147,19 +147,7 @@ public class Choreographer extends SubsystemBase {
     boolean hubActive =
         HubShiftUtil.getShiftedShiftInfo().active() || !useHubShiftUtil.getAsBoolean();
 
-    if (!hubActive) {
-      stopAll();
-      currentState = State.IDLE;
-      return;
-    }
-
     cachedShotParams = ShotCalculator.getInstance().getParameters();
-
-    if (cachedShotParams == null || !cachedShotParams.isValid()) {
-      stopAll();
-      currentState = State.SPINNING_UP;
-      return;
-    }
 
     flywheel.runVelocity(cachedShotParams.flywheelSpeedRPS());
     hood.setGoalAngleDeg(cachedShotParams.hoodAngleDeg());
@@ -168,7 +156,11 @@ public class Choreographer extends SubsystemBase {
     boolean hoodReady = hood.isAtGoal();
     boolean driveAlignedForHubShot = cachedDriveAlignedForHubShot;
 
-    if (flywheelReady && hoodReady && driveAlignedForHubShot) {
+    if (flywheelReady
+        && hoodReady
+        && driveAlignedForHubShot
+        && cachedShotParams.isValid()
+        && (hubActive || cachedShotParams.passing())) {
       indexer.run();
       kicker.run();
       currentState = State.SHOOTING;

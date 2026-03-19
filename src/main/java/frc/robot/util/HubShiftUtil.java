@@ -148,6 +148,7 @@ public class HubShiftUtil {
     return getShiftInfo(getSchedule(), shiftStartTimes, shiftEndTimes);
   }
 
+  // Includes fudge time
   public static ShiftInfo getShiftedShiftInfo() {
     boolean[] shiftSchedule = getSchedule();
     // Starting active
