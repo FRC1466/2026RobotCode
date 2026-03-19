@@ -93,7 +93,7 @@ public class Choreographer extends SubsystemBase {
     this.kicker = kicker;
     this.intake = intake;
     this.driveAlignedForHubShot = driveAlignedForHubShot;
-    this.useHubShiftUtil = new LoggedNetworkBoolean("UseHubShiftUtil", false);
+    this.useHubShiftUtil = new LoggedNetworkBoolean("UseHubShiftUtil", true);
   }
 
   @Override
@@ -260,7 +260,8 @@ public class Choreographer extends SubsystemBase {
     Logger.recordOutput("Choreographer/IntakeRunning", intake.isRunning());
     Logger.recordOutput("Choreographer/HasShotParams", hasShotParams());
     Logger.recordOutput("Choreographer/Passing", hasShotParams() && cachedShotParams.passing());
-    SmartDashboard.putBoolean("Choreographer/Passing", hasShotParams() && cachedShotParams.passing());
+    SmartDashboard.putBoolean(
+        "Choreographer/Passing", hasShotParams() && cachedShotParams.passing());
     var shiftInfo = HubShiftUtil.getShiftedShiftInfo();
     Logger.recordOutput("Choreographer/HubActive", shiftInfo.active());
     SmartDashboard.putBoolean("Choreographer/HubActive", shiftInfo.active());
