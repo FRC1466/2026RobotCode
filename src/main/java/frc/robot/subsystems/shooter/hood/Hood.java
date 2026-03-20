@@ -17,6 +17,7 @@ import frc.robot.Robot;
 import frc.robot.subsystems.shooter.ShotCalculator;
 import frc.robot.subsystems.shooter.hood.HoodIO.HoodIOOutputMode;
 import frc.robot.subsystems.shooter.hood.HoodIO.HoodIOOutputs;
+import frc.robot.util.BatteryTracer;
 import frc.robot.util.FullSubsystem;
 import frc.robot.util.LoggedTracer;
 import frc.robot.util.LoggedTunableNumber;
@@ -171,6 +172,18 @@ public class Hood extends FullSubsystem {
     if (DriverStation.isEnabled()) {
       outputs.mode = HoodIOOutputMode.CLOSED_LOOP;
     }
+
+    // In your periodic() method:
+    double totalCurrent = 0.0;
+    // For each motor, add its current (replace with your actual input fields)
+    totalCurrent += inputs.supplyCurrentAmps;
+    // Repeat for all relevant motors in the subsystem
+    BatteryTracer.addCurrent("Hood", totalCurrent); // Replace "SubsystemName" with your subsystem
+
+    // In your periodicAfterScheduler() method:
+    BatteryTracer.publish("Hood"); // Replace "SubsystemName" with your subsystem
+
+    LoggedTracer.record("Hood/AfterScheduler");
   }
 
   @AutoLogOutput(key = "Hood/MeasuredAngleDeg")

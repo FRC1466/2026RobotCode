@@ -22,6 +22,7 @@ import edu.wpi.first.wpilibj2.command.CommandScheduler;
 import frc.robot.Constants.RobotType;
 import frc.robot.subsystems.Choreographer;
 import frc.robot.subsystems.shooter.ShotCalculator;
+import frc.robot.util.BatteryTracer;
 import frc.robot.util.FullSubsystem;
 import frc.robot.util.LoggedTracer;
 import java.lang.reflect.Field;
@@ -180,6 +181,8 @@ public class Robot extends LoggedRobot {
   public void robotPeriodic() {
     // Clear shooting parameters for the new loop
     ShotCalculator.getInstance().clearShootingParameters();
+
+    BatteryTracer.reset();
 
     // Main periodic functions
     LoggedTracer.reset();
