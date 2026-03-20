@@ -147,6 +147,9 @@ public class Choreographer extends SubsystemBase {
   private void handleScoreHub() {
     boolean hubActive =
         HubShiftUtil.getShiftedShiftInfo().active() || !useHubShiftUtil.getAsBoolean();
+    if (!DriverStation.isFMSAttached()) {
+      hubActive = true;
+    }
 
     cachedShotParams = ShotCalculator.getInstance().getParameters();
 
