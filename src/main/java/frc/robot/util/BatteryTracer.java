@@ -13,10 +13,12 @@ public class BatteryTracer {
 
   // Stores accumulated current per subsystem for the current cycle
   private static final Map<String, Double> currentMap = new HashMap<>();
+  private static double totalCurrent = 0.0;
 
   /** Reset all tracked subsystem currents. Should be called at the start of each cycle. */
   public static void reset() {
     currentMap.clear();
+    totalCurrent = 0.0;
   }
 
   /**
@@ -26,7 +28,8 @@ public class BatteryTracer {
    * @param current Current draw in amps to add for this subsystem
    */
   public static void addCurrent(String subsystemName, double current) {
-    currentMap.merge(subsystemName, current, Double::sum);
+    currentMap.merge(subsystemName, Math.abs(current), Double::sum);
+    totalCurrent += Math.abs(current);
   }
 
   /**
@@ -36,8 +39,13 @@ public class BatteryTracer {
    * @param subsystemName Name of the subsystem
    */
   public static void publish(String subsystemName) {
-    double totalCurrent = currentMap.getOrDefault(subsystemName, 0.0);
-    Logger.recordOutput("BatteryTracer/" + subsystemName + "Current", totalCurrent);
+    double subsystemCurrent = currentMap.getOrDefault(subsystemName, 0.0);
+    Logger.recordOutput("BatteryTracer/" + subsystemName + "Current", subsystemCurrent);
     currentMap.remove(subsystemName);
+  }
+
+  public static double publishTotal() {
+    Logger.recordOutput("BatteryTracer/TotalCurrent", totalCurrent);
+    return totalCurrent;
   }
 }

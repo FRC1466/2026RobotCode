@@ -182,6 +182,8 @@ public class Robot extends LoggedRobot {
     // Clear shooting parameters for the new loop
     ShotCalculator.getInstance().clearShootingParameters();
 
+    BatteryTracer.publishTotal();
+
     BatteryTracer.reset();
 
     // Main periodic functions

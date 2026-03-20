@@ -70,8 +70,8 @@ public class Module {
     // In your periodic() method:
     double totalCurrent = 0.0;
     // For each motor, add its current (replace with your actual input fields)
-    totalCurrent += inputs.driveCurrentAmps;
-    totalCurrent += inputs.turnCurrentAmps;
+    totalCurrent += inputs.driveSupplyCurrentAmps;
+    totalCurrent += inputs.turnSupplyCurrentAmps;
     // Repeat for all relevant motors in the subsystem
     BatteryTracer.addCurrent(
         "Module" + index, totalCurrent); // Replace "SubsystemName" with your subsystem
