@@ -19,7 +19,9 @@ import frc.robot.subsystems.intake.pivot.IntakePivotIOInputsAutoLogged;
 import frc.robot.subsystems.intake.rollers.IntakeRollersIO;
 import frc.robot.subsystems.intake.rollers.IntakeRollersIO.IntakeRollersIOOutputs;
 import frc.robot.subsystems.intake.rollers.IntakeRollersIOInputsAutoLogged;
+import frc.robot.util.BatteryTracer;
 import frc.robot.util.FullSubsystem;
+import frc.robot.util.LoggedTracer;
 import frc.robot.util.LoggedTunableNumber;
 import java.util.function.BooleanSupplier;
 import java.util.function.DoubleSupplier;
@@ -202,6 +204,8 @@ public class Intake extends FullSubsystem {
     Logger.recordOutput("Intake/HomingJustZeroed", zeroedThisCycle);
     Logger.recordOutput("IntakePivot/LastZeroedPositionRotations", lastZeroedPositionRotations);
     zeroedThisCycle = false;
+
+    LoggedTracer.record("Intake/Periodic");
   }
 
   @Override
@@ -226,6 +230,19 @@ public class Intake extends FullSubsystem {
     if (DriverStation.isEnabled()) {
       pivotOutputs.mode = IntakePivotIO.IntakePivotIOOutputMode.CLOSED_LOOP;
     }
+
+    // In your periodic() method:
+    double totalCurrent = 0.0;
+    // For each motor, add its current (replace with your actual input fields)
+    totalCurrent += pivotInputs.supplyCurrentAmps;
+    totalCurrent += rollersInputs.supplyCurrentAmps;
+    // Repeat for all relevant motors in the subsystem
+    BatteryTracer.addCurrent("Intake", totalCurrent); // Replace "SubsystemName" with your subsystem
+
+    // In your periodicAfterScheduler() method:
+    BatteryTracer.publish("Intake"); // Replace "SubsystemName" with your subsystem
+
+    LoggedTracer.record("Intake/AfterScheduler");
   }
 
   // Pivot API

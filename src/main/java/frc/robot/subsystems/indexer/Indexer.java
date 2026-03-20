@@ -11,7 +11,9 @@ import edu.wpi.first.wpilibj2.command.Command;
 import frc.robot.Constants;
 import frc.robot.Robot;
 import frc.robot.subsystems.indexer.IndexerIO.IndexerIOOutputs;
+import frc.robot.util.BatteryTracer;
 import frc.robot.util.FullSubsystem;
+import frc.robot.util.LoggedTracer;
 import frc.robot.util.LoggedTunableNumber;
 import java.util.function.BooleanSupplier;
 import lombok.Getter;
@@ -135,11 +137,25 @@ public class Indexer extends FullSubsystem {
     Logger.recordOutput("Indexer/Stalled", stalled);
     Logger.recordOutput("Indexer/Reversing", reversing);
     Logger.recordOutput("Indexer/AppliedVolts", outputs.appliedVolts);
+
+    // In your periodic() method:
+    double totalCurrent = 0.0;
+    // For each motor, add its current (replace with your actual input fields)
+    totalCurrent += inputs.supplyCurrentAmps;
+    // Repeat for all relevant motors in the subsystem
+    BatteryTracer.addCurrent(
+        "Indexer", totalCurrent); // Replace "SubsystemName" with your subsystem
+
+    // In your periodicAfterScheduler() method:
+    BatteryTracer.publish("Indexer"); // Replace "SubsystemName" with your subsystem
+
+    LoggedTracer.record("Indexer/Periodic");
   }
 
   @Override
   public void periodicAfterScheduler() {
     io.applyOutputs(outputs);
+    LoggedTracer.record("Indexer/AfterScheduler");
   }
 
   /** Run the indexer forward at the default voltage. */

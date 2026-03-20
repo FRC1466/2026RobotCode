@@ -9,7 +9,9 @@ import edu.wpi.first.wpilibj.DriverStation;
 import edu.wpi.first.wpilibj2.command.Command;
 import frc.robot.Robot;
 import frc.robot.subsystems.kicker.KickerIO.KickerIOOutputs;
+import frc.robot.util.BatteryTracer;
 import frc.robot.util.FullSubsystem;
+import frc.robot.util.LoggedTracer;
 import frc.robot.util.LoggedTunableNumber;
 import java.util.function.BooleanSupplier;
 import lombok.Getter;
@@ -66,11 +68,24 @@ public class Kicker extends FullSubsystem {
 
     Logger.recordOutput("Kicker/Running", running);
     Logger.recordOutput("Kicker/AppliedVolts", outputs.appliedVolts);
+
+    // In your periodic() method:
+    double totalCurrent = 0.0;
+    // For each motor, add its current (replace with your actual input fields)
+    totalCurrent += inputs.supplyCurrentAmps;
+    // Repeat for all relevant motors in the subsystem
+    BatteryTracer.addCurrent("Kicker", totalCurrent); // Replace "SubsystemName" with your subsystem
+
+    // In your periodicAfterScheduler() method:
+    BatteryTracer.publish("Kicker"); // Replace "SubsystemName" with your subsystem
+
+    LoggedTracer.record("Kicker/Periodic");
   }
 
   @Override
   public void periodicAfterScheduler() {
     io.applyOutputs(outputs);
+    LoggedTracer.record("Kicker/AfterScheduler");
   }
 
   /** Run the kicker forward at the default voltage. */

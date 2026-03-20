@@ -13,6 +13,7 @@ import frc.robot.Robot;
 import frc.robot.subsystems.shooter.ShotCalculator;
 import frc.robot.subsystems.shooter.flywheel.FlywheelIO.FlywheelIOOutputMode;
 import frc.robot.subsystems.shooter.flywheel.FlywheelIO.FlywheelIOOutputs;
+import frc.robot.util.BatteryTracer;
 import frc.robot.util.FullSubsystem;
 import frc.robot.util.LoggedTracer;
 import frc.robot.util.LoggedTunableNumber;
@@ -178,6 +179,18 @@ public class Flywheel extends FullSubsystem {
 
     updateShotDetection();
 
+    // In your periodic() method:
+    double totalCurrent = 0.0;
+    // For each motor, add its current (replace with your actual input fields)
+    totalCurrent += inputs.supplyCurrentMasterAmps;
+    totalCurrent += inputs.supplyCurrentFollowerAmps;
+    // Repeat for all relevant motors in the subsystem
+    BatteryTracer.addCurrent(
+        "Flywheel", totalCurrent); // Replace "SubsystemName" with your subsystem
+
+    // In your periodicAfterScheduler() method:
+    BatteryTracer.publish("Flywheel"); // Replace "SubsystemName" with your subsystem
+
     LoggedTracer.record("Flywheel/Periodic");
   }
 
@@ -185,7 +198,6 @@ public class Flywheel extends FullSubsystem {
   public void periodicAfterScheduler() {
     Logger.recordOutput("Flywheel/Mode", outputs.mode);
     io.applyOutputs(outputs);
-
     LoggedTracer.record("Flywheel/AfterScheduler");
   }
 
