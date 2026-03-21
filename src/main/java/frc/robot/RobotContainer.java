@@ -378,9 +378,9 @@ public class RobotContainer {
 
     // Back (solo): toggle Choreographer enabled - when disabled, X/Y + POV tune directly
     controller
-    .back()
-    .and(controller.start().negate())
-    .onTrue(choreographer.toggleEnabledCommand().ignoringDisable(true));
+        .back()
+        .and(controller.start().negate())
+        .onTrue(choreographer.toggleEnabledCommand().ignoringDisable(true));
 
     // B Button: toggle intake deploy/stow.
     controller
@@ -401,9 +401,9 @@ public class RobotContainer {
 
     // Y Button: hold to move hood to manualHoodAngle (tuning, Choreographer off)
     controller
-    .y()
-    .whileTrue(hood.runFixedCommand(() -> 30).withName("TuneHoodAngle"))
-    .onFalse(hood.stowCommand());
+        .y()
+        .whileTrue(hood.runFixedCommand(() -> 30).withName("TuneHoodAngle"))
+        .onFalse(hood.stowCommand());
 
     // Mode Init
     RobotModeTriggers.teleop().onTrue(Commands.runOnce(HubShiftUtil::initialize));

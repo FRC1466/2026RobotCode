@@ -263,7 +263,10 @@ public class Autos {
                 AllianceFlipUtil.apply(
                     new Pose2d(3.5, FieldConstants.fieldWidth / 2.0, Rotation2d.kZero))));
 
-    registerRoutine("Drive Left Preload Auto", this::driveLeftPreloadAuto, () -> startPoseOf(this::driveLeftPreloadAuto, routine -> routine.trajectory("LeftAuto")));
+    registerRoutine(
+        "Drive Left Preload Auto",
+        this::driveLeftPreloadAuto,
+        () -> startPoseOf(this::driveLeftPreloadAuto, routine -> routine.trajectory("LeftAuto")));
 
     autoStartField = new edu.wpi.first.wpilibj.smartdashboard.Field2d();
     SmartDashboard.putData("Auto Start Pose", autoStartField);
@@ -375,17 +378,19 @@ public class Autos {
     AutoTrajectory trajectory = routine.trajectory("CentralAuto");
 
     Command shootSequence =
-        Commands.sequence(
-            choreographer.setGoalCommand(Choreographer.Goal.SCORE_HUB),
-            Commands.waitUntil(choreographer::isReadyToShoot),
-            Commands.deadline(
-                Commands.waitUntil(choreographer::isDoneShooting).withTimeout(10.0),
-                Commands.repeatingSequence(
-                    intake.deployCommand(),
-                    Commands.waitSeconds(1),
-                    intake.stowCommand(),
-                    Commands.waitSeconds(1))),
-            choreographer.setGoalCommand(Choreographer.Goal.IDLE));
+        Commands.parallel(
+            Commands.sequence(
+                choreographer.setGoalCommand(Choreographer.Goal.SCORE_HUB),
+                Commands.waitUntil(choreographer::isReadyToShoot),
+                Commands.deadline(
+                    Commands.waitUntil(choreographer::isDoneShooting).withTimeout(10.0),
+                    Commands.repeatingSequence(
+                        intake.deployCommand(),
+                        Commands.waitSeconds(1),
+                        intake.stowCommand(),
+                        Commands.waitSeconds(1))),
+                choreographer.setGoalCommand(Choreographer.Goal.IDLE)),
+            robotContainer.driveCommand.launchModeCommand());
 
     routine.active().onTrue(trajectory.cmd());
     trajectory
@@ -403,22 +408,49 @@ public class Autos {
     AutoTrajectory trajectory = routine.trajectory("LeftAuto");
 
     Command shootSequence =
-        Commands.sequence(
-            choreographer.setGoalCommand(Choreographer.Goal.SCORE_HUB),
-            Commands.waitUntil(choreographer::isReadyToShoot),
-            Commands.deadline(
-                Commands.waitUntil(choreographer::isDoneShooting).withTimeout(10.0),
-                Commands.repeatingSequence(
-                    intake.deployCommand(),
-                    Commands.waitSeconds(1),
-                    intake.stowCommand(),
-                    Commands.waitSeconds(1))),
-            choreographer.setGoalCommand(Choreographer.Goal.IDLE));
+        Commands.parallel(
+            Commands.sequence(
+                choreographer.setGoalCommand(Choreographer.Goal.SCORE_HUB),
+                Commands.waitUntil(choreographer::isReadyToShoot),
+                Commands.deadline(
+                    Commands.waitUntil(choreographer::isDoneShooting).withTimeout(10.0),
+                    Commands.repeatingSequence(
+                        intake.deployCommand(),
+                        Commands.waitSeconds(1),
+                        intake.stowCommand(),
+                        Commands.waitSeconds(1))),
+                choreographer.setGoalCommand(Choreographer.Goal.IDLE)),
+            robotContainer.driveCommand.launchModeCommand());
 
     routine.active().onTrue(trajectory.cmd());
     trajectory
         .done()
         .onTrue(
+            Commands.sequence(
+                shootSequence, Commands.sequence(intake.stowCommand(), intake.homeCommand())));
+
+    return routine;
+  }
+
+  public AutoRoutine LeftPreloadAuto() {
+    AutoRoutine routine = autoFactory.newRoutine("Drive Back Preload Auto");
+
+    Command shootSequence =
+        Commands.parallel(
+            Commands.sequence(
+                choreographer.setGoalCommand(Choreographer.Goal.SCORE_HUB),
+                Commands.waitUntil(choreographer::isReadyToShoot),
+                Commands.deadline(
+                    Commands.waitUntil(choreographer::isDoneShooting).withTimeout(10.0),
+                    Commands.repeatingSequence(
+                        intake.deployCommand(),
+                        Commands.waitSeconds(1),
+                        intake.stowCommand(),
+                        Commands.waitSeconds(1))),
+                choreographer.setGoalCommand(Choreographer.Goal.IDLE)),
+            robotContainer.driveCommand.launchModeCommand());
+
+    routine.active().onTrue(
             Commands.sequence(
                 shootSequence, Commands.sequence(intake.stowCommand(), intake.homeCommand())));
 
