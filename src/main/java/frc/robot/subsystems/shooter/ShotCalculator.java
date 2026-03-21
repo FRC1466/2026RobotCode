@@ -192,8 +192,9 @@ public class ShotCalculator {
     // TODO: tune passing maps
     passingHoodAngleMap.put(passingMinDistance, Rotation2d.fromDegrees(30));
     passingHoodAngleMap.put(passingMaxDistance, Rotation2d.fromDegrees(30));
-    passingFlywheelSpeedMap.put(passingMinDistance, 45.0);
-    passingFlywheelSpeedMap.put(passingMaxDistance, 90.0);
+    passingFlywheelSpeedMap.put(passingMinDistance, 35.0);
+    passingFlywheelSpeedMap.put(10.0, 50.0);
+    passingFlywheelSpeedMap.put(passingMaxDistance, 80.0);
     passingTimeOfFlightMap.put(passingMinDistance, 0.0);
     passingTimeOfFlightMap.put(passingMaxDistance, 0.0);
 
@@ -474,6 +475,10 @@ public class ShotCalculator {
    */
   public void incrementFlywheelSpeedOffsetPercent(double percent) {
     flywheelSpeedOffsetPercent += percent;
+  }
+
+  public void resetFlywheelSpeedOffsetPercent() {
+    flywheelSpeedOffsetPercent = 0;
   }
 
   /**
