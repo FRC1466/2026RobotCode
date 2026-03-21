@@ -491,6 +491,21 @@ public class Autos {
     AutoTrajectory creepAtDepot = routine.trajectory("DepotAutoGround", 1);
     AutoTrajectory toScore = routine.trajectory("DepotAutoGround", 2);
 
+    Command shootSequence =
+        Commands.parallel(
+            Commands.sequence(
+                choreographer.setGoalCommand(Choreographer.Goal.SCORE_HUB),
+                Commands.waitUntil(choreographer::isReadyToShoot),
+                Commands.deadline(
+                    Commands.waitUntil(choreographer::isDoneShooting).withTimeout(10.0),
+                    Commands.repeatingSequence(
+                        intake.deployCommand(),
+                        Commands.waitSeconds(1),
+                        intake.stowCommand(),
+                        Commands.waitSeconds(1))),
+                choreographer.setGoalCommand(Choreographer.Goal.IDLE)),
+            robotContainer.driveCommand.launchModeCommand());
+
     routine.active().onTrue(toDepot.cmd());
 
     creepAtDepot.active().whileTrue(intake.runCommand());
@@ -502,8 +517,8 @@ public class Autos {
 
     toScore
         .done()
-        .onTrue(
-            Commands.parallel(scoreAtHubCommand(), delayedRetractIntakeAfterShotStartCommand()));
+        .onTrue(Commands.sequence(
+                shootSequence, Commands.sequence(intake.stowCommand(), intake.homeCommand())));
 
     return routine;
   }
