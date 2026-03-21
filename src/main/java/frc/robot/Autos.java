@@ -450,7 +450,9 @@ public class Autos {
                 choreographer.setGoalCommand(Choreographer.Goal.IDLE)),
             robotContainer.driveCommand.launchModeCommand());
 
-    routine.active().onTrue(
+    routine
+        .active()
+        .onTrue(
             Commands.sequence(
                 shootSequence, Commands.sequence(intake.stowCommand(), intake.homeCommand())));
 
