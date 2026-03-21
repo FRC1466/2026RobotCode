@@ -344,7 +344,12 @@ public class RobotContainer {
                 .withName("DecreaseFlywheelSpeedOffset")
                 .ignoringDisable(true));
 
-    controller.povRight().onTrue(Commands.runOnce(() -> ShotCalculator.getInstance().resetFlywheelSpeedOffsetPercent()).withName("ResetFlywheelSpeedOffset").ignoringDisable(true));
+    controller
+        .povRight()
+        .onTrue(
+            Commands.runOnce(() -> ShotCalculator.getInstance().resetFlywheelSpeedOffsetPercent())
+                .withName("ResetFlywheelSpeedOffset")
+                .ignoringDisable(true));
 
     // D-pad Left: intake home (zero pivot position)
     controller.povLeft().onTrue(intake.homeCommand());
