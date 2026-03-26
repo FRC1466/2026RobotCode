@@ -517,7 +517,8 @@ public class Autos {
 
     toScore
         .done()
-        .onTrue(Commands.sequence(
+        .onTrue(
+            Commands.sequence(
                 shootSequence, Commands.sequence(intake.stowCommand(), intake.homeCommand())));
 
     return routine;
