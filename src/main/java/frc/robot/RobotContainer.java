@@ -15,6 +15,7 @@ import edu.wpi.first.wpilibj2.command.Command;
 import edu.wpi.first.wpilibj2.command.Commands;
 import edu.wpi.first.wpilibj2.command.button.CommandXboxController;
 import edu.wpi.first.wpilibj2.command.button.RobotModeTriggers;
+import frc.robot.autos.Autos;
 import frc.robot.commands.DriveCommands;
 import frc.robot.generated.TunerConstants;
 import frc.robot.subsystems.Choreographer;
@@ -373,7 +374,7 @@ public class RobotContainer {
     // Left Trigger: run intake rollers while held.
     controller
         .leftTrigger()
-        .whileTrue(intake.runCommand().withName("IntakeRollers"))
+        .whileTrue(intake.runAtTargetSpeedCommand().withName("IntakeRollers"))
         .onFalse(intake.stopCommand());
 
     // Emergency stop

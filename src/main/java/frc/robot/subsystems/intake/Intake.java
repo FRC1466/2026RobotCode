@@ -1,3 +1,4 @@
+
 // Copyright (c) 2025-2026 Webb Robotics
 // http://github.com/FRC1466
 
@@ -34,6 +35,23 @@ import org.littletonrobotics.junction.mechanism.LoggedMechanismLigament2d;
 import org.littletonrobotics.junction.mechanism.LoggedMechanismRoot2d;
 
 public class Intake extends FullSubsystem {
+  // Roller velocity calculation for 7.7 m/s
+  // Roller diameter: 1.75" = 0.04445 m
+  // Reduction: 24/18 (motor:roller)
+  private static final double kRollerDiameterMeters = 1.75 * 0.0254;
+  private static final double kReduction = 24.0 / 18.0;
+  private static final double kTargetLinearSpeedMps = 7.7;
+  // Circumference = pi * d
+  private static final double kRollerCircumferenceMeters = Math.PI * kRollerDiameterMeters;
+  // Roller RPS = linear speed / circumference
+  private static final double kRollerRps = kTargetLinearSpeedMps / kRollerCircumferenceMeters;
+  // Motor RPS = roller RPS * reduction
+  private static final double kMotorRpsForTarget = kRollerRps * kReduction;
+
+  /** Run rollers at 7.7 m/s linear speed. */
+  public void runAtTargetSpeed() {
+    runVelocity(kMotorRpsForTarget);
+  }
   private static final LoggedTunableNumber stowAngleDeg =
       new LoggedTunableNumber("IntakePivot/StowAngleDeg", 8.0);
   private static final LoggedTunableNumber deployAngleDeg =
@@ -83,8 +101,12 @@ public class Intake extends FullSubsystem {
   private final IntakePivotIOOutputs pivotOutputs = new IntakePivotIOOutputs();
 
   private final IntakeRollersIOInputsAutoLogged rollersInputs =
-      new IntakeRollersIOInputsAutoLogged();
+    new IntakeRollersIOInputsAutoLogged();
   private final IntakeRollersIOOutputs rollersOutputs = new IntakeRollersIOOutputs();
+
+  // Rollers velocity PID state
+  private boolean rollersVelocityMode = false;
+  private double rollersVelocitySetpointRps = 0.0;
 
   // Mechanism2d visualization (4-bar linkage)
   // Ground link is the horizontal distance between the two frame pivots on the robot edge.
@@ -180,8 +202,15 @@ public class Intake extends FullSubsystem {
       running = false;
     }
 
-    if (running) {
+    if (rollersVelocityMode) {
+      rollersOutputs.mode = frc.robot.subsystems.intake.rollers.IntakeRollersIO.IntakeRollersOutputMode.VELOCITY_PID;
+      rollersOutputs.velocityRpsSetpoint = rollersVelocitySetpointRps;
+    } else if (running) {
+      rollersOutputs.mode = frc.robot.subsystems.intake.rollers.IntakeRollersIO.IntakeRollersOutputMode.OPEN_LOOP;
       rollersOutputs.appliedVolts = runVolts.get();
+    } else {
+      rollersOutputs.mode = frc.robot.subsystems.intake.rollers.IntakeRollersIO.IntakeRollersOutputMode.OPEN_LOOP;
+      rollersOutputs.appliedVolts = 0.0;
     }
 
     rollersDisconnectedAlert.set(
@@ -296,12 +325,24 @@ public class Intake extends FullSubsystem {
 
   // Rollers API
 
+
+  /** Run rollers at default open-loop voltage. */
   public void run() {
     running = true;
+    rollersVelocityMode = false;
   }
+
+  /** Run rollers at a specific velocity (RPS). */
+  public void runVelocity(double velocityRps) {
+    rollersVelocityMode = true;
+    rollersVelocitySetpointRps = velocityRps;
+    running = false;
+  }
+
 
   public void runVolts(double volts) {
     running = true;
+    rollersVelocityMode = false;
     rollersOutputs.appliedVolts = volts;
   }
 
@@ -311,8 +352,10 @@ public class Intake extends FullSubsystem {
     pivotOutputs.volts = volts;
   }
 
+
   public void stop() {
     running = false;
+    rollersVelocityMode = false;
     rollersOutputs.appliedVolts = 0.0;
   }
 
@@ -326,6 +369,10 @@ public class Intake extends FullSubsystem {
 
   public Command runCommand() {
     return runEnd(this::run, this::stop).withName("IntakeRollers.run");
+  }
+
+  public Command runAtTargetSpeedCommand() {
+    return runEnd(this::runAtTargetSpeed, this::stop).withName("IntakeRollers.runAtTargetSpeed");
   }
 
   public Command stopCommand() {

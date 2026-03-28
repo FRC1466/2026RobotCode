@@ -9,6 +9,7 @@ import com.ctre.phoenix6.BaseStatusSignal;
 import com.ctre.phoenix6.StatusSignal;
 import com.ctre.phoenix6.configs.TalonFXConfiguration;
 import com.ctre.phoenix6.controls.VoltageOut;
+import com.ctre.phoenix6.controls.VelocityVoltage;
 import com.ctre.phoenix6.hardware.TalonFX;
 import com.ctre.phoenix6.signals.InvertedValue;
 import com.ctre.phoenix6.signals.NeutralModeValue;
@@ -28,6 +29,7 @@ public class IntakeRollersIOTalonFX implements IntakeRollersIO {
   private final StatusSignal<Temperature> temp;
 
   private final VoltageOut voltageRequest = new VoltageOut(0);
+  private final VelocityVoltage velocityRequest = new VelocityVoltage(0);
 
   public IntakeRollersIOTalonFX() {
     talon = new TalonFX(motorId, TunerConstants.kCANBus);
@@ -73,6 +75,10 @@ public class IntakeRollersIOTalonFX implements IntakeRollersIO {
 
   @Override
   public void applyOutputs(IntakeRollersIOOutputs outputs) {
-    talon.setControl(voltageRequest.withOutput(outputs.appliedVolts));
+    if (outputs.mode == IntakeRollersIO.IntakeRollersOutputMode.VELOCITY_PID) {
+      talon.setControl(velocityRequest.withVelocity(outputs.velocityRpsSetpoint));
+    } else {
+      talon.setControl(voltageRequest.withOutput(outputs.appliedVolts));
+    }
   }
 }

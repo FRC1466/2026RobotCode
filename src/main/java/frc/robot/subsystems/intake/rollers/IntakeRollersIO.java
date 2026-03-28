@@ -16,8 +16,16 @@ public interface IntakeRollersIO {
     public boolean connected;
   }
 
+
+  enum IntakeRollersOutputMode {
+    OPEN_LOOP,
+    VELOCITY_PID
+  }
+
   class IntakeRollersIOOutputs {
     public double appliedVolts = 0.0;
+    public IntakeRollersOutputMode mode = IntakeRollersOutputMode.OPEN_LOOP;
+    public double velocityRpsSetpoint = 0.0;
   }
 
   default void updateInputs(IntakeRollersIOInputs inputs) {}
