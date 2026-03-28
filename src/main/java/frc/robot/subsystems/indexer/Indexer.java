@@ -163,6 +163,11 @@ public class Indexer extends FullSubsystem {
     running = true;
   }
 
+  public void runBackwards() {
+    reversing = true;
+    running = true;
+  }
+
   /** Run the indexer at a custom voltage (bypasses stall detection). */
   public void runVolts(double volts) {
     running = true;
@@ -181,6 +186,11 @@ public class Indexer extends FullSubsystem {
   /** Command to run the indexer (with automatic stall detection). */
   public Command runCommand() {
     return runEnd(this::run, this::stop).withName("Indexer.run");
+  }
+
+  /** Command to run the indexer backwards (with automatic stall detection). */
+  public Command runBackwardsCommand() {
+    return runEnd(this::runBackwards, this::stop).withName("Indexer.runBackwards");
   }
 
   /** Command to stop the indexer. */
