@@ -1,4 +1,3 @@
-
 // Copyright (c) 2025-2026 Webb Robotics
 // http://github.com/FRC1466
 
@@ -52,6 +51,7 @@ public class Intake extends FullSubsystem {
   public void runAtTargetSpeed() {
     runVelocity(kMotorRpsForTarget);
   }
+
   private static final LoggedTunableNumber stowAngleDeg =
       new LoggedTunableNumber("IntakePivot/StowAngleDeg", 8.0);
   private static final LoggedTunableNumber deployAngleDeg =
@@ -101,7 +101,7 @@ public class Intake extends FullSubsystem {
   private final IntakePivotIOOutputs pivotOutputs = new IntakePivotIOOutputs();
 
   private final IntakeRollersIOInputsAutoLogged rollersInputs =
-    new IntakeRollersIOInputsAutoLogged();
+      new IntakeRollersIOInputsAutoLogged();
   private final IntakeRollersIOOutputs rollersOutputs = new IntakeRollersIOOutputs();
 
   // Rollers velocity PID state
@@ -203,13 +203,16 @@ public class Intake extends FullSubsystem {
     }
 
     if (rollersVelocityMode) {
-      rollersOutputs.mode = frc.robot.subsystems.intake.rollers.IntakeRollersIO.IntakeRollersOutputMode.VELOCITY_PID;
+      rollersOutputs.mode =
+          frc.robot.subsystems.intake.rollers.IntakeRollersIO.IntakeRollersOutputMode.VELOCITY_PID;
       rollersOutputs.velocityRpsSetpoint = rollersVelocitySetpointRps;
     } else if (running) {
-      rollersOutputs.mode = frc.robot.subsystems.intake.rollers.IntakeRollersIO.IntakeRollersOutputMode.OPEN_LOOP;
+      rollersOutputs.mode =
+          frc.robot.subsystems.intake.rollers.IntakeRollersIO.IntakeRollersOutputMode.OPEN_LOOP;
       rollersOutputs.appliedVolts = runVolts.get();
     } else {
-      rollersOutputs.mode = frc.robot.subsystems.intake.rollers.IntakeRollersIO.IntakeRollersOutputMode.OPEN_LOOP;
+      rollersOutputs.mode =
+          frc.robot.subsystems.intake.rollers.IntakeRollersIO.IntakeRollersOutputMode.OPEN_LOOP;
       rollersOutputs.appliedVolts = 0.0;
     }
 
@@ -325,7 +328,6 @@ public class Intake extends FullSubsystem {
 
   // Rollers API
 
-
   /** Run rollers at default open-loop voltage. */
   public void run() {
     running = true;
@@ -339,7 +341,6 @@ public class Intake extends FullSubsystem {
     running = false;
   }
 
-
   public void runVolts(double volts) {
     running = true;
     rollersVelocityMode = false;
@@ -351,7 +352,6 @@ public class Intake extends FullSubsystem {
     pivotOutputs.mode = IntakePivotIO.IntakePivotIOOutputMode.OPEN_LOOP;
     pivotOutputs.volts = volts;
   }
-
 
   public void stop() {
     running = false;

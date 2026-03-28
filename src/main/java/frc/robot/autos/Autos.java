@@ -1,3 +1,6 @@
+// Copyright (c) 2025-2026 Webb Robotics
+// http://github.com/FRC1466
+
 package frc.robot.autos;
 
 import choreo.auto.AutoChooser;
@@ -21,8 +24,7 @@ public class Autos {
   private final AutoChooser autoChooser;
   private final AutoRoutines routines;
 
-  private final Map<String, Supplier<Optional<Pose2d>>> autoStartPoseSuppliers =
-      new HashMap<>();
+  private final Map<String, Supplier<Optional<Pose2d>>> autoStartPoseSuppliers = new HashMap<>();
   private final Map<String, Supplier<Optional<Pose2d>>> autoStartPoseSuppliersByCommandName =
       new HashMap<>();
 
@@ -46,31 +48,26 @@ public class Autos {
     autoChooser = new AutoChooser();
 
     autoStartPoseSuppliers.put(autoChooser.getDefaultName(), Optional::<Pose2d>empty);
-    autoStartPoseSuppliersByCommandName.put(
-        autoChooser.getDefaultName(), Optional::<Pose2d>empty);
+    autoStartPoseSuppliersByCommandName.put(autoChooser.getDefaultName(), Optional::<Pose2d>empty);
 
     // ─── Register Autos ─────────────────────────────────────────────
 
     registerRoutine(
         "Outpost Auto",
         routines::outpostAuto,
-        () ->
-            routines.startPoseOf(
-                routines::outpostAuto, r -> r.trajectory("OutpostAuto", 0)));
+        () -> routines.startPoseOf(routines::outpostAuto, r -> r.trajectory("OutpostAuto", 0)));
 
     registerRoutine(
         "Preload Then Outpost Auto",
         routines::preloadThenOutpostAuto,
         () ->
             routines.startPoseOf(
-                routines::preloadThenOutpostAuto, r -> r.trajectory("OutpostAuto", 0)));
+                routines::preloadThenOutpostAuto, r -> r.trajectory("OutpostGroundPreload", 0)));
 
     registerRoutine(
         "Ground Auto",
         routines::groundAuto,
-        () ->
-            routines.startPoseOf(
-                routines::groundAuto, r -> r.trajectory("GrabFromGround", 0)));
+        () -> routines.startPoseOf(routines::groundAuto, r -> r.trajectory("GrabFromGround", 0)));
 
     registerRoutine(
         "Preload Then Ground Auto",
@@ -80,25 +77,18 @@ public class Autos {
                 routines::preloadThenGroundAuto, r -> r.trajectory("GrabFromGround", 0)));
 
     registerRoutine(
-        "Rush To Center Auto",
-        routines::rushToCenterAuto,
-        () ->
-            routines.startPoseOf(
-                routines::rushToCenterAuto, r -> r.trajectory("RushToCenter", 0)));
-
-    registerRoutine(
         "Double Ground Pickup Auto",
         routines::doubleGroundPickupAuto,
         () ->
             routines.startPoseOf(
-                routines::doubleGroundPickupAuto, r -> r.trajectory("GroundPickupRun1", 0)));
+                routines::doubleGroundPickupAuto, r -> r.trajectory("RushToCenterUnoDip", 0)));
 
     registerRoutine(
         "Single Ground Pickup Auto",
         routines::singleGroundPickupAuto,
         () ->
             routines.startPoseOf(
-                routines::singleGroundPickupAuto, r -> r.trajectory("SingleGroundPickup", 0)));
+                routines::singleGroundPickupAuto, r -> r.trajectory("RushToCenterUnoDip", 0)));
 
     registerRoutine(
         "Drive Back Preload Auto",
@@ -111,14 +101,13 @@ public class Autos {
     registerRoutine(
         "Drive Left Preload Auto",
         routines::driveLeftPreloadAuto,
-        () ->
-            routines.startPoseOf(
-                routines::driveLeftPreloadAuto, r -> r.trajectory("LeftAuto")));
+        () -> routines.startPoseOf(routines::driveLeftPreloadAuto, r -> r.trajectory("LeftAuto")));
 
+    registerRoutine("Left Preload Auto", routines::LeftPreloadAuto, Optional::<Pose2d>empty);
     registerRoutine(
-        "Left Preload Auto",
-        routines::LeftPreloadAuto,
-        Optional::<Pose2d>empty);
+        "Bumpy",
+        routines::bumpy,
+        () -> routines.startPoseOf(routines::bumpy, r -> r.trajectory("Bumpy", 0)));
 
     // ─── Dashboard ─────────────────────────────────────────────────
 
@@ -143,20 +132,16 @@ public class Autos {
             .get();
 
     startPose.ifPresentOrElse(
-        autoStartField::setRobotPose,
-        () -> autoStartField.setRobotPose(new Pose2d()));
+        autoStartField::setRobotPose, () -> autoStartField.setRobotPose(new Pose2d()));
 
     Logger.recordOutput("Autos/SelectedCommandName", selectedCommandName);
     Logger.recordOutput("Autos/HasStartPose", startPose.isPresent());
     Logger.recordOutput(
-        "Autos/StartPose",
-        startPose.map(p -> new Pose2d[] {p}).orElseGet(() -> new Pose2d[0]));
+        "Autos/StartPose", startPose.map(p -> new Pose2d[] {p}).orElseGet(() -> new Pose2d[0]));
   }
 
   private void registerRoutine(
-      String name,
-      Supplier<AutoRoutine> supplier,
-      Supplier<Optional<Pose2d>> startPoseSupplier) {
+      String name, Supplier<AutoRoutine> supplier, Supplier<Optional<Pose2d>> startPoseSupplier) {
 
     autoChooser.addRoutine(name, supplier);
     autoStartPoseSuppliers.put(name, startPoseSupplier);
@@ -164,7 +149,6 @@ public class Autos {
 
     // Also map command name → start pose
     AutoRoutine preview = supplier.get();
-    autoStartPoseSuppliersByCommandName.put(
-        preview.cmd().getName(), startPoseSupplier);
+    autoStartPoseSuppliersByCommandName.put(preview.cmd().getName(), startPoseSupplier);
   }
 }

@@ -16,7 +16,6 @@ public interface IntakeRollersIO {
     public boolean connected;
   }
 
-
   enum IntakeRollersOutputMode {
     OPEN_LOOP,
     VELOCITY_PID

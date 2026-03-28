@@ -1,3 +1,6 @@
+// Copyright (c) 2025-2026 Webb Robotics
+// http://github.com/FRC1466
+
 package frc.robot.autos;
 
 import choreo.auto.AutoFactory;
@@ -23,8 +26,7 @@ public final class AutoRoutines {
   private final AutoFactory autoFactory;
   private final AutoActions actions;
 
-  public AutoRoutines(
-      RobotContainer robotContainer, AutoFactory autoFactory, AutoActions actions) {
+  public AutoRoutines(RobotContainer robotContainer, AutoFactory autoFactory, AutoActions actions) {
     this.robotContainer = robotContainer;
     this.drive = robotContainer.getDrive();
     this.choreographer = robotContainer.getChoreographer();
@@ -93,7 +95,7 @@ public final class AutoRoutines {
   public AutoRoutine preloadThenOutpostAuto() {
     AutoRoutine routine = autoFactory.newRoutine("Preload Then Outpost Auto");
 
-    AutoTrajectory[] t = trajectories(routine, "OutpostAuto", 3);
+    AutoTrajectory[] t = trajectories(routine, "OutpostGroundPreload", 3);
     AutoTrajectory toScore = t[0];
     AutoTrajectory creepAtOutpost = t[1];
     AutoTrajectory toScoreAgain = t[2];
@@ -105,8 +107,7 @@ public final class AutoRoutines {
     toScore
         .done()
         .onTrue(
-            Commands.sequence(
-                scoreWithAgitation(), intake.deployCommand(), creepAtOutpost.cmd()));
+            Commands.sequence(scoreWithAgitation(), intake.deployCommand(), creepAtOutpost.cmd()));
 
     creepAtOutpost.done().onTrue(toScoreAgain.cmd());
     toScoreAgain.done().onTrue(scoreWithAgitation());
@@ -161,42 +162,17 @@ public final class AutoRoutines {
     return routine;
   }
 
-  public AutoRoutine rushToCenterAuto() {
-    AutoRoutine routine = autoFactory.newRoutine("Rush To Center Auto");
-
-    AutoTrajectory[] t = trajectories(routine, "RushToCenter", 4);
-    AutoTrajectory rushToCenter = t[0];
-    AutoTrajectory creepUpCenter = t[1];
-    AutoTrajectory rushAcrossCenter = t[2];
-    AutoTrajectory creepBackToScore = t[3];
-
-    routine.active().onTrue(rushToCenter.cmd());
-
-    creepUpCenter.active().whileTrue(intake.runCommand());
-    creepBackToScore.active().whileTrue(intake.runCommand());
-
-    rushToCenter.done().onTrue(intake.deployCommand());
-    rushToCenter.done().onTrue(creepUpCenter.cmd());
-
-    creepUpCenter.done().onTrue(rushAcrossCenter.cmd());
-
-    rushAcrossCenter.done().onTrue(creepBackToScore.cmd());
-    creepBackToScore.done().onTrue(scoreWithAgitation());
-
-    return routine;
-  }
-
   // TODO: Replace "GroundPickupRun1" and "GroundPickupRun2" with actual Choreo trajectory names.
   // Each trajectory file should have 3 segments: go out (0), creep/intake (1), return to score (2).
   public AutoRoutine doubleGroundPickupAuto() {
     AutoRoutine routine = autoFactory.newRoutine("Double Ground Pickup Auto");
 
-    AutoTrajectory[] t1 = trajectories(routine, "GroundPickupRun1", 3);
+    AutoTrajectory[] t1 = trajectories(routine, "RushToCenterUnoDip", 3);
     AutoTrajectory toGround1 = t1[0];
     AutoTrajectory creepAlongGround1 = t1[1];
     AutoTrajectory toScore1 = t1[2];
 
-    AutoTrajectory[] t2 = trajectories(routine, "GroundPickupRun2", 3);
+    AutoTrajectory[] t2 = trajectories(routine, "RushToCenterDosDip", 3);
     AutoTrajectory toGround2 = t2[0];
     AutoTrajectory creepAlongGround2 = t2[1];
     AutoTrajectory toScore2 = t2[2];
@@ -226,7 +202,7 @@ public final class AutoRoutines {
   public AutoRoutine singleGroundPickupAuto() {
     AutoRoutine routine = autoFactory.newRoutine("Single Ground Pickup Auto");
 
-    AutoTrajectory[] t = trajectories(routine, "NeutralZone", 3);
+    AutoTrajectory[] t = trajectories(routine, "RushToCenterUnoDip", 3);
     AutoTrajectory toNeutralZone = t[0];
     AutoTrajectory creepInNeutralZone = t[1];
     AutoTrajectory toScore = t[2];
@@ -240,6 +216,16 @@ public final class AutoRoutines {
 
     creepInNeutralZone.done().onTrue(toScore.cmd());
     toScore.done().onTrue(scoreWithAgitation());
+
+    return routine;
+  }
+
+  public AutoRoutine bumpy() {
+    AutoRoutine routine = autoFactory.newRoutine("Bumpy");
+
+    AutoTrajectory trajectory = routine.trajectory("Bumpy");
+
+    routine.active().onTrue(trajectory.cmd());
 
     return routine;
   }
