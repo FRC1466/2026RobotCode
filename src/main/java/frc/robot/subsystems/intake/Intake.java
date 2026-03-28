@@ -48,7 +48,7 @@ public class Intake extends FullSubsystem {
   private static final LoggedTunableNumber toleranceDeg =
       new LoggedTunableNumber("IntakePivot/ToleranceDeg");
   private static final LoggedTunableNumber runVolts =
-      new LoggedTunableNumber("IntakeRollers/RunVolts", 5.5);
+      new LoggedTunableNumber("IntakeRollers/RunVolts", 6.7);
   private static final LoggedTunableNumber homingRollerReverseVolts =
       new LoggedTunableNumber("Intake/Homing/RollerReverseVolts", -2.0);
   private static final LoggedTunableNumber homingPulseOnSec =
