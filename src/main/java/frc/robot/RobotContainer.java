@@ -399,8 +399,7 @@ public class RobotContainer {
     // X Button: hold to spin flywheel at manualFlywheelSpeed (tuning, Choreographer off)
     controller
         .x()
-        .onTrue(choreographer.setGoalCommand(Choreographer.Goal.SCORE_HUB))
-        .whileTrue(driveCommand.launchModeCommand())
+        .onTrue(choreographer.setGoalCommand(Choreographer.Goal.REVERSE_INDEXER))
         .onFalse(choreographer.setGoalCommand(Choreographer.Goal.IDLE));
 
     // Y Button: hold to move hood to manualHoodAngle (tuning, Choreographer off)

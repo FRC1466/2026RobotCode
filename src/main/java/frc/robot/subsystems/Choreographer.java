@@ -140,8 +140,6 @@ public class Choreographer extends SubsystemBase {
     hood.stow();
     indexer.runReversed();
     kicker.stop();
-    intake.stow();
-    intake.stop();
 
     currentState = State.REVERSING_INDEXER;
   }
