@@ -398,14 +398,10 @@ public class RobotContainer {
                 .withName("ToggleIntakeDeploy"));
 
     // X Button: hold to spin flywheel at manualFlywheelSpeed (tuning, Choreographer off)
-    /*controller
-    .x()
-    .whileTrue(
-        Commands.parallel(
-                flywheel.runFixedCommand(manualFlywheelSpeed).withName("TuneFlywheelSpin"),
-                kicker.runCommand())
-            .withName("TuneFlywheelAndKicker"))
-    .onFalse(Commands.parallel(flywheel.stopCommand(), kicker.stopCommand()));*/
+    controller
+        .x()
+        .onTrue(choreographer.setGoalCommand(Choreographer.Goal.REVERSE_INDEXER))
+        .onFalse(choreographer.setGoalCommand(Choreographer.Goal.IDLE));
 
     // Y Button: hold to move hood to manualHoodAngle (tuning, Choreographer off)
     controller

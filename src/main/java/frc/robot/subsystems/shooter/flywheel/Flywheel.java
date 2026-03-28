@@ -73,7 +73,7 @@ public class Flywheel extends FullSubsystem {
   static {
     switch (Constants.getMode()) {
       case REAL, REPLAY -> {
-        voltageKP.initDefault(0.1);
+        voltageKP.initDefault(.7);
         voltageKD.initDefault(0.0);
         voltageKS.initDefault(0.23013);
         voltageKV.initDefault(0.12021);

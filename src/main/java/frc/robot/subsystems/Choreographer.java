@@ -35,7 +35,8 @@ public class Choreographer extends SubsystemBase {
     INTAKE,
     SCORE_HUB,
     CLIMB_EXTEND,
-    CLIMB_RETRACT
+    CLIMB_RETRACT,
+    REVERSE_INDEXER
   }
 
   public enum State {
@@ -45,7 +46,8 @@ public class Choreographer extends SubsystemBase {
     WAITING_FOR_ALIGNMENT,
     SHOOTING,
     CLIMB_EXTENDING,
-    CLIMB_RETRACTING
+    CLIMB_RETRACTING,
+    REVERSING_INDEXER
   }
 
   @Getter
@@ -119,6 +121,7 @@ public class Choreographer extends SubsystemBase {
       case SCORE_HUB -> handleScoreHub();
       case CLIMB_EXTEND -> handleClimb(State.CLIMB_EXTENDING);
       case CLIMB_RETRACT -> handleClimb(State.CLIMB_RETRACTING);
+      case REVERSE_INDEXER -> handleReverseIndexer();
     }
 
     logOutputs();
@@ -130,6 +133,15 @@ public class Choreographer extends SubsystemBase {
     indexer.stop();
     kicker.stop();
     currentState = State.IDLE;
+  }
+
+  private void handleReverseIndexer() {
+    flywheel.stop();
+    hood.stow();
+    indexer.runReversed();
+    kicker.stop();
+
+    currentState = State.REVERSING_INDEXER;
   }
 
   private void handleIntake() {
