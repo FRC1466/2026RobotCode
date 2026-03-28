@@ -163,7 +163,7 @@ public class ShotCalculator {
 
   static {
     minDistance = 1.969;
-    maxDistance = 5;
+    maxDistance = 6;
     phaseDelay = 0.03;
     passingMinDistance = 5.4;
     passingMaxDistance = 17.16;
