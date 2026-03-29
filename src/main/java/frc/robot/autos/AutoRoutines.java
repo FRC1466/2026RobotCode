@@ -95,22 +95,39 @@ public final class AutoRoutines {
   public AutoRoutine preloadThenOutpostAuto() {
     AutoRoutine routine = autoFactory.newRoutine("Preload Then Outpost Auto");
 
-    AutoTrajectory[] t = trajectories(routine, "OutpostGroundPreload", 3);
-    AutoTrajectory toScore = t[0];
-    AutoTrajectory creepAtOutpost = t[1];
-    AutoTrajectory toScoreAgain = t[2];
+    AutoTrajectory toScore = routine.trajectory("OutpostGroundPreload", 0);
+    AutoTrajectory transition = routine.trajectory("OutpostGroundPreload", 1);
+    AutoTrajectory creepAtOutpost = routine.trajectory("OutpostGroundPreload", 2);
+    AutoTrajectory toScoreAgain = routine.trajectory("OutpostGroundPreload", 3);
 
     routine.active().onTrue(toScore.cmd());
+    Command holdDrive =
+        robotContainer.driveCommand.launchModeAndStopCommand().withName("HoldDrive");
+    Command shootSequence =
+        Commands.sequence(
+                choreographer.setGoalCommand(Choreographer.Goal.SCORE_HUB),
+                Commands.waitUntil(choreographer::isReadyToShoot),
+                Commands.waitUntil(choreographer::isDoneShooting).withTimeout(5),
+                choreographer.setGoalCommand(Choreographer.Goal.IDLE))
+            .withName("ChoreographerShootSequence");
 
-    creepAtOutpost.active().whileTrue(intake.runCommand());
+    Command shootSequence1 =
+        Commands.sequence(
+                choreographer.setGoalCommand(Choreographer.Goal.SCORE_HUB),
+                Commands.waitUntil(choreographer::isReadyToShoot),
+                Commands.waitUntil(choreographer::isDoneShooting).withTimeout(5),
+                choreographer.setGoalCommand(Choreographer.Goal.IDLE))
+            .withName("ChoreographerShootSequence");
 
-    toScore
+    toScore.done().onTrue(Commands.race(holdDrive, shootSequence).andThen(transition.cmd()));
+    transition.active().onTrue(intake.deployCommand());
+    transition.done().onTrue(creepAtOutpost.cmd());
+    creepAtOutpost.active().whileTrue(intake.runAtTargetSpeedCommand());
+    creepAtOutpost.done().onTrue(toScoreAgain.cmd());
+    toScoreAgain
         .done()
         .onTrue(
-            Commands.sequence(scoreWithAgitation(), intake.deployCommand(), creepAtOutpost.cmd()));
-
-    creepAtOutpost.done().onTrue(toScoreAgain.cmd());
-    toScoreAgain.done().onTrue(scoreWithAgitation());
+            Commands.race(robotContainer.driveCommand.launchModeAndStopCommand(), shootSequence1));
 
     return routine;
   }

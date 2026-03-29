@@ -49,7 +49,7 @@ public class Intake extends FullSubsystem {
 
   /** Run rollers at 7.7 m/s linear speed. */
   public void runAtTargetSpeed() {
-    runVelocity(kMotorRpsForTarget);
+    runVelocity(50);
   }
 
   private static final LoggedTunableNumber stowAngleDeg =

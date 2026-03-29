@@ -102,6 +102,7 @@ public class DriveCommands extends Command {
   @AutoLogOutput private DriveMode currentDriveMode = DriveMode.NORMAL;
   private boolean launchRequested = false;
   private boolean zoneAutoLockDisabled = true;
+  private boolean driving = true;
 
   /** Creates a new DriveCommands. */
   public DriveCommands(Drive drive, CommandXboxController controller) {
@@ -365,6 +366,10 @@ public class DriveCommands extends Command {
         }
     }
 
+    if (!driving) {
+      linearVelocity = new Translation2d();
+    }
+
     // Apply heading lock PID if not directly commanding rotation
     if (!driverCommanding && headingLocked) {
       rotationController.setSetpoint(targetHeading.getRadians());
@@ -438,7 +443,12 @@ public class DriveCommands extends Command {
    * release.
    */
   public Command launchModeCommand() {
-    return Commands.startEnd(() -> launchRequested = true, () -> launchRequested = false);
+    return Commands.startEnd(() -> launchRequested = true, () -> launchRequested = false, drive);
+  }
+
+  public Command launchModeAndStopCommand() {
+    return Commands.sequence(
+        Commands.run(drive::stop, drive).withTimeout(.05), launchModeCommand());
   }
 
   public void setZoneAutoLockDisabled(boolean zoneAutoLockDisabled) {

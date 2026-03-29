@@ -28,7 +28,7 @@ public final class AutoActions {
   }
 
   public Command scoreAtHub(Command driveAssist) {
-    return Commands.deadline(scoreAtHub(), driveAssist);
+    return Commands.parallel(scoreAtHub(), driveAssist);
   }
 
   public Command scoreWithAgitation() {
@@ -37,6 +37,14 @@ public final class AutoActions {
 
   public Command scoreWithAgitation(Command driveAssist) {
     return Commands.parallel(scoreAtHub(driveAssist), intakePulse());
+  }
+
+  public Command score(double timeout) {
+    return Commands.sequence(
+        choreographer.setGoalCommand(Choreographer.Goal.SCORE_HUB),
+        Commands.waitUntil(choreographer::isReadyToShoot),
+        Commands.waitUntil(choreographer::isDoneShooting).withTimeout(timeout),
+        choreographer.setGoalCommand(Choreographer.Goal.IDLE));
   }
 
   public Command intakePulse() {
