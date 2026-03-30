@@ -446,9 +446,10 @@ public class DriveCommands extends Command {
     return Commands.startEnd(() -> launchRequested = true, () -> launchRequested = false, drive);
   }
 
-  public Command launchModeAndStopCommand() {
-    return Commands.sequence(
-        Commands.run(drive::stop, drive).withTimeout(.05), launchModeCommand());
+  public Command launchModeAndStopCommand(double timeoutSeconds) {
+    return Commands.startEnd(() -> driving = false, () -> driving = true, drive)
+        .withTimeout(timeoutSeconds)
+        .andThen(launchModeCommand());
   }
 
   public void setZoneAutoLockDisabled(boolean zoneAutoLockDisabled) {
