@@ -9,6 +9,7 @@ import edu.wpi.first.wpilibj.Alert;
 import edu.wpi.first.wpilibj.Alert.AlertType;
 import edu.wpi.first.wpilibj.DriverStation;
 import edu.wpi.first.wpilibj.GenericHID;
+import edu.wpi.first.wpilibj.Timer;
 import edu.wpi.first.wpilibj.XboxController;
 import edu.wpi.first.wpilibj.smartdashboard.SmartDashboard;
 import edu.wpi.first.wpilibj2.command.Command;
@@ -57,6 +58,7 @@ import frc.robot.util.TriggerUtil;
 import java.util.Optional;
 import lombok.Getter;
 import lombok.experimental.ExtensionMethod;
+import org.littletonrobotics.junction.Logger;
 import org.littletonrobotics.junction.networktables.LoggedDashboardChooser;
 
 /**
@@ -97,6 +99,12 @@ public class RobotContainer {
   private static final LoggedTunableNumber manualHoodAngle =
       new LoggedTunableNumber("Shooter/ManualHoodAngleDeg", 0.1); */
   private static final double flywheelSpeedOffsetPercentStep = 0.05;
+  private static final String returnWarningKey = "HubShift/ReturnToAllianceZoneWarning";
+  private static final String estimatedReturnTimeKey = "HubShift/EstimatedReturnTimeSec";
+  private static final String hubTimeRemainingKey = "HubShift/TimeUntilHubActiveSec";
+  private static final double returnWarningRumbleStrength = 1.0;
+  private static final double returnWarningRumblePulsePeriodSec = 0.5;
+  private static final long returnWarningRumblePulseCyclePhases = 2;
 
   /** The container for the robot. Contains subsystems, IO devices, and commands. */
   public RobotContainer() {
@@ -426,6 +434,33 @@ public class RobotContainer {
 
     // Publish match time
     SmartDashboard.putNumber("Match Time", DriverStation.getMatchTime());
+
+    var shiftInfo = HubShiftUtil.getShiftedShiftInfo();
+    var robotPose = drive.getPose();
+    double maxDriveSpeedMetersPerSec = drive.getMaxLinearSpeedMetersPerSec();
+    double estimatedReturnTime =
+        HubShiftUtil.getEstimatedReturnToAllianceZoneTime(robotPose, maxDriveSpeedMetersPerSec);
+    boolean returnWarningActive =
+        HubShiftUtil.shouldWarnReturnToAllianceZone(robotPose, maxDriveSpeedMetersPerSec);
+    double timeUntilHubActive = shiftInfo.active() ? 0.0 : shiftInfo.remainingTime();
+
+    SmartDashboard.putBoolean(returnWarningKey, returnWarningActive);
+    SmartDashboard.putNumber(estimatedReturnTimeKey, estimatedReturnTime);
+    SmartDashboard.putNumber(hubTimeRemainingKey, timeUntilHubActive);
+    Logger.recordOutput(returnWarningKey, returnWarningActive);
+    Logger.recordOutput(estimatedReturnTimeKey, estimatedReturnTime);
+    Logger.recordOutput(hubTimeRemainingKey, timeUntilHubActive);
+
+    long currentPulsePhase =
+        (long) (Timer.getFPGATimestamp() / returnWarningRumblePulsePeriodSec);
+    // Create a simple 0.5s on / 0.5s off buzz once it is time to head back.
+    boolean rumbleEnabled =
+        returnWarningActive && currentPulsePhase % returnWarningRumblePulseCyclePhases == 0;
+    controller
+        .getHID()
+        .setRumble(
+            GenericHID.RumbleType.kBothRumble,
+            rumbleEnabled ? returnWarningRumbleStrength : 0.0);
 
     // Controller disconnected alerts
     controllerDisconnected.set(!DriverStation.isJoystickConnected(controller.getHID().getPort()));

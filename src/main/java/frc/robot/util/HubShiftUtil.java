@@ -3,9 +3,12 @@
 
 package frc.robot.util;
 
+import edu.wpi.first.math.geometry.Pose2d;
+import edu.wpi.first.math.geometry.Translation2d;
 import edu.wpi.first.wpilibj.DriverStation;
 import edu.wpi.first.wpilibj.DriverStation.Alliance;
 import edu.wpi.first.wpilibj.Timer;
+import frc.robot.FieldConstants;
 import frc.robot.subsystems.shooter.ShotCalculator;
 import java.util.Optional;
 import java.util.function.Supplier;
@@ -40,6 +43,27 @@ public class HubShiftUtil {
   private static final double approachingActiveFudge = -1 * (minTimeOfFlight + minFuelCountDelay);
   private static final double endingActiveFudge =
       shiftEndFuelCountExtension + -1 * (maxTimeOfFlight + maxFuelCountDelay);
+  // Conservative estimate: drivers generally cannot hold top speed while manually routing back
+  // around the hub, so plan around roughly 60% of max speed plus extra slack.
+  private static final double returnDriveSpeedFraction = 0.6;
+  // Extra slack for imperfect driving lines and the final settle-in before reaching the scoring
+  // side of the alliance zone.
+  private static final double returnDriveFudgeSeconds = 1.0;
+  private static final double minimumReturnDriveSpeedMetersPerSec = 0.1;
+  // Use the midpoint of the open trench-side lanes so the estimate does not assume the robot can
+  // pass through the hub or bump geometry.
+  private static final Translation2d[] returnTargets = {
+    new Translation2d(
+        FieldConstants.LinesVertical.allianceZone,
+        (FieldConstants.LinesHorizontal.rightTrenchOpenStart
+                + FieldConstants.LinesHorizontal.rightTrenchOpenEnd)
+            / 2.0),
+    new Translation2d(
+        FieldConstants.LinesVertical.allianceZone,
+        (FieldConstants.LinesHorizontal.leftTrenchOpenStart
+                + FieldConstants.LinesHorizontal.leftTrenchOpenEnd)
+            / 2.0)
+  };
 
   public static final double autoEndTime = 20.0;
   public static final double teleopDuration = 140.0;
@@ -189,5 +213,44 @@ public class HubShiftUtil {
     };
     return getShiftInfo(shiftSchedule, shiftedShiftStartTimes, shiftedShiftEndTimes);
     // }
+  }
+
+  public static double getEstimatedReturnToAllianceZoneTime(
+      Pose2d robotPose, double maxDriveSpeedMetersPerSec) {
+    Pose2d allianceRelativePose = AllianceFlipUtil.apply(robotPose);
+    if (allianceRelativePose.getX() <= FieldConstants.LinesVertical.allianceZone) {
+      return 0.0;
+    }
+
+    double shortestReturnDistance = Double.POSITIVE_INFINITY;
+    for (Translation2d returnTarget : returnTargets) {
+      // Approximate the manual path as a lateral move into the nearest open lane followed by a
+      // straight drive back across the alliance-zone line.
+      double returnDistance =
+          Math.abs(allianceRelativePose.getY() - returnTarget.getY())
+              + Math.max(0.0, allianceRelativePose.getX() - returnTarget.getX());
+      shortestReturnDistance = Math.min(shortestReturnDistance, returnDistance);
+    }
+
+    double returnDriveSpeedMetersPerSec =
+        Math.max(
+            minimumReturnDriveSpeedMetersPerSec,
+            maxDriveSpeedMetersPerSec * returnDriveSpeedFraction);
+    return shortestReturnDistance / returnDriveSpeedMetersPerSec + returnDriveFudgeSeconds;
+  }
+
+  public static boolean shouldWarnReturnToAllianceZone(
+      Pose2d robotPose, double maxDriveSpeedMetersPerSec) {
+    if (!DriverStation.isTeleopEnabled()) {
+      return false;
+    }
+
+    ShiftInfo shiftInfo = getShiftedShiftInfo();
+    if (shiftInfo.active()) {
+      return false;
+    }
+
+    return shiftInfo.remainingTime()
+        <= getEstimatedReturnToAllianceZoneTime(robotPose, maxDriveSpeedMetersPerSec);
   }
 }
