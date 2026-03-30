@@ -5,46 +5,42 @@ package frc.robot.autos;
 
 import edu.wpi.first.wpilibj2.command.Command;
 import edu.wpi.first.wpilibj2.command.Commands;
+import frc.robot.RobotContainer;
 import frc.robot.subsystems.Choreographer;
 import frc.robot.subsystems.intake.Intake;
+import org.littletonrobotics.junction.Logger;
 
 public final class AutoActions {
-  private static final double SHOOT_DONE_TIMEOUT_SECONDS = 10.0;
-
   private final Choreographer choreographer;
   private final Intake intake;
+  private final RobotContainer robotContainer;
 
-  public AutoActions(Choreographer choreographer, Intake intake) {
+  public AutoActions(Choreographer choreographer, Intake intake, RobotContainer robotContainer) {
     this.choreographer = choreographer;
     this.intake = intake;
+    this.robotContainer = robotContainer;
+  }
+
+  private Command baseScore() {
+    return Commands.sequence(
+            Commands.runOnce(() -> choreographer.setGoal(Choreographer.Goal.SCORE_HUB)),
+            Commands.waitUntil(choreographer::isReadyToShoot),
+            Commands.idle()) // hold SCORE_HUB; withTimeout(3) in AutoRoutines is the exit
+        .deadlineFor(robotContainer.driveCommand.launchModeAndStopCommand())
+        .finallyDo(
+            interrupted -> {
+              Logger.recordOutput("AutoActions/BaseScoreFinished", true);
+              choreographer.setGoal(Choreographer.Goal.IDLE);
+            })
+        .beforeStarting(() -> Logger.recordOutput("AutoActions/BaseScoreStarted", true));
   }
 
   public Command scoreAtHub() {
-    return Commands.sequence(
-        choreographer.setGoalCommand(Choreographer.Goal.SCORE_HUB),
-        Commands.waitUntil(choreographer::isReadyToShoot),
-        Commands.waitUntil(choreographer::isDoneShooting).withTimeout(SHOOT_DONE_TIMEOUT_SECONDS),
-        choreographer.setGoalCommand(Choreographer.Goal.IDLE));
-  }
-
-  public Command scoreAtHub(Command driveAssist) {
-    return Commands.parallel(scoreAtHub(), driveAssist);
+    return baseScore();
   }
 
   public Command scoreWithAgitation() {
-    return Commands.parallel(scoreAtHub(), intakePulse());
-  }
-
-  public Command scoreWithAgitation(Command driveAssist) {
-    return Commands.parallel(scoreAtHub(driveAssist), intakePulse());
-  }
-
-  public Command score(double timeout) {
-    return Commands.sequence(
-        choreographer.setGoalCommand(Choreographer.Goal.SCORE_HUB),
-        Commands.waitUntil(choreographer::isReadyToShoot),
-        Commands.waitUntil(choreographer::isDoneShooting).withTimeout(timeout),
-        choreographer.setGoalCommand(Choreographer.Goal.IDLE));
+    return Commands.parallel(baseScore(), intakePulse());
   }
 
   public Command intakePulse() {

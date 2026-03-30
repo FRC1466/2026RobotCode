@@ -7,7 +7,6 @@ import choreo.auto.AutoFactory;
 import choreo.auto.AutoRoutine;
 import choreo.auto.AutoTrajectory;
 import edu.wpi.first.math.geometry.Pose2d;
-import edu.wpi.first.wpilibj2.command.Command;
 import edu.wpi.first.wpilibj2.command.Commands;
 import frc.robot.RobotContainer;
 import frc.robot.subsystems.Choreographer;
@@ -43,9 +42,7 @@ public final class AutoRoutines {
     trajectory
         .done()
         .onTrue(
-            Commands.sequence(
-                actions.scoreWithAgitation(robotContainer.driveCommand.launchModeCommand()),
-                actions.stowAndHome()));
+            Commands.sequence(actions.scoreWithAgitation().withTimeout(3), actions.stowAndHome()));
 
     return routine;
   }
@@ -58,9 +55,7 @@ public final class AutoRoutines {
     trajectory
         .done()
         .onTrue(
-            Commands.sequence(
-                actions.scoreWithAgitation(robotContainer.driveCommand.launchModeCommand()),
-                actions.stowAndHome()));
+            Commands.sequence(actions.scoreWithAgitation().withTimeout(3), actions.stowAndHome()));
 
     return routine;
   }
@@ -85,13 +80,11 @@ public final class AutoRoutines {
     toOutpost.done().onTrue(creepAtOutpost.cmd());
 
     creepAtOutpost.done().onTrue(toScore.cmd());
-    toScore.done().onTrue(scoreWithAgitation());
+    toScore.done().onTrue(actions.scoreWithAgitation().withTimeout(3));
 
     return routine;
   }
 
-  // Segment 0 drives to the scoring position, then shoots the preload,
-  // then deploys and intakes at the outpost before returning to score again.
   public AutoRoutine preloadThenOutpostAuto() {
     AutoRoutine routine = autoFactory.newRoutine("Preload Then Outpost Auto");
 
@@ -101,33 +94,21 @@ public final class AutoRoutines {
     AutoTrajectory toScoreAgain = routine.trajectory("OutpostGroundPreload", 3);
 
     routine.active().onTrue(toScore.cmd());
-    Command holdDrive =
-        robotContainer.driveCommand.launchModeAndStopCommand().withName("HoldDrive");
-    Command shootSequence =
-        Commands.sequence(
-                choreographer.setGoalCommand(Choreographer.Goal.SCORE_HUB),
-                Commands.waitUntil(choreographer::isReadyToShoot),
-                Commands.waitUntil(choreographer::isDoneShooting).withTimeout(5),
-                choreographer.setGoalCommand(Choreographer.Goal.IDLE))
-            .withName("ChoreographerShootSequence");
 
-    Command shootSequence1 =
-        Commands.sequence(
-                choreographer.setGoalCommand(Choreographer.Goal.SCORE_HUB),
-                Commands.waitUntil(choreographer::isReadyToShoot),
-                Commands.waitUntil(choreographer::isDoneShooting).withTimeout(5),
-                choreographer.setGoalCommand(Choreographer.Goal.IDLE))
-            .withName("ChoreographerShootSequence");
+    toScore
+        .done()
+        .onTrue(
+            actions
+                .scoreWithAgitation()
+                .withTimeout(3)
+                .andThen(Commands.runOnce(transition.cmd()::schedule)));
 
-    toScore.done().onTrue(Commands.race(holdDrive, shootSequence).andThen(transition.cmd()));
     transition.active().onTrue(intake.deployCommand());
     transition.done().onTrue(creepAtOutpost.cmd());
     creepAtOutpost.active().whileTrue(intake.runAtTargetSpeedCommand());
     creepAtOutpost.done().onTrue(toScoreAgain.cmd());
-    toScoreAgain
-        .done()
-        .onTrue(
-            Commands.race(robotContainer.driveCommand.launchModeAndStopCommand(), shootSequence1));
+
+    toScoreAgain.done().onTrue(actions.scoreWithAgitation().withTimeout(3));
 
     return routine;
   }
@@ -148,13 +129,11 @@ public final class AutoRoutines {
     toGround.done().onTrue(creepAlongGround.cmd());
 
     creepAlongGround.done().onTrue(toScore.cmd());
-    toScore.done().onTrue(scoreWithAgitation());
+    toScore.done().onTrue(actions.scoreWithAgitation().withTimeout(3));
 
     return routine;
   }
 
-  // Segment 0 drives to the scoring position, then shoots the preload,
-  // then deploys and intakes along the ground before returning to score again.
   public AutoRoutine preloadThenGroundAuto() {
     AutoRoutine routine = autoFactory.newRoutine("Preload Then Ground Auto");
 
@@ -170,17 +149,18 @@ public final class AutoRoutines {
     toScore
         .done()
         .onTrue(
-            Commands.sequence(
-                scoreWithAgitation(), intake.deployCommand(), creepAlongGround.cmd()));
+            actions
+                .scoreWithAgitation()
+                .withTimeout(3)
+                .andThen(intake.deployCommand())
+                .andThen(Commands.runOnce(creepAlongGround.cmd()::schedule)));
 
     creepAlongGround.done().onTrue(toScoreAgain.cmd());
-    toScoreAgain.done().onTrue(scoreWithAgitation());
+    toScoreAgain.done().onTrue(actions.scoreWithAgitation().withTimeout(3));
 
     return routine;
   }
 
-  // TODO: Replace "GroundPickupRun1" and "GroundPickupRun2" with actual Choreo trajectory names.
-  // Each trajectory file should have 3 segments: go out (0), creep/intake (1), return to score (2).
   public AutoRoutine doubleGroundPickupAuto() {
     AutoRoutine routine = autoFactory.newRoutine("Double Ground Pickup Auto");
 
@@ -203,19 +183,23 @@ public final class AutoRoutines {
     toGround1.done().onTrue(creepAlongGround1.cmd());
 
     creepAlongGround1.done().onTrue(toScore1.cmd());
-    toScore1.done().onTrue(Commands.sequence(scoreWithAgitation(), toGround2.cmd()));
+    toScore1
+        .done()
+        .onTrue(
+            actions
+                .scoreWithAgitation()
+                .withTimeout(3)
+                .andThen(Commands.runOnce(toGround2.cmd()::schedule)));
 
     toGround2.done().onTrue(intake.deployCommand());
     toGround2.done().onTrue(creepAlongGround2.cmd());
 
     creepAlongGround2.done().onTrue(toScore2.cmd());
-    toScore2.done().onTrue(scoreWithAgitation());
+    toScore2.done().onTrue(actions.scoreWithAgitation().withTimeout(3));
 
     return routine;
   }
 
-  // TODO: Replace "NeutralZone" with the actual Choreo trajectory name.
-  // Trajectory should have 3 segments: go out (0), creep/intake (1), return to score (2).
   public AutoRoutine singleGroundPickupAuto() {
     AutoRoutine routine = autoFactory.newRoutine("Single Ground Pickup Auto");
 
@@ -232,18 +216,16 @@ public final class AutoRoutines {
     toNeutralZone.done().onTrue(creepInNeutralZone.cmd());
 
     creepInNeutralZone.done().onTrue(toScore.cmd());
-    toScore.done().onTrue(scoreWithAgitation());
+    toScore.done().onTrue(actions.scoreWithAgitation().withTimeout(3));
 
     return routine;
   }
 
   public AutoRoutine bumpy() {
     AutoRoutine routine = autoFactory.newRoutine("Bumpy");
-
     AutoTrajectory trajectory = routine.trajectory("Bumpy");
 
     routine.active().onTrue(trajectory.cmd());
-
     return routine;
   }
 
@@ -259,9 +241,5 @@ public final class AutoRoutines {
       trajectories[i] = routine.trajectory(name, i);
     }
     return trajectories;
-  }
-
-  private Command scoreWithAgitation() {
-    return actions.scoreWithAgitation(robotContainer.driveCommand.launchModeCommand());
   }
 }

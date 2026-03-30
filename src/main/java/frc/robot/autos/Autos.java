@@ -41,7 +41,8 @@ public class Autos {
             robotContainer.getDrive());
 
     AutoActions actions =
-        new AutoActions(robotContainer.getChoreographer(), robotContainer.getIntake());
+        new AutoActions(
+            robotContainer.getChoreographer(), robotContainer.getIntake(), robotContainer);
 
     routines = new AutoRoutines(robotContainer, autoFactory, actions);
 

@@ -211,7 +211,7 @@ public class Choreographer extends SubsystemBase {
     return hasShotParams() ? cachedShotParams.driveAngle() : drive.getRotation();
   }
 
-  private void setGoal(Goal goal) {
+  public void setGoal(Goal goal) {
     if (goal == Goal.SCORE_HUB && currentGoal != Goal.SCORE_HUB) {
       scoreHubStartShotTimestamp = ShotCalculator.getInstance().getLastShotTimestampSeconds();
     }

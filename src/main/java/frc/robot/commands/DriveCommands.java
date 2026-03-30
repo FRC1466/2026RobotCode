@@ -446,10 +446,47 @@ public class DriveCommands extends Command {
     return Commands.startEnd(() -> launchRequested = true, () -> launchRequested = false, drive);
   }
 
-  public Command launchModeAndStopCommand(double timeoutSeconds) {
-    return Commands.startEnd(() -> driving = false, () -> driving = true, drive)
-        .withTimeout(timeoutSeconds)
-        .andThen(launchModeCommand());
+  public Command launchModeAndStopCommand() {
+    return Commands.sequence(
+            Commands.runOnce(
+                () -> {
+                  launchRequested = true;
+                  driving = false;
+                  rotationController.reset();
+                  Logger.recordOutput("Drive/LaunchHoldActive", true);
+                },
+                drive),
+            Commands.run(
+                    () -> {
+                      var params = ShotCalculator.getInstance().getParameters();
+                      if (params == null || !params.isValid()) {
+                        drive.runVelocity(new ChassisSpeeds());
+                        return;
+                      }
+                      setHeadingLock(DriveMode.LAUNCH_LOCK, params.driveAngle());
+                      double headingCorrection =
+                          rotationController.calculate(drive.getRotation().getRadians());
+                      if (rotationController.atSetpoint()) headingCorrection = 0;
+                      headingCorrection =
+                          MathUtil.clamp(
+                              headingCorrection,
+                              -maxRotSpeed.in(RadiansPerSecond),
+                              maxRotSpeed.in(RadiansPerSecond));
+                      driveFieldCentric(
+                          MetersPerSecond.of(0.0),
+                          MetersPerSecond.of(0.0),
+                          RadiansPerSecond.of(headingCorrection));
+                    },
+                    drive)
+                .finallyDo(
+                    interrupted -> {
+                      launchRequested = false;
+                      driving = true;
+                      drive.runVelocity(new ChassisSpeeds());
+                      clearHeadingLock();
+                      Logger.recordOutput("Drive/LaunchHoldActive", false);
+                    }))
+        .withName("LaunchModeAndStop");
   }
 
   public void setZoneAutoLockDisabled(boolean zoneAutoLockDisabled) {

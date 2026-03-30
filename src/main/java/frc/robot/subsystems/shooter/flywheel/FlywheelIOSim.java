@@ -57,7 +57,7 @@ public class FlywheelIOSim implements FlywheelIO {
       closedLoop = true;
       setpointRotationsPerSec = outputs.velocityRotationsPerSec;
       feedforward = outputs.feedforward;
-      controller.setP(outputs.voltageKP);
+      controller.setP(1.2);
       controller.setD(outputs.voltageKD);
     } else if (outputs.mode == FlywheelIOOutputMode.VOLTAGE) {
       closedLoop = false;
