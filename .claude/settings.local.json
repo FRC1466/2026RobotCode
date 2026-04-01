@@ -1,0 +1,11 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(python3 -c \":*)",
+      "Bash(node -e \":*)",
+      "Bash(./gradlew compileJava)",
+      "Read(//mnt/c/Users/grump/**)",
+      "Bash(find /c /mnt/c -name java.exe -path */wpilib/*)"
+    ]
+  }
+}
