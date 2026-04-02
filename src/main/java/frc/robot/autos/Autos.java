@@ -105,6 +105,13 @@ public class Autos {
         () -> routines.startPoseOf(routines::driveLeftPreloadAuto, r -> r.trajectory("LeftAuto")));
 
     registerRoutine("Left Preload Auto", routines::LeftPreloadAuto, Optional::<Pose2d>empty);
+
+    registerRoutine(
+        "One Dip Left Auto",
+        routines::oneDipLeftAuto,
+        () ->
+            routines.startPoseOf(
+                routines::oneDipLeftAuto, r -> r.trajectory("OneDipLeft", 0)));
     registerRoutine(
         "Bumpy",
         routines::bumpy,

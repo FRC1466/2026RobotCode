@@ -252,6 +252,36 @@ public final class AutoRoutines {
     return routine;
   }
 
+  public AutoRoutine oneDipLeftAuto() {
+    AutoRoutine routine = autoFactory.newRoutine("One Dip Left Auto");
+
+    // OneDipLeft has 4 segments (splits at samples 0, 8, 13, 32, targetDt=0.1 s):
+    //   Seg 0 — fast rush along top of field to neutral zone entrance (~0.8 s, KeepInLane)
+    //   Seg 1 — short orient approach at neutral zone entrance (~0.5 s, PointAt ball cluster);
+    //           deploy intake here so it's ready before the slow sweep begins
+    //   Seg 2 — slow sweep through ball pickup zone (~1.9 s, MaxVelocity=1.0 m/s, PointAt,
+    //           KeepInLane); intake runs here — this is when the ball is collected
+    //   Seg 3 — return drive to scoring position; score when done
+    AutoTrajectory[] t = trajectories(routine, "OneDipLeft", 4);
+    AutoTrajectory rush = t[0];
+    AutoTrajectory orient = t[1];
+    AutoTrajectory sweep = t[2];
+    AutoTrajectory returnToScore = t[3];
+
+    routine.active().onTrue(rush.cmd());
+
+    rush.done().onTrue(intake.deployCommand());
+    rush.done().onTrue(orient.cmd());
+
+    orient.done().onTrue(sweep.cmd());
+    sweep.active().whileTrue(intake.runCommand());
+
+    sweep.done().onTrue(returnToScore.cmd());
+    returnToScore.done().onTrue(actions.scoreWithAgitation().withTimeout(3));
+
+    return routine;
+  }
+
   public AutoRoutine bumpy() {
     AutoRoutine routine = autoFactory.newRoutine("Bumpy");
     AutoTrajectory trajectory = routine.trajectory("Bumpy");
