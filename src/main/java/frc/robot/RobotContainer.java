@@ -17,6 +17,7 @@ import edu.wpi.first.wpilibj2.command.button.CommandXboxController;
 import edu.wpi.first.wpilibj2.command.button.RobotModeTriggers;
 import frc.robot.autos.Autos;
 import frc.robot.commands.DriveCommands;
+import frc.robot.commands.TrajectoryTuningCommand;
 import frc.robot.generated.TunerConstants;
 import frc.robot.subsystems.Choreographer;
 import frc.robot.subsystems.drive.Drive;
@@ -253,6 +254,9 @@ public class RobotContainer {
     autoChooser.addOption(
         "Test: Kicker", kicker.runCommand().withTimeout(3.0).withName("Test Kicker"));
     */
+
+    // Trajectory following characterization
+    SmartDashboard.putData("Choreo Trajectory Tuning", new TrajectoryTuningCommand(drive));
 
     // Configure the button bindings
     intakeHomeCommand = intake.homeCommand();

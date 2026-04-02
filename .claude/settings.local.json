@@ -5,7 +5,20 @@
       "Bash(node -e \":*)",
       "Bash(./gradlew compileJava)",
       "Read(//mnt/c/Users/grump/**)",
-      "Bash(find /c /mnt/c -name java.exe -path */wpilib/*)"
+      "Bash(find /c /mnt/c -name java.exe -path */wpilib/*)",
+      "Bash(ls -la /Users/2028thao/Documents/GitHub/2026RobotCode/src/main/java/frc/robot/subsystems/drive/*.java)",
+      "Read(//private/tmp/**)",
+      "Bash(jar xf:*)",
+      "Read(//tmp/choreo/trajectory/**)",
+      "Bash(jar tf:*)",
+      "Bash(python3 -c ':*)",
+      "WebSearch",
+      "WebFetch(domain:raw.githubusercontent.com)",
+      "Bash(./gradlew build:*)",
+      "Read(//Users/2028thao/wpilib/2026/jdk/bin/**)",
+      "Read(//Users/2028thao/wpilib/**)",
+      "Bash(JAVA_HOME=/Users/2028thao/wpilib/2026/jdk ./gradlew build)",
+      "Bash(JAVA_HOME=/Users/2028thao/wpilib/2026/jdk ./gradlew compileJava)"
     ]
   }
 }
