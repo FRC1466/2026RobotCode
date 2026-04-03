@@ -443,7 +443,7 @@ public class DriveCommands extends Command {
    * release.
    */
   public Command launchModeCommand() {
-    return Commands.startEnd(() -> launchRequested = true, () -> launchRequested = false, drive);
+    return Commands.startEnd(() -> launchRequested = true, () -> launchRequested = false);
   }
 
   public Command launchModeAndStopCommand() {

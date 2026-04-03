@@ -109,9 +109,7 @@ public class Autos {
     registerRoutine(
         "One Dip Left Auto",
         routines::oneDipLeftAuto,
-        () ->
-            routines.startPoseOf(
-                routines::oneDipLeftAuto, r -> r.trajectory("OneDipLeft", 0)));
+        () -> routines.startPoseOf(routines::oneDipLeftAuto, r -> r.trajectory("OneDipLeft", 0)));
     registerRoutine(
         "Bumpy",
         routines::bumpy,
