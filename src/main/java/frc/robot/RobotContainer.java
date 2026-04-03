@@ -119,7 +119,8 @@ public class RobotContainer {
           vision =
               new Vision(
                   drive::addVisionMeasurement,
-                  new VisionIOPhotonVision(camera0Name, robotToCamera0));
+                  new VisionIOPhotonVision(camera0Name, robotToCamera0),
+                  new VisionIOPhotonVision(camera1Name, robotToCamera1));
           break;
         }
         case DEVBOT -> {
@@ -146,7 +147,8 @@ public class RobotContainer {
           vision =
               new Vision(
                   drive::addVisionMeasurement,
-                  new VisionIOPhotonVisionSim(camera0Name, robotToCamera0, drive::getPose));
+                  new VisionIOPhotonVisionSim(camera0Name, robotToCamera0, drive::getPose),
+                  new VisionIOPhotonVisionSim(camera1Name, robotToCamera1, drive::getPose));
           flywheel = new Flywheel(new FlywheelIOSim());
           hood = new Hood(new HoodIOSim());
           indexer = new Indexer(new IndexerIOSim());
