@@ -42,7 +42,7 @@ public final class AutoRoutines {
     trajectory
         .done()
         .onTrue(
-            Commands.sequence(actions.scoreWithAgitation().withTimeout(3), actions.stowAndHome()));
+            Commands.sequence(actions.scoreWithReverseAgitationAndRollers().withTimeout(3), actions.stowAndHome()));
 
     return routine;
   }
@@ -55,7 +55,7 @@ public final class AutoRoutines {
     trajectory
         .done()
         .onTrue(
-            Commands.sequence(actions.scoreWithAgitation().withTimeout(3), actions.stowAndHome()));
+            Commands.sequence(actions.scoreWithReverseAgitationAndRollers().withTimeout(3), actions.stowAndHome()));
 
     return routine;
   }
@@ -80,7 +80,7 @@ public final class AutoRoutines {
     toOutpost.done().onTrue(creepAtOutpost.cmd());
 
     creepAtOutpost.done().onTrue(toScore.cmd());
-    toScore.done().onTrue(actions.scoreWithAgitation().withTimeout(3));
+    toScore.done().onTrue(actions.scoreWithReverseAgitationAndRollers().withTimeout(5));
 
     return routine;
   }
@@ -99,7 +99,7 @@ public final class AutoRoutines {
         .done()
         .onTrue(
             actions
-                .scoreWithAgitation()
+                .scoreWithReverseAgitationAndRollers()
                 .withTimeout(3)
                 .andThen(Commands.runOnce(transition.cmd()::schedule)));
 
@@ -108,7 +108,7 @@ public final class AutoRoutines {
     creepAtOutpost.active().whileTrue(intake.runAtTargetSpeedCommand());
     creepAtOutpost.done().onTrue(toScoreAgain.cmd());
 
-    toScoreAgain.done().onTrue(actions.scoreWithAgitation().withTimeout(3));
+    toScoreAgain.done().onTrue(actions.scoreWithReverseAgitationAndRollers().withTimeout(10));
 
     return routine;
   }
@@ -129,7 +129,7 @@ public final class AutoRoutines {
     toGround.done().onTrue(creepAlongGround.cmd());
 
     creepAlongGround.done().onTrue(toScore.cmd());
-    toScore.done().onTrue(actions.scoreWithAgitation().withTimeout(3));
+    toScore.done().onTrue(actions.scoreWithReverseAgitationAndRollers().withTimeout(3));
 
     return routine;
   }
@@ -150,13 +150,13 @@ public final class AutoRoutines {
         .done()
         .onTrue(
             actions
-                .scoreWithAgitation()
+                .scoreWithReverseAgitationAndRollers()
                 .withTimeout(3)
                 .andThen(intake.deployCommand())
                 .andThen(Commands.runOnce(creepAlongGround.cmd()::schedule)));
 
     creepAlongGround.done().onTrue(toScoreAgain.cmd());
-    toScoreAgain.done().onTrue(actions.scoreWithAgitation().withTimeout(3));
+    toScoreAgain.done().onTrue(actions.scoreWithReverseAgitationAndRollers().withTimeout(3));
 
     return routine;
   }
@@ -205,8 +205,8 @@ public final class AutoRoutines {
         .done()
         .onTrue(
             actions
-                .scoreWithAgitation()
-                .withTimeout(3)
+                .scoreWithReverseAgitationAndRollers()
+                .withTimeout(5)
                 .andThen(Commands.runOnce(rush2.cmd()::schedule)));
 
     // Deploy intake on the rush out — intake has the full orient+sweep (~6s) to be ready
@@ -217,7 +217,7 @@ public final class AutoRoutines {
     sweep2.active().whileTrue(intake.runCommand());
 
     sweep2.done().onTrue(returnToScore2.cmd());
-    returnToScore2.done().onTrue(actions.scoreWithAgitation().withTimeout(3));
+    returnToScore2.done().onTrue(actions.scoreWithReverseAgitationAndRollers().withTimeout(10));
 
     return routine;
   }
@@ -247,7 +247,7 @@ public final class AutoRoutines {
     sweep.active().whileTrue(intake.runCommand());
 
     sweep.done().onTrue(returnToScore.cmd());
-    returnToScore.done().onTrue(actions.scoreWithAgitation().withTimeout(3));
+    returnToScore.done().onTrue(actions.scoreWithReverseAgitationAndRollers().withTimeout(10));
 
     return routine;
   }
@@ -277,7 +277,7 @@ public final class AutoRoutines {
     sweep.active().whileTrue(intake.runCommand());
 
     sweep.done().onTrue(returnToScore.cmd());
-    returnToScore.done().onTrue(actions.scoreWithAgitation().withTimeout(3));
+    returnToScore.done().onTrue(actions.scoreWithReverseAgitationAndRollers().withTimeout(10));
 
     return routine;
   }

@@ -23,9 +23,11 @@ public final class AutoActions {
 
   private Command baseScore() {
     return Commands.sequence(
+            Commands.runOnce(() -> choreographer.setGoal(Choreographer.Goal.REVERSE_INDEXER)),
+            Commands.waitSeconds(0.5),
             Commands.runOnce(() -> choreographer.setGoal(Choreographer.Goal.SCORE_HUB)),
             Commands.waitUntil(choreographer::isReadyToShoot),
-            Commands.idle()) // hold SCORE_HUB; withTimeout(3) in AutoRoutines is the exit
+            Commands.idle()) // hold SCORE_HUB; withTimeout in AutoRoutines is the exit
         .deadlineFor(robotContainer.driveCommand.launchModeAndStopCommand())
         .finallyDo(
             interrupted -> {
@@ -43,11 +45,24 @@ public final class AutoActions {
     return Commands.parallel(baseScore(), intakePulse());
   }
 
+  public Command scoreWithReverseAgitationAndRollers() {
+    return Commands.parallel(baseScore(), intakePulseReverseWithRollers());
+  }
+
   public Command intakePulse() {
     return Commands.repeatingSequence(
         intake.deployCommand(),
         Commands.waitSeconds(1.0),
         intake.stowCommand(),
+        Commands.waitSeconds(1.0));
+  }
+
+  /** Agitate in reverse (stow→deploy) and run rollers throughout, to clear stuck balls. */
+  public Command intakePulseReverseWithRollers() {
+    return Commands.repeatingSequence(
+        Commands.runOnce(() -> { intake.stow(); intake.run(); }, intake),
+        Commands.waitSeconds(1.0),
+        Commands.runOnce(() -> { intake.deploy(); intake.run(); }, intake),
         Commands.waitSeconds(1.0));
   }
 
