@@ -429,6 +429,9 @@ public class RobotContainer {
     // Publish match time
     SmartDashboard.putNumber("Match Time", DriverStation.getMatchTime());
 
+    // Hood position reset button
+    SmartDashboard.putData("Hood/ResetPosition", hood.resetPositionCommand());
+
     // Controller disconnected alerts
     controllerDisconnected.set(!DriverStation.isJoystickConnected(controller.getHID().getPort()));
   }

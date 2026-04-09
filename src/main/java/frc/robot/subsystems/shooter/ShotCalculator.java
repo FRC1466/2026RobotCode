@@ -426,6 +426,7 @@ public class ShotCalculator {
     Logger.recordOutput("ShotCalculator/TargetPose", new Pose2d(target, Rotation2d.kZero));
     Logger.recordOutput("ShotCalculator/LookaheadPose", lookaheadPose);
     Logger.recordOutput("ShotCalculator/ShooterToTargetDistance", lookaheadShooterToTargetDistance);
+    Logger.recordOutput("ShotCalculator/FlywheelOffsetPercent", flywheelSpeedOffsetPercent);
 
     return latestParameters;
   }

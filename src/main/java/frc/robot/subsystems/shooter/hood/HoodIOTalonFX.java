@@ -77,7 +77,10 @@ public class HoodIOTalonFX implements HoodIO {
             BaseStatusSignal.setUpdateFrequencyForAll(
                 50.0, position, velocity, appliedVoltage, supplyCurrent, torqueCurrent, temp));
     PhoenixUtil.tryUntilOk(5, () -> talon.optimizeBusUtilization());
+  }
 
+  @Override
+  public void resetPosition() {
     PhoenixUtil.tryUntilOk(5, () -> talon.setPosition(0.0));
   }
 

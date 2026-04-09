@@ -11,6 +11,7 @@ import edu.wpi.first.wpilibj.DriverStation;
 import edu.wpi.first.wpilibj.util.Color;
 import edu.wpi.first.wpilibj.util.Color8Bit;
 import edu.wpi.first.wpilibj2.command.Command;
+import edu.wpi.first.wpilibj2.command.Commands;
 import edu.wpi.first.wpilibj2.command.sysid.SysIdRoutine;
 import frc.robot.Constants;
 import frc.robot.Robot;
@@ -97,6 +98,7 @@ public class Hood extends FullSubsystem {
 
   public Hood(HoodIO io) {
     this.io = io;
+    io.resetPosition();
 
     sysId =
         new SysIdRoutine(
@@ -224,6 +226,10 @@ public class Hood extends FullSubsystem {
           outputs.mode = HoodIOOutputMode.OPEN_LOOP;
           outputs.volts = volts.getAsDouble();
         });
+  }
+
+  public Command resetPositionCommand() {
+    return Commands.runOnce(io::resetPosition, this).ignoringDisable(true);
   }
 
   public Command sysIdQuasistatic(SysIdRoutine.Direction direction) {

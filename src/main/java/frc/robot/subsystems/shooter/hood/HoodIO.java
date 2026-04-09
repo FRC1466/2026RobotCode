@@ -40,4 +40,6 @@ public interface HoodIO {
   default void applyOutputs(HoodIOOutputs outputs) {}
 
   default void setBrakeMode(boolean enableBrake) {}
+
+  default void resetPosition() {}
 }

@@ -59,4 +59,11 @@ public class HoodIOSim implements HoodIO {
       controller.setSetpoint(outputs.positionRotations * 2 * Math.PI);
     }
   }
+
+  @Override
+  public void resetPosition() {
+    sim.setState(minAngle, 0.0);
+    controller.reset();
+    appliedVolts = 0.0;
+  }
 }
