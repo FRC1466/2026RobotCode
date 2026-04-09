@@ -229,7 +229,7 @@ public final class AutoRoutines {
   public AutoRoutine singleGroundPickupAuto() {
     AutoRoutine routine = autoFactory.newRoutine("Single Ground Pickup Auto");
 
-    AutoTrajectory[] t = trajectories(routine, "RushToCenterUnoDip", 4);
+    AutoTrajectory[] t = trajectories(routine, "RushToCenterUnoDip_copy1", 4);
     AutoTrajectory rush = t[0];
     AutoTrajectory orient = t[1];
     AutoTrajectory sweep = t[2];
