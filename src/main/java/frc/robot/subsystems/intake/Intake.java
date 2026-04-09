@@ -52,6 +52,10 @@ public class Intake extends FullSubsystem {
     runVelocity(63);
   }
 
+  public void runBackwardsTarget() {
+    runVelocity(-63);
+  }
+
   private static final LoggedTunableNumber stowAngleDeg =
       new LoggedTunableNumber("IntakePivot/StowAngleDeg", 8.0);
   private static final LoggedTunableNumber deployAngleDeg =
@@ -373,6 +377,10 @@ public class Intake extends FullSubsystem {
 
   public Command runAtTargetSpeedCommand() {
     return runEnd(this::runAtTargetSpeed, this::stop).withName("IntakeRollers.runAtTargetSpeed");
+  }
+
+  public Command runBackwardsCommand() {
+    return runEnd(this::runBackwardsTarget, this::stop).withName("IntakeRollers.runBackwards");
   }
 
   public Command stopCommand() {

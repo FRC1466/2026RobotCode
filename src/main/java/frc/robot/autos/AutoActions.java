@@ -60,9 +60,19 @@ public final class AutoActions {
   /** Agitate in reverse (stow→deploy) and run rollers throughout, to clear stuck balls. */
   public Command intakePulseReverseWithRollers() {
     return Commands.repeatingSequence(
-        Commands.runOnce(() -> { intake.stow(); intake.run(); }, intake),
+        Commands.runOnce(
+            () -> {
+              intake.stow();
+              intake.run();
+            },
+            intake),
         Commands.waitSeconds(1.0),
-        Commands.runOnce(() -> { intake.deploy(); intake.run(); }, intake),
+        Commands.runOnce(
+            () -> {
+              intake.deploy();
+              intake.run();
+            },
+            intake),
         Commands.waitSeconds(1.0));
   }
 

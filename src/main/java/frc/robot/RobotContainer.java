@@ -405,11 +405,10 @@ public class RobotContainer {
         .onTrue(choreographer.setGoalCommand(Choreographer.Goal.REVERSE_INDEXER))
         .onFalse(choreographer.setGoalCommand(Choreographer.Goal.IDLE));
 
-    // Y Button: hold to move hood to manualHoodAngle (tuning, Choreographer off)
     controller
         .y()
-        .whileTrue(hood.runFixedCommand(() -> 30).withName("TuneHoodAngle"))
-        .onFalse(hood.stowCommand());
+        .whileTrue(intake.runBackwardsCommand().withName("IntakeBackward"))
+        .onFalse(intake.stopCommand());
 
     // Mode Init
     RobotModeTriggers.teleop().onTrue(Commands.runOnce(HubShiftUtil::initialize));

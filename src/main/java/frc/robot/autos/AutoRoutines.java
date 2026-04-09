@@ -42,7 +42,9 @@ public final class AutoRoutines {
     trajectory
         .done()
         .onTrue(
-            Commands.sequence(actions.scoreWithReverseAgitationAndRollers().withTimeout(3), actions.stowAndHome()));
+            Commands.sequence(
+                actions.scoreWithReverseAgitationAndRollers().withTimeout(3),
+                actions.stowAndHome()));
 
     return routine;
   }
@@ -55,7 +57,9 @@ public final class AutoRoutines {
     trajectory
         .done()
         .onTrue(
-            Commands.sequence(actions.scoreWithReverseAgitationAndRollers().withTimeout(3), actions.stowAndHome()));
+            Commands.sequence(
+                actions.scoreWithReverseAgitationAndRollers().withTimeout(3),
+                actions.stowAndHome()));
 
     return routine;
   }
@@ -225,20 +229,19 @@ public final class AutoRoutines {
   public AutoRoutine singleGroundPickupAuto() {
     AutoRoutine routine = autoFactory.newRoutine("Single Ground Pickup Auto");
 
-    // UnoDip has 4 segments (splits at samples 0, 41, 52, 129):
-    //   Seg 0 — fast rush along bottom to neutral zone entrance (~1.0 s, KeepInLane)
-    //   Seg 1 — short orient pivot at neutral zone entrance (~0.3 s, PointAt ball cluster);
-    //           deploy intake here so it's ready before the slow sweep begins
-    //   Seg 2 — slow sweep through ball pickup zone (~1.9 s, MaxVelocity=1.0 m/s, PointAt);
-    //           intake runs here — this is when the ball is collected
-    //   Seg 3 — return drive to scoring position; score when done
     AutoTrajectory[] t = trajectories(routine, "RushToCenterUnoDip", 4);
     AutoTrajectory rush = t[0];
     AutoTrajectory orient = t[1];
     AutoTrajectory sweep = t[2];
     AutoTrajectory returnToScore = t[3];
 
-    routine.active().onTrue(rush.cmd());
+    routine
+        .active()
+        .onTrue(
+            actions
+                .scoreWithReverseAgitationAndRollers()
+                .withTimeout(3)
+                .andThen(Commands.runOnce(rush.cmd()::schedule)));
 
     rush.done().onTrue(intake.deployCommand());
     rush.done().onTrue(orient.cmd());
@@ -255,20 +258,19 @@ public final class AutoRoutines {
   public AutoRoutine oneDipLeftAuto() {
     AutoRoutine routine = autoFactory.newRoutine("One Dip Left Auto");
 
-    // OneDipLeft has 4 segments (splits at samples 0, 8, 13, 32, targetDt=0.1 s):
-    //   Seg 0 — fast rush along top of field to neutral zone entrance (~0.8 s, KeepInLane)
-    //   Seg 1 — short orient approach at neutral zone entrance (~0.5 s, PointAt ball cluster);
-    //           deploy intake here so it's ready before the slow sweep begins
-    //   Seg 2 — slow sweep through ball pickup zone (~1.9 s, MaxVelocity=1.0 m/s, PointAt,
-    //           KeepInLane); intake runs here — this is when the ball is collected
-    //   Seg 3 — return drive to scoring position; score when done
     AutoTrajectory[] t = trajectories(routine, "OneDipLeft", 4);
     AutoTrajectory rush = t[0];
     AutoTrajectory orient = t[1];
     AutoTrajectory sweep = t[2];
     AutoTrajectory returnToScore = t[3];
 
-    routine.active().onTrue(rush.cmd());
+    routine
+        .active()
+        .onTrue(
+            actions
+                .scoreWithReverseAgitationAndRollers()
+                .withTimeout(3)
+                .andThen(Commands.runOnce(rush.cmd()::schedule)));
 
     rush.done().onTrue(intake.deployCommand());
     rush.done().onTrue(orient.cmd());

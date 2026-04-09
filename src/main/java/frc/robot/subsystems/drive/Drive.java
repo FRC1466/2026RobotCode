@@ -21,6 +21,7 @@ import edu.wpi.first.hal.FRCNetComm.tInstances;
 import edu.wpi.first.hal.FRCNetComm.tResourceType;
 import edu.wpi.first.hal.HAL;
 import edu.wpi.first.math.Matrix;
+import edu.wpi.first.math.controller.PIDController;
 import edu.wpi.first.math.estimator.SwerveDrivePoseEstimator;
 import edu.wpi.first.math.geometry.Pose2d;
 import edu.wpi.first.math.geometry.Rotation2d;
@@ -50,7 +51,6 @@ import frc.robot.Constants.Mode;
 import frc.robot.RobotState;
 import frc.robot.generated.TunerConstants;
 import frc.robot.util.LocalADStarAK;
-import frc.robot.util.TunableControls;
 import java.util.concurrent.locks.Lock;
 import java.util.concurrent.locks.ReentrantLock;
 import org.littletonrobotics.junction.AutoLogOutput;
@@ -111,23 +111,14 @@ public class Drive extends SubsystemBase {
 
   private final SwerveSetpointGenerator setpointGenerator;
   private SwerveSetpoint previousSetpoint;
-  private static final TunableControls.TunableControlConstants TRANSLATION_CONTROLLER_CONSTANTS =
-      new TunableControls.TunableControlConstants(
-          "Drive/TranslationController",
-          new TunableControls.ControlConstants().withPID(5, 0.0, 0.05));
-  private static final TunableControls.TunableControlConstants HEADING_CONTROLLER_CONSTANTS =
-      new TunableControls.TunableControlConstants(
-          "Drive/HeadingController",
-          new TunableControls.ControlConstants()
-              .withPID(10.0, 0.0, 0.5)
-              .withContinuous(-Math.PI, Math.PI));
 
-  private final TunableControls.TunablePIDController xController =
-      new TunableControls.TunablePIDController(TRANSLATION_CONTROLLER_CONSTANTS);
-  private final TunableControls.TunablePIDController yController =
-      new TunableControls.TunablePIDController(TRANSLATION_CONTROLLER_CONSTANTS);
-  private final TunableControls.TunablePIDController headingController =
-      new TunableControls.TunablePIDController(HEADING_CONTROLLER_CONSTANTS);
+  private final PIDController xController = new PIDController(7, 0.0, 1);
+  private final PIDController yController = new PIDController(7, 0.0, 1);
+  private final PIDController headingController = new PIDController(7, 0.0, 0.5);
+
+  {
+    headingController.enableContinuousInput(-Math.PI, Math.PI);
+  }
 
   private Field2d poseField = new Field2d();
 
