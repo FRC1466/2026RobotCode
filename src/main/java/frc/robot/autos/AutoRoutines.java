@@ -43,7 +43,7 @@ public final class AutoRoutines {
         .done()
         .onTrue(
             Commands.sequence(
-                actions.scoreWithReverseAgitationAndRollers().withTimeout(3),
+                actions.scoreWithReverseAgitationAndRollers().withTimeout(15),
                 actions.stowAndHome()));
 
     return routine;
