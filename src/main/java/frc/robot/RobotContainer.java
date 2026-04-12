@@ -15,7 +15,7 @@ import edu.wpi.first.wpilibj2.command.Command;
 import edu.wpi.first.wpilibj2.command.Commands;
 import edu.wpi.first.wpilibj2.command.button.CommandXboxController;
 import edu.wpi.first.wpilibj2.command.button.RobotModeTriggers;
-import frc.robot.autos.Autos;
+import frc.robot.autos.AutoManager;
 import frc.robot.commands.DriveCommands;
 import frc.robot.generated.TunerConstants;
 import frc.robot.subsystems.Choreographer;
@@ -77,7 +77,7 @@ public class RobotContainer {
   @Getter private Kicker kicker;
   @Getter private Choreographer choreographer;
   @Getter private Intake intake;
-  @Getter private Autos autos;
+  @Getter private AutoManager autoManager;
 
   // Controller
   private final CommandXboxController controller = new CommandXboxController(0);
@@ -195,8 +195,8 @@ public class RobotContainer {
         new Choreographer(
             drive, flywheel, hood, indexer, kicker, intake, driveCommand::atLaunchGoal);
 
-    // Set up Autos (built in auto chooser)
-    autos = new Autos(this);
+    // Set up auto system (B-Line)
+    autoManager = new AutoManager(this);
 
     // Set up HubShiftUtil Overrides
     LoggedDashboardChooser<Boolean> allianceOverrideChooser =
@@ -424,8 +424,8 @@ public class RobotContainer {
   public void updateDashboardOutputs() {
     ShotCalculator.getInstance().syncDashboardOverride();
     driveCommand.syncDashboardOverrides();
-    if (autos != null) {
-      autos.updateDashboardOutputs();
+    if (autoManager != null) {
+      autoManager.updateDashboardOutputs();
     }
 
     // Publish match time
