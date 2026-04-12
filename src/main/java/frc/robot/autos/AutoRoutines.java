@@ -52,7 +52,7 @@ final class AutoRoutines {
             new Path.Waypoint(new Pose2d(1.75, 4.02, Rotation2d.kZero)));
 
     return Commands.sequence(
-            manager.followWithReset(path),
+            manager.follow(path),
             actions.scoreWithReverseAgitationAndRollers().withTimeout(3),
             actions.stowAndHome())
         .withName("Drive Back Preload Auto");
@@ -61,8 +61,8 @@ final class AutoRoutines {
   /**
    * Drive from the left start position back toward the alliance station, then score.
    *
-   * <p>Path coordinates sourced from {@code LeftAuto.traj} waypoints: start (3.38, 6.53, −63.6°)
-   * → end (2.25, 5.52, −31.8°).
+   * <p>Path coordinates sourced from {@code LeftAuto.traj} waypoints: start (3.38, 6.53, −63.6°) →
+   * end (2.25, 5.52, −31.8°).
    */
   Command driveLeftPreload() {
     Path path =
@@ -71,7 +71,7 @@ final class AutoRoutines {
             new Path.Waypoint(new Pose2d(2.25, 5.52, Rotation2d.fromRadians(-0.5542))));
 
     return Commands.sequence(
-            manager.followWithReset(path),
+            manager.follow(path),
             actions.scoreWithReverseAgitationAndRollers().withTimeout(3),
             actions.stowAndHome())
         .withName("Drive Left Preload Auto");
@@ -112,7 +112,8 @@ final class AutoRoutines {
    * }</pre>
    */
   Command outpostAuto() {
-    return guiPathStub("Outpost Auto", "outpost_rush.json", "outpost_creep.json", "outpost_return.json");
+    return guiPathStub(
+        "Outpost Auto", "outpost_rush.json", "outpost_creep.json", "outpost_return.json");
   }
 
   /**
@@ -177,7 +178,8 @@ final class AutoRoutines {
    * }</pre>
    */
   Command groundAuto() {
-    return guiPathStub("Ground Auto", "ground_rush.json", "ground_creep.json", "ground_return.json");
+    return guiPathStub(
+        "Ground Auto", "ground_rush.json", "ground_creep.json", "ground_return.json");
   }
 
   /**

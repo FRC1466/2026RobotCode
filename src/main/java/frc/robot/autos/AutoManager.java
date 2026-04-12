@@ -4,18 +4,23 @@
 package frc.robot.autos;
 
 import edu.wpi.first.math.controller.PIDController;
+import edu.wpi.first.math.geometry.Pose2d;
+import edu.wpi.first.math.geometry.Rotation2d;
+import edu.wpi.first.wpilibj.DriverStation;
 import edu.wpi.first.wpilibj.smartdashboard.Field2d;
 import edu.wpi.first.wpilibj.smartdashboard.SendableChooser;
 import edu.wpi.first.wpilibj.smartdashboard.SmartDashboard;
 import edu.wpi.first.wpilibj2.command.Command;
 import edu.wpi.first.wpilibj2.command.Commands;
+import edu.wpi.first.wpilibj2.command.ProxyCommand;
 import edu.wpi.first.wpilibj2.command.button.RobotModeTriggers;
 import frc.robot.RobotContainer;
 import frc.robot.lib.BLine.FlippingUtil;
 import frc.robot.lib.BLine.FollowPath;
 import frc.robot.lib.BLine.Path;
 import frc.robot.subsystems.drive.Drive;
-import java.util.Set;
+import java.util.HashMap;
+import java.util.Map;
 import org.littletonrobotics.junction.Logger;
 
 /**
@@ -35,7 +40,7 @@ import org.littletonrobotics.junction.Logger;
  *
  * <p>Example: {@code manager.followWithReset(new Path("my_path"))}
  *
- * <b>Code-only workflow:</b><br>
+ * <p><b>Code-only workflow:</b><br>
  * Construct a {@link Path} directly from waypoints:
  *
  * <pre>{@code
@@ -64,6 +69,7 @@ public final class AutoManager {
   private final FollowPath.Builder pathBuilder;
   private final SendableChooser<Command> chooser = new SendableChooser<>();
   private final Field2d startPoseField = new Field2d();
+  private final Map<String, Pose2d> autoStartPoses = new HashMap<>();
 
   public AutoManager(RobotContainer rc) {
     this.drive = rc.getDrive();
@@ -104,17 +110,20 @@ public final class AutoManager {
     AutoActions actions = new AutoActions(rc);
     AutoRoutines routines = new AutoRoutines(this, actions, rc);
 
+    Pose2d driveBackStart = new Pose2d(3.6, 4.02, Rotation2d.kZero);
+    Pose2d driveLeftStart = new Pose2d(3.38, 6.53, Rotation2d.fromRadians(-1.1104));
+
     chooser.setDefaultOption("None", Commands.none());
-    chooser.addOption("Drive Back Preload Auto", routines.driveBackPreload());
-    chooser.addOption("Drive Left Preload Auto", routines.driveLeftPreload());
-    chooser.addOption("Left Preload Auto", routines.driveLeftPreload());
-    chooser.addOption("Outpost Auto", routines.outpostAuto());
-    chooser.addOption("Preload Then Outpost Auto", routines.preloadThenOutpostAuto());
-    chooser.addOption("Ground Auto", routines.groundAuto());
-    chooser.addOption("Preload Then Ground Auto", routines.preloadThenGroundAuto());
-    chooser.addOption("Double Ground Pickup Auto", routines.doubleGroundPickupAuto());
-    chooser.addOption("Single Ground Pickup Auto", routines.singleGroundPickupAuto());
-    chooser.addOption("One Dip Left Auto", routines.oneDipLeftAuto());
+    addOption("Drive Back Preload Auto", routines.driveBackPreload(), driveBackStart);
+    addOption("Drive Left Preload Auto", routines.driveLeftPreload(), driveLeftStart);
+    addOption("Left Preload Auto", routines.driveLeftPreload(), driveLeftStart);
+    addOption("Outpost Auto", routines.outpostAuto(), null);
+    addOption("Preload Then Outpost Auto", routines.preloadThenOutpostAuto(), null);
+    addOption("Ground Auto", routines.groundAuto(), null);
+    addOption("Preload Then Ground Auto", routines.preloadThenGroundAuto(), null);
+    addOption("Double Ground Pickup Auto", routines.doubleGroundPickupAuto(), null);
+    addOption("Single Ground Pickup Auto", routines.singleGroundPickupAuto(), null);
+    addOption("One Dip Left Auto", routines.oneDipLeftAuto(), null);
 
     SmartDashboard.putData("Auto Chooser", chooser);
     SmartDashboard.putData("Auto Start Pose", startPoseField);
@@ -122,8 +131,9 @@ public final class AutoManager {
     // Mirrors the old Autos class: autonomous mode triggers the selected command.
     // Commands.defer defers chooser.getSelected() until autonomous actually starts so
     // late dashboard changes during pre-match are respected.
-    RobotModeTriggers.autonomous()
-        .whileTrue(Commands.defer(chooser::getSelected, Set.of()));
+    // ProxyCommand runs the selected command without registering it as composed, so the same
+    // pre-built command can be re-scheduled across multiple auto enables.
+    RobotModeTriggers.autonomous().whileTrue(new ProxyCommand(chooser::getSelected));
   }
 
   /**
@@ -146,7 +156,20 @@ public final class AutoManager {
   public void updateDashboardOutputs() {
     Command selected = chooser.getSelected();
     if (selected == null) return;
-    Logger.recordOutput("Auto/SelectedCommandName", selected.getName());
+    String name = selected.getName();
+    Logger.recordOutput("Auto/SelectedCommandName", name);
+
+    Pose2d startPose = autoStartPoses.get(name);
+    if (startPose != null) {
+      boolean isRed =
+          DriverStation.getAlliance().map(a -> a == DriverStation.Alliance.Red).orElse(false);
+      startPoseField.setRobotPose(isRed ? FlippingUtil.flipFieldPose(startPose) : startPose);
+    }
+  }
+
+  private void addOption(String name, Command command, Pose2d startPose) {
+    chooser.addOption(name, command);
+    if (startPose != null) autoStartPoses.put(name, startPose);
   }
 
   private void registerEventTriggers(RobotContainer rc) {

@@ -5,7 +5,22 @@
       "Bash(node -e \":*)",
       "Bash(./gradlew compileJava)",
       "Read(//mnt/c/Users/grump/**)",
-      "Bash(find /c /mnt/c -name java.exe -path */wpilib/*)"
+      "Bash(find /c /mnt/c -name java.exe -path */wpilib/*)",
+      "Read(//c/tmp/**)",
+      "Bash(jar -tf \"C:/Users/grump/.gradle/caches/modules-2/files-2.1/com.github.edanliahovetsky/BLine-Lib/v0.8.4/f6d9e1ca2bb3f924ccdac97b92fd7a2865ee1068/BLine-Lib-v0.8.3-sources.jar\")",
+      "Bash(jar -tf \"C:/Users/grump/.gradle/caches/modules-2/files-2.1/com.github.edanliahovetsky/BLine-Lib/v0.8.4/4e55ce4756a703d80d2e64ac3d7bc09b09141b63/BLine-Lib-v0.8.4-sources.jar\")",
+      "Bash(/c/Users/grump/wpilib/2026/jdk/bin/jar -tf \"C:/Users/grump/.gradle/caches/modules-2/files-2.1/com.github.edanliahovetsky/BLine-Lib/v0.8.4/4e55ce4756a703d80d2e64ac3d7bc09b09141b63/BLine-Lib-v0.8.4-sources.jar\")",
+      "Read(//c/Users/grump/**)",
+      "Bash(cmd.exe /c \"where java 2>nul && java -version 2>&1 | head -1\")",
+      "Bash(cmd.exe /c \"\\\\\"C:\\\\\\\\Users\\\\\\\\grump\\\\\\\\.gradle\\\\\\\\wrapper\\\\\\\\dists\\\\\\\\gradle-8.11-bin\\\\\\\\7flm5a02tkhaq8vp3d6kecg8\\\\\\\\gradle-8.11\\\\\\\\bin\\\\\\\\gradle.bat\\\\\" --version 2>nul | head -3\")",
+      "Bash(cmd.exe /c \"cd C:\\\\\\\\Users\\\\\\\\grump\\\\\\\\AppData\\\\\\\\Local\\\\\\\\Temp && mkdir bline_src 2>nul && cd bline_src && powershell -Command \\\\\"Expand-Archive -Path 'C:\\\\\\\\Users\\\\\\\\grump\\\\\\\\.gradle\\\\\\\\caches\\\\\\\\modules-2\\\\\\\\files-2.1\\\\\\\\com.github.edanliahovetsky\\\\\\\\BLine-Lib\\\\\\\\v0.8.4\\\\\\\\4e55ce4756a703d80d2e64ac3d7bc09b09141b63\\\\\\\\BLine-Lib-v0.8.4-sources.jar' -DestinationPath . -Force\\\\\" && dir /B /S | findstr /i Path\")",
+      "Bash(cmd.exe /c 'powershell -Command \"Add-Type -AssemblyName System.IO.Compression.FileSystem; $zip = [IO.Compression.ZipFile]::OpenRead\\('\\\\''C:\\\\Users\\\\grump\\\\.gradle\\\\caches\\\\modules-2\\\\files-2.1\\\\com.github.edanliahovetsky\\\\BLine-Lib\\\\v0.8.4\\\\4e55ce4756a703d80d2e64ac3d7bc09b09141b63\\\\BLine-Lib-v0.8.4-sources.jar'\\\\''\\); $zip.Entries | Select-Object Name\" 2>&1')",
+      "Bash(unzip -q \"C:\\\\Users\\\\grump\\\\.gradle\\\\caches\\\\modules-2\\\\files-2.1\\\\com.github.edanliahovetsky\\\\BLine-Lib\\\\v0.8.4\\\\4e55ce4756a703d80d2e64ac3d7bc09b09141b63\\\\BLine-Lib-v0.8.4-sources.jar\")",
+      "Bash(mkdir -p /tmp/bline_compiled)",
+      "Read(//tmp/**)",
+      "Bash(unzip -q \"C:\\\\Users\\\\grump\\\\.gradle\\\\caches\\\\modules-2\\\\files-2.1\\\\com.github.edanliahovetsky\\\\BLine-Lib\\\\v0.8.4\\\\9e91bdbabb3689b0794c3e45441c99b0300b2486\\\\BLine-Lib-v0.8.4.jar\")",
+      "Bash(javap -classpath /tmp/bline_compiled frc.robot.lib.BLine.Path)",
+      "Bash(grep -v \"//\")"
     ]
   }
 }
